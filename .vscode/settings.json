@@ -1,0 +1,10 @@
+{
+  "cSpell.words": ["levelname", "ollama"],
+  "pylint.enabled": true,
+  "pylint.args": [
+    "--disable=C0114",
+    "--disable=C0115",
+    "--disable=C0116",
+    "--disable=C0301"
+  ]
+}
