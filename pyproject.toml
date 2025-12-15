@@ -1,0 +1,128 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "digital-asset-purchase-harvester"
+version = "0.1.0"
+description = "Extract cryptocurrency purchase information from email mbox files with a local LLM."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "UNLICENSED" }
+authors = [
+  { name = "Digital Asset Purchase Harvester Maintainers" }
+]
+keywords = ["cryptocurrency", "mbox", "llm", "email", "data-extraction"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "License :: Other/Proprietary License",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "anyio>=4.7.0",
+  "httpx>=0.27.2",
+  "ollama>=0.4.5",
+  "python-dateutil>=2.8.2",
+  "regex>=2023.10.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-cov>=4.0.0",
+  "black>=24.0.0",
+  "flake8>=7.0.0",
+  "mypy>=1.8.0",
+  "pre-commit>=3.0.0",
+]
+
+[project.scripts]
+digital-asset-harvester = "digital_asset_harvester.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/username-anthony-is-not-available/digital-asset-purchase-harvester"
+
+[tool.setuptools.packages.find]
+include = ["digital_asset_harvester*"]
+
+[tool.black]
+line-length = 120
+target-version = ['py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+follow_imports = "normal"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "ollama.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "performance: marks tests as performance benchmarks (deselect with '-m \"not performance\"')",
+]
+
+[tool.coverage.run]
+source = ["digital_asset_harvester"]
+omit = ["tests/*", "*/site-packages/*"]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests", "venv", ".venv"]
+tests = ["B201", "B301"]
+skips = ["B101", "B601"]
