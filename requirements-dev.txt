@@ -1,0 +1,49 @@
+# Development dependencies for Digital Asset Purchase Harvester
+# Install with: pip install -r requirements-dev.txt
+
+# Include base requirements
+-r requirements.txt
+
+# Development and testing tools
+pytest>=7.0.0               # Testing framework
+pytest-cov>=4.0.0          # Coverage reporting
+black>=22.0.0               # Development dependencies
+pytest>=8.0.0
+pytest-cov>=4.0.0
+black>=24.0.0
+flake8>=7.0.0
+mypy>=1.8.0
+pre-commit>=3.0.0
+
+# Additional testing tools
+pytest-mock>=3.12.0
+pytest-xdist>=3.5.0  # Parallel test execution
+pytest-asyncio>=0.23.0  # Async test support
+pytest-benchmark>=4.0.0  # Performance benchmarking
+pytest-timeout>=2.2.0  # Test timeouts
+
+# Code quality tools
+isort>=5.13.0  # Import sorting
+bandit>=1.7.0  # Security linting
+flake8-docstrings>=1.7.0  # Docstring linting
+
+# Progress bars for CLI
+tqdm>=4.66.0
+
+# Export formats
+openpyxl>=3.1.0  # Excel export
+
+# Documentation
+sphinx>=7.2.0
+sphinx-rtd-theme>=2.0.0
+
+# Code quality metrics
+radon>=6.0.1  # Complexity metrics
+pylint>=3.0.0
+
+# Type stubs
+types-python-dateutil>=2.8.0
+
+# Performance profiling
+memory-profiler>=0.60.0
+line-profiler>=4.0.0
