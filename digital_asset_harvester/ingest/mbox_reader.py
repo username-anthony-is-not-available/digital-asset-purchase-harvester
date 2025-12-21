@@ -1,39 +1,29 @@
-"""Utilities for reading email data from mbox files."""
-
-import email
 import mailbox
-from email.header import decode_header
-from typing import Any, Dict, List
-
+from typing import Dict, Generator
 
 class MboxDataExtractor:
+    """Extracts data from an mbox file."""
+
     def __init__(self, mbox_file: str):
         self.mbox_file = mbox_file
-        self.mbox = mailbox.mbox(mbox_file)
 
-    def decode_header_value(self, value: str) -> str:
-        decoded_value, encoding = decode_header(value)[0]
-        if isinstance(decoded_value, bytes):
-            return decoded_value.decode(encoding or "utf-8", errors="ignore")
-        return decoded_value
-
-    def extract_body(self, message: email.message.Message) -> str:
-        if message.is_multipart():
-            return "".join(
-                part.get_payload(decode=True).decode(errors="ignore")
-                for part in message.walk()
-                if part.get_content_type() == "text/plain"
-            )
-        return message.get_payload(decode=True).decode(errors="ignore")
-
-    def extract_all_emails(self) -> List[Dict[str, Any]]:
-        all_emails = []
-        for message in self.mbox:
+    def extract_all_emails(self) -> Generator[Dict[str, str], None, None]:
+        """Extracts all emails from the mbox file."""
+        mbox = mailbox.mbox(self.mbox_file)
+        for message in mbox.values():
             email_data = {
-                "subject": self.decode_header_value(message["subject"] or ""),
-                "sender": self.decode_header_value(message["from"] or ""),
-                "date": message["date"],
-                "body": self.extract_body(message),
+                "sender": message.get("from", ""),
+                "recipient": message.get("to", ""),
+                "subject": message.get("subject", ""),
+                "date": message.get("date", ""),
+                "body": "",
             }
-            all_emails.append(email_data)
-        return all_emails
+
+            if message.is_multipart():
+                for part in message.walk():
+                    if part.get_content_type() == "text/plain":
+                        email_data["body"] = part.get_payload(decode=True).decode()
+                        break
+            else:
+                email_data["body"] = message.get_payload(decode=True).decode()
+            yield email_data
