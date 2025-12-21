@@ -11,6 +11,12 @@ def test_build_parser_defaults():
     assert args.output == "output/purchase_data.csv"
 
 
+def test_build_parser_no_progress():
+    parser = build_parser()
+    args = parser.parse_args(["inbox.mbox", "--no-progress"])
+    assert not args.progress
+
+
 def test_process_emails_collects_metrics():
     class DummyExtractor:
         def process_email(self, _content):
@@ -42,3 +48,19 @@ def test_process_emails_collects_metrics():
     assert metrics.get("emails_processed") == 1
     assert metrics.get("purchases_detected") == 1
     assert metrics.get("non_purchase_emails") == 0
+
+
+def test_run(mocker):
+    mocker.patch(
+        "digital_asset_harvester.cli.MboxDataExtractor.extract_all_emails",
+        return_value=[],
+    )
+    mocker.patch(
+        "digital_asset_harvester.cli.EmailPurchaseExtractor.process_email",
+        return_value={"has_purchase": False},
+    )
+    mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
+
+    from digital_asset_harvester.cli import run
+
+    assert run(["test.mbox"]) == 0

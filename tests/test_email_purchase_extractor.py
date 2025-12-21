@@ -80,7 +80,7 @@ def test_process_email_successful_path(extractor_factory):
     responses = [
         {
             "is_crypto_purchase": True,
-            "confidence": 0.8,
+            "confidence": 0.9,
             "reasoning": "Purchase confirmed",
         },
         {
@@ -90,7 +90,7 @@ def test_process_email_successful_path(extractor_factory):
             "item_name": "BTC",
             "vendor": "Coinbase",
             "purchase_date": "2024-02-02 10:10:10",
-            "confidence": 0.85,
+            "confidence": 0.9,
             "extraction_notes": "",
         },
     ]
