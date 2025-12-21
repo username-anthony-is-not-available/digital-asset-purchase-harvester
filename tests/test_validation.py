@@ -35,4 +35,4 @@ def test_purchase_validator_detects_issues():
     issues = validator.validate(record)
     fields = {issue.field for issue in issues}
 
-    assert {"total_spent", "amount", "currency", "item_name", "vendor", "purchase_date"}.issubset(fields)
+    assert {"total_spent", "amount", "item_name", "vendor", "purchase_date"} == fields
