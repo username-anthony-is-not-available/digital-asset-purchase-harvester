@@ -23,16 +23,25 @@ def test_purchase_record_from_raw_converts_values():
 
 def test_purchase_validator_detects_issues():
     validator = PurchaseValidator(allow_unknown_crypto=False)
-    record = PurchaseRecord(
-        total_spent=Decimal("-1"),
-        currency="usd",
-        amount=Decimal("0"),
-        item_name="UnknownCoin",
-        vendor="",
-        purchase_date="",
+    record = PurchaseRecord.from_raw(
+        {
+            "total_spent": "-1",
+            "currency": "usd",
+            "amount": "0",
+            "item_name": "UnknownCoin",
+            "vendor": "",
+            "purchase_date": "",
+        }
     )
 
     issues = validator.validate(record)
     fields = {issue.field for issue in issues}
 
-    assert {"total_spent", "amount", "currency", "item_name", "vendor", "purchase_date"}.issubset(fields)
+    assert {
+        "total_spent",
+        "amount",
+        "item_name",
+        "vendor",
+        "purchase_date",
+    }.issubset(fields)
+    assert "currency" not in fields
