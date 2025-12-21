@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 def test_is_crypto_purchase_email_positive(extractor_factory):
-    email_content = "Subject: Coinbase receipt\nFrom: no-reply@coinbase.com\nBody: You bought 0.1 BTC"
+    email_content = "Subject: Coinbase receipt\nFrom: no-reply@coinbase.com\nBody:\nYou bought 0.1 BTC"
     responses = [
         {
             "is_crypto_purchase": True,

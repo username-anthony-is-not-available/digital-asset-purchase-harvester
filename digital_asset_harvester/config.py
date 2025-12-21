@@ -12,6 +12,7 @@ from typing import Any, Dict, Type
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_CONFIG_FILE = "config/config.toml"
 _ENV_PREFIX = "DAP_"
 
 
@@ -123,3 +124,22 @@ def get_settings_with_overrides(**overrides: Any) -> HarvesterSettings:
 	"""Return settings merged with explicit overrides (without caching)."""
 
 	return _compose_settings(**overrides)
+
+
+def load_config_from_file() -> HarvesterSettings:
+	"""Load settings from a TOML file."""
+	import toml
+
+	config_file = os.getenv("HARVESTER_CONFIG_FILE", DEFAULT_CONFIG_FILE)
+	if os.path.exists(config_file):
+		with open(config_file, "r") as f:
+			config = toml.load(f)
+			return _compose_settings(**config.get("harvester", {}))
+	return get_settings()
+
+
+def setup_logging(log_level: str) -> logging.Logger:
+	"""Set up logging for the application."""
+	logger = logging.getLogger()
+	logger.setLevel(log_level)
+	return logger

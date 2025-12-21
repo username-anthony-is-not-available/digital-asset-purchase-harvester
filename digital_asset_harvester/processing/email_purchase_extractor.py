@@ -390,7 +390,10 @@ class EmailPurchaseExtractor:
             confidence=confidence,
         )
 
-        if is_purchase and confidence < self.settings.min_confidence_threshold:
+        if not is_purchase:
+            return False
+
+        if confidence < self.settings.min_confidence_threshold:
             logger.info(
                 "Classification below confidence threshold (%.2f < %.2f)",
                 confidence,
@@ -398,7 +401,7 @@ class EmailPurchaseExtractor:
             )
             return False
 
-        return bool(is_purchase)
+        return is_purchase
 
     def extract_purchase_info(
         self,
