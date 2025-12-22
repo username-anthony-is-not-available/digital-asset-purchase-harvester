@@ -13,27 +13,33 @@ A Python tool to extract cryptocurrency purchase information from email data sto
 
 ## ⚡ Quick Start
 
-1. **Set up the project environment** (creates venv, installs dependencies, checks for Ollama):
+1. **Set up the project environment**:
 
-   ```sh
-   make setup
+   **Windows (PowerShell):**
+
+   ```powershell
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   pip install -e .
    ```
 
-2. **Activate virtual environment**:
+   **Linux/macOS:**
 
-   ```sh
+   ```bash
+   python3 -m venv venv
    source venv/bin/activate
+   pip install -r requirements.txt
+   pip install -e .
    ```
 
-3. **Test the setup**:
+2. **Test the setup**:
 
    ```sh
-   python check_venv.py           # Quick environment check
-   python test_setup.py           # Full setup validation
-   python test_improvements.py    # Run test cases (requires Ollama)
+   pytest
    ```
 
-4. **Process your emails**:
+3. **Process your emails**:
 
    - **From an mbox file:**
      ```sh
@@ -239,10 +245,10 @@ reload_settings()
 
 ## Testing the Improvements
 
-Run the test script to validate the enhanced detection capabilities:
+Run the test suite to validate the detection capabilities:
 
 ```sh
-python test_improvements.py
+pytest
 ```
 
 This will test various email scenarios including:
@@ -357,21 +363,6 @@ For contributors, install development dependencies:
 # After activating virtual environment
 pip install -r requirements-dev.txt
 ```
-
-### Environment Status Checker
-
-Use the built-in status checker to verify your setup:
-
-```sh
-python check_venv.py
-```
-
-This will check:
-
-- ✅ Virtual environment activation status
-- ✅ Correct project directory
-- ✅ Required packages installation
-- ✅ Readiness to run the application
 
 ### Troubleshooting
 
