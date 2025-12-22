@@ -127,15 +127,28 @@ def get_settings_with_overrides(**overrides: Any) -> HarvesterSettings:
 
 
 def load_config_from_file() -> HarvesterSettings:
-	"""Load settings from a TOML file."""
-	import toml
+    """Load settings from a TOML file.
 
-	config_file = os.getenv("HARVESTER_CONFIG_FILE", DEFAULT_CONFIG_FILE)
-	if os.path.exists(config_file):
-		with open(config_file, "r") as f:
-			config = toml.load(f)
-			return _compose_settings(**config.get("harvester", {}))
-	return get_settings()
+    Environment variables should take precedence over values in the file. This
+    function merges defaults, advanced overrides, file values, and finally
+    environment overrides so that environment variables win.
+    """
+    import toml
+
+    config_file = os.getenv("HARVESTER_CONFIG_FILE", DEFAULT_CONFIG_FILE)
+    if os.path.exists(config_file):
+        with open(config_file, "r") as f:
+            config = toml.load(f)
+            file_overrides = config.get("harvester", {})
+
+            # Start with defaults and advanced overrides
+            merged = asdict(HarvesterSettings())
+            merged.update(_load_advanced_overrides())
+
+            # Apply file settings, then re-apply environment overrides so env vars win
+            merged.update({k: v for k, v in file_overrides.items() if v is not None})
+            merged.update(_load_env_overrides())
+            return HarvesterSettings(**merged)
 
 
 def setup_logging(log_level: str) -> logging.Logger:
