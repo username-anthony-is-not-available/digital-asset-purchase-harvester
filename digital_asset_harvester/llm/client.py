@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import random
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
@@ -91,20 +93,26 @@ class OllamaLLMClient:
                 return LLMResult(data=payload, raw_text=raw_text)
 
             except LLMResponseFormatError as exc:
-                logger.error("LLM response format error: %s", exc)
+                logger.warning("LLM response format error on attempt %d: %s", attempt, exc)
                 last_error = exc
             except json.JSONDecodeError as exc:
-                logger.error("Failed to decode LLM response JSON: %s", exc)
+                logger.warning("Failed to decode LLM response JSON on attempt %d: %s", attempt, exc)
                 last_error = LLMResponseFormatError(str(exc))
             except (ConnectionError, TimeoutError) as exc:
-                logger.error("LLM network error: %s", exc)
+                logger.warning("LLM network error on attempt %d: %s", attempt, exc)
                 last_error = LLMError(str(exc))
             except RuntimeError as exc:
-                logger.error("LLM runtime error: %s", exc)
+                logger.error("LLM runtime error on attempt %d: %s", attempt, exc)
                 last_error = LLMError(str(exc))
+                raise last_error from exc  # Non-recoverable
             except Exception as exc:  # pragma: no cover - defensive guard
-                logger.error("Unexpected LLM error: %s", exc)
+                logger.error("Unexpected LLM error on attempt %d: %s", attempt, exc)
                 last_error = LLMError(str(exc))
+
+            if attempt < attempts:
+                sleep_duration = (2**attempt) + random.uniform(0, 1)
+                logger.info("Retrying LLM call in %.2f seconds...", sleep_duration)
+                time.sleep(sleep_duration)
 
         if last_error is None:
             last_error = LLMError("Unknown LLM failure")
