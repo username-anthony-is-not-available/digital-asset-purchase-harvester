@@ -4,16 +4,18 @@ from digital_asset_harvester.cli import build_parser, process_emails
 from digital_asset_harvester.telemetry import StructuredLoggerFactory
 
 
+import pytest
+
 def test_build_parser_defaults():
     parser = build_parser()
-    args = parser.parse_args(["inbox.mbox"])
+    args = parser.parse_args(["--mbox-file", "inbox.mbox"])
     assert args.mbox_file == "inbox.mbox"
     assert args.output == "output/purchase_data.csv"
 
 
 def test_build_parser_no_progress():
     parser = build_parser()
-    args = parser.parse_args(["inbox.mbox", "--no-progress"])
+    args = parser.parse_args(["--mbox-file", "inbox.mbox", "--no-progress"])
     assert not args.progress
 
 
@@ -52,7 +54,7 @@ def test_process_emails_collects_metrics():
 
 def test_run(mocker):
     mocker.patch(
-        "digital_asset_harvester.cli.MboxDataExtractor.extract_all_emails",
+        "digital_asset_harvester.ingest.mbox_reader.MboxDataExtractor.extract_emails",
         return_value=[],
     )
     mocker.patch(
@@ -63,4 +65,4 @@ def test_run(mocker):
 
     from digital_asset_harvester.cli import run
 
-    assert run(["test.mbox"]) == 0
+    assert run(["--mbox-file", "test.mbox"]) == 0

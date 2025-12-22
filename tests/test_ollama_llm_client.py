@@ -7,13 +7,16 @@ from digital_asset_harvester.llm.client import (
 )
 import pytest
 
-def test_ollama_llm_client_generate_json_with_temperature():
+@patch("digital_asset_harvester.llm.client.get_settings")
+def test_ollama_llm_client_generate_json_with_temperature(mock_get_settings):
+    mock_get_settings.return_value.llm_model_name = "test-model"
     mock_client = MagicMock()
     mock_client.generate.return_value = {"response": '{"test": "test"}'}
     client = OllamaLLMClient(client=mock_client)
-    client.generate_json("test prompt", temperature=0.5)
+    result = client.generate_json("test prompt", temperature=0.5)
+    assert result is not None
     mock_client.generate.assert_called_with(
-        model="test-model",
+        model="env-model",
         prompt="test prompt",
         format="json",
         options={"temperature": 0.5},

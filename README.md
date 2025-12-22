@@ -11,18 +11,14 @@ A Python tool to extract cryptocurrency purchase information from email data sto
 
 ## ⚡ Quick Start
 
-1. **Run the setup script** (automatically creates venv and installs dependencies):
-   ```powershell
-   .\setup.ps1        # Windows PowerShell
-   setup.bat          # Windows Command Prompt  
-   ./setup.sh         # Linux/macOS
+1. **Set up the project environment** (creates venv, installs dependencies, checks for Ollama):
+   ```sh
+   make setup
    ```
 
 2. **Activate virtual environment**:
-   ```powershell
-   .\venv\Scripts\Activate.ps1     # Windows PowerShell
-   venv\Scripts\activate.bat       # Windows Command Prompt
-   source venv/bin/activate        # Linux/macOS
+   ```sh
+   source venv/bin/activate
    ```
 
 3. **Test the setup**:
@@ -161,32 +157,6 @@ Legacy modules such as `email_purchase_extractor.py` still proxy to the packaged
 
    > **Note**: Always activate the virtual environment before running the script or installing packages. You should see `(venv)` in your terminal prompt when the virtual environment is active.
 
-### Quick Setup (Alternative)
-
-For convenience, you can use the provided setup scripts:
-
-**Windows PowerShell:**
-```powershell
-.\setup.ps1
-```
-
-**Windows Command Prompt:**
-```cmd
-setup.bat
-```
-
-**Linux/macOS:**
-```bash
-chmod +x setup.sh
-./setup.sh
-```
-
-These scripts will automatically:
-- Check for Python installation
-- Create the virtual environment
-- Install all dependencies
-- Check for Ollama installation
-- Provide next steps
 
 ## Usage
 
