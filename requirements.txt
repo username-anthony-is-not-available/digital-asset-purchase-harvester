@@ -14,3 +14,6 @@ typing_extensions==4.12.2
 # Additional dependencies for improved functionality
 python-dateutil>=2.8.2  # Better date parsing
 regex>=2023.10.0        # Enhanced regex support for text processing
+google-auth==2.41.1
+google-auth-oauthlib==1.2.3
+google-api-python-client==2.187.0
