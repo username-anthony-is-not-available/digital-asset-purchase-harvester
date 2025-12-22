@@ -1,5 +1,7 @@
 # Digital Asset Purchase Harvester
 
+[![CI](https://github.com/username-anthony-is-not-available/digital-asset-purchase-harvester/actions/workflows/ci.yml/badge.svg)](https://github.com/username-anthony-is-not-available/digital-asset-purchase-harvester/actions/workflows/ci.yml)
+
 A Python tool to extract cryptocurrency purchase information from email data stored in mbox files. This project aims to help crypto enthusiasts quickly parse their email history for purchase records.
 
 ## ⚠️ Important Notes
@@ -12,16 +14,19 @@ A Python tool to extract cryptocurrency purchase information from email data sto
 ## ⚡ Quick Start
 
 1. **Set up the project environment** (creates venv, installs dependencies, checks for Ollama):
+
    ```sh
    make setup
    ```
 
 2. **Activate virtual environment**:
+
    ```sh
    source venv/bin/activate
    ```
 
 3. **Test the setup**:
+
    ```sh
    python check_venv.py           # Quick environment check
    python test_setup.py           # Full setup validation
@@ -38,7 +43,7 @@ A Python tool to extract cryptocurrency purchase information from email data sto
      ```sh
      digital-asset-harvester --gmail --output crypto_purchases.csv
      ```
-   _(or run `python -m digital_asset_harvester.cli` if you prefer module execution)_
+     _(or run `python -m digital_asset_harvester.cli` if you prefer module execution)_
 
 ## 📦 Install from source
 
@@ -68,17 +73,20 @@ Artifacts will appear under `dist/` and can be uploaded to a package index of yo
 ## 🚀 Recent Improvements
 
 ### Enhanced Email Detection
+
 - **Smart Preprocessing**: Filters out newsletters, marketing emails, and non-purchase content before LLM analysis
 - **Comprehensive Keyword Detection**: Recognizes 30+ major cryptocurrency exchanges and 50+ crypto terms
 - **Improved Classification Prompts**: Better LLM prompts with specific examples and exclusion criteria
 
-### Better Accuracy & Performance  
+### Better Accuracy & Performance
+
 - **Confidence Scoring**: Each detection includes a confidence score to help identify uncertain results
 - **Data Validation**: Validates extracted data for completeness and reasonableness
 - **Faster Processing**: Pre-filtering reduces unnecessary LLM calls by ~70% for typical email sets
 - **Enhanced Error Handling**: Robust error handling with detailed logging and retry mechanisms
 
 ### Supported Exchanges & Platforms
+
 - **Major Exchanges**: Coinbase, Binance, Kraken, Gemini, Bitfinex, Bitstamp, and 25+ others
 - **Regional Platforms**: Coinspot, BTCMarkets, Swyftx (AU), Coinsquare, Newton (CA), and more
 - **Cryptocurrency Coverage**: Bitcoin, Ethereum, Litecoin, and 30+ major cryptocurrencies
@@ -132,18 +140,21 @@ Legacy modules such as `email_purchase_extractor.py` still proxy to the packaged
 2. Create and activate a virtual environment:
 
    **Windows (PowerShell):**
+
    ```powershell
    python -m venv venv
    .\venv\Scripts\Activate.ps1
    ```
 
    **Windows (Command Prompt):**
+
    ```cmd
    python -m venv venv
    venv\Scripts\activate.bat
    ```
 
    **Linux/macOS:**
+
    ```bash
    python3 -m venv venv
    source venv/bin/activate
@@ -157,12 +168,12 @@ Legacy modules such as `email_purchase_extractor.py` still proxy to the packaged
 
    > **Note**: Always activate the virtual environment before running the script or installing packages. You should see `(venv)` in your terminal prompt when the virtual environment is active.
 
-
 ## Usage
 
 > **Important**: Always activate the virtual environment before running any commands!
 
 **Windows:**
+
 ```powershell
 .\venv\Scripts\Activate.ps1  # PowerShell
 # or
@@ -170,6 +181,7 @@ venv\Scripts\activate.bat    # Command Prompt
 ```
 
 **Linux/macOS:**
+
 ```bash
 source venv/bin/activate
 ```
@@ -234,6 +246,7 @@ python test_improvements.py
 ```
 
 This will test various email scenarios including:
+
 - Coinbase, Binance, and Kraken purchase confirmations
 - Newsletter and price alert filtering
 - Processing speed improvements
@@ -246,7 +259,7 @@ python main.py example.mbox --output output/purchase_data.csv
 
 # The improved system will now:
 # 1. Pre-filter emails using keyword detection
-# 2. Use enhanced LLM prompts for better accuracy  
+# 2. Use enhanced LLM prompts for better accuracy
 # 3. Validate extracted data for quality
 # 4. Provide detailed processing statistics
 ```
@@ -260,7 +273,7 @@ Advanced defaults can be configured in `advanced_config.py`. Any uppercase varia
 LLM_MODEL_NAME = "llama3.2:3b"
 MIN_CONFIDENCE_THRESHOLD = 0.6
 
-# Processing Configuration  
+# Processing Configuration
 ENABLE_PREPROCESSING = True    # Enable smart filtering
 STRICT_VALIDATION = True      # Require all fields to be valid
 ENABLE_DEBUG_OUTPUT = False   # Detailed logging for troubleshooting
@@ -324,7 +337,9 @@ log_event(logger, "demo_event", status="ok")
 ## Virtual Environment Management
 
 ### Creating a New Environment
+
 If you need to recreate the virtual environment:
+
 ```sh
 # Remove existing environment
 rm -rf venv  # Linux/macOS
@@ -335,7 +350,9 @@ python -m venv venv
 ```
 
 ### Development Setup
+
 For contributors, install development dependencies:
+
 ```sh
 # After activating virtual environment
 pip install -r requirements-dev.txt
@@ -350,6 +367,7 @@ python check_venv.py
 ```
 
 This will check:
+
 - ✅ Virtual environment activation status
 - ✅ Correct project directory
 - ✅ Required packages installation
@@ -358,27 +376,32 @@ This will check:
 ### Troubleshooting
 
 **Virtual Environment Issues:**
+
 - **"venv not recognized"**: Make sure you're in the project directory
 - **Permission errors on Windows**: Run PowerShell as Administrator or use Command Prompt
 - **Python not found**: Ensure Python 3.7+ is installed and in your PATH
 
 **Ollama Issues:**
+
 - **Model not found**: Run `ollama pull llama3.2:3b` to download the model
 - **Ollama not running**: Start Ollama service or desktop application
 - **Connection errors**: Check if Ollama is running on the default port (11434)
 
 **Import Errors:**
+
 - Always ensure virtual environment is activated before running scripts
 - Reinstall requirements: `pip install --force-reinstall -r requirements.txt`
 
 ### Environment Variables
+
 You can set these environment variables to customize behavior:
+
 ```sh
 # Windows
 set OLLAMA_HOST=http://localhost:11434
 set PYTHONPATH=%PYTHONPATH%;.
 
-# Linux/macOS  
+# Linux/macOS
 export OLLAMA_HOST=http://localhost:11434
 export PYTHONPATH=$PYTHONPATH:.
 ```
@@ -388,6 +411,7 @@ export PYTHONPATH=$PYTHONPATH:.
 To use the Gmail integration, you need to enable the Gmail API and create credentials.
 
 1. **Enable the Gmail API:**
+
    - Go to the [Google Cloud Console](https://console.cloud.google.com/).
    - Create a new project or select an existing one.
    - In the API Library, search for "Gmail API" and enable it.
