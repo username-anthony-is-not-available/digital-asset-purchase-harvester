@@ -9,6 +9,8 @@ from typing import Iterable, Optional
 from tqdm import tqdm
 
 from digital_asset_harvester import (
+    MboxDataExtractor,
+    EmailPurchaseExtractor,
     EmailPurchaseExtractor,
     MboxDataExtractor,
     OllamaLLMClient,
