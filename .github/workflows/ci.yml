@@ -84,6 +84,12 @@ jobs:
         bandit -r digital_asset_harvester/ -c pyproject.toml
       continue-on-error: true  # Don't fail CI on security warnings yet
 
+    - name: Dependency vulnerability scan with pip-audit
+      run: |
+        pip install pip-audit
+        pip-audit -r requirements.txt
+        pip-audit -r requirements-dev.txt
+
   integration:
     name: Integration Tests (with Ollama)
     runs-on: ubuntu-latest
