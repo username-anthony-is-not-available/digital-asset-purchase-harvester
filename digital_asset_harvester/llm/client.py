@@ -95,8 +95,8 @@ class OllamaLLMClient:
             except LLMResponseFormatError as exc:
                 logger.warning("LLM response format error on attempt %d: %s", attempt, exc)
                 last_error = exc
-            except json.JSONDecodeError as exc:
-                logger.warning("Failed to decode LLM response JSON on attempt %d: %s", attempt, exc)
+            except (json.JSONDecodeError, TypeError, AttributeError) as exc:
+                logger.warning("Could not parse LLM response on attempt %d: %s", attempt, exc)
                 last_error = LLMResponseFormatError(str(exc))
             except (ConnectionError, TimeoutError) as exc:
                 logger.warning("LLM network error on attempt %d: %s", attempt, exc)
