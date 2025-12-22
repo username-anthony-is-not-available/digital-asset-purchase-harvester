@@ -56,3 +56,11 @@ def extractor_factory(default_settings):
         )
 
     return _factory
+
+
+@pytest.fixture(autouse=True)
+def _reset_extractor_factory_cache():
+    """Clear the extractor_factory cache before each test."""
+    from functools import lru_cache
+
+    lru_cache(maxsize=None)(extractor_factory).cache_clear()
