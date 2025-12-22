@@ -49,7 +49,7 @@ def test_end_to_end_single_purchase(temp_mbox_file, sample_coinbase_email, tmp_p
         logger_factory=logger_factory,
     )
 
-    emails = mbox_reader.extract_all_emails()
+    emails = mbox_reader.extract_emails()
     purchases = []
 
     for email in emails:
@@ -130,7 +130,7 @@ def test_end_to_end_multiple_purchases(
         logger_factory=logger_factory,
     )
 
-    emails = mbox_reader.extract_all_emails()
+    emails = mbox_reader.extract_emails()
     purchases = []
 
     for email in emails:
@@ -181,7 +181,7 @@ def test_newsletter_filtering(temp_mbox_file, sample_newsletter_email, tmp_path)
         logger_factory=logger_factory,
     )
 
-    emails = mbox_reader.extract_all_emails()
+    emails = mbox_reader.extract_emails()
     purchases = []
 
     for email in emails:
