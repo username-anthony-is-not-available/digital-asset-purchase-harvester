@@ -1,31 +1,97 @@
+"""Tests for the CSV writer utility."""
+
 import csv
 import os
 from decimal import Decimal
-from unittest.mock import mock_open, patch
+
 from digital_asset_harvester.output.csv_writer import write_purchase_data_to_csv
-from digital_asset_harvester.validation.schemas import PurchaseRecord
+from digital_asset_harvester.validation import PurchaseRecord
 
-def test_write_purchase_data_to_csv_handles_empty_data():
-    with patch("builtins.open", mock_open()) as mock_file:
-        write_purchase_data_to_csv("test.csv", [])
-        mock_file.assert_not_called()
 
-def test_write_purchase_data_to_csv_writes_records():
-    purchase_data = [
+def test_write_purchase_data_to_csv(tmp_path):
+    """Verify that purchase data is correctly written to a CSV file."""
+    filepath = os.path.join(tmp_path, "purchases.csv")
+    records = [
         PurchaseRecord(
-            total_spent=Decimal("100.00"),
+            total_spent=Decimal("123.45"),
             currency="USD",
-            amount=Decimal("1.0"),
+            amount=Decimal("0.01"),
             item_name="BTC",
-            vendor="TestVendor",
-            purchase_date="2023-01-01",
+            vendor="Coinbase",
+            purchase_date="2024-01-10 10:00:00 UTC",
+        ),
+        PurchaseRecord(
+            total_spent=Decimal("543.21"),
+            currency="USD",
+            amount=Decimal("0.2"),
+            item_name="ETH",
+            vendor="Binance",
+            purchase_date="2024-01-11 11:00:00 UTC",
+        ),
+    ]
+
+    write_purchase_data_to_csv(filepath, records)
+
+    assert os.path.exists(filepath)
+
+    with open(filepath, "r", newline="", encoding="utf-8") as csvfile:
+        reader = list(csv.reader(csvfile))
+        assert reader[0] == [
+            "total_spent",
+            "currency",
+            "amount",
+            "item_name",
+            "vendor",
+            "purchase_date",
+        ]
+        assert reader[1] == [
+            "123.45",
+            "USD",
+            "0.01",
+            "BTC",
+            "Coinbase",
+            "2024-01-10 10:00:00 UTC",
+        ]
+        assert reader[2] == [
+            "543.21",
+            "USD",
+            "0.2",
+            "ETH",
+            "Binance",
+            "2024-01-11 11:00:00 UTC",
+        ]
+
+
+def test_write_purchase_data_no_header(tmp_path):
+    """Verify that the header is omitted when requested."""
+    filepath = os.path.join(tmp_path, "purchases.csv")
+    records = [
+        PurchaseRecord(
+            total_spent=Decimal("123.45"),
+            currency="USD",
+            amount=Decimal("0.01"),
+            item_name="BTC",
+            vendor="Coinbase",
+            purchase_date="2024-01-10 10:00:00 UTC",
         )
     ]
 
-    m = mock_open()
-    with patch("builtins.open", m):
-        write_purchase_data_to_csv("test.csv", purchase_data)
+    write_purchase_data_to_csv(filepath, records, include_header=False)
 
-    m.assert_called_once_with("test.csv", "w", newline="")
-    handle = m()
-    handle.write.assert_any_call("total_spent,currency,amount,item_name,vendor,purchase_date\r\n")
+    with open(filepath, "r", newline="", encoding="utf-8") as csvfile:
+        reader = list(csv.reader(csvfile))
+        assert reader[0] == [
+            "123.45",
+            "USD",
+            "0.01",
+            "BTC",
+            "Coinbase",
+            "2024-01-10 10:00:00 UTC",
+        ]
+
+
+def test_write_purchase_data_empty_records(tmp_path):
+    """Verify that an empty file is not created for empty records."""
+    filepath = os.path.join(tmp_path, "purchases.csv")
+    write_purchase_data_to_csv(filepath, [])
+    assert not os.path.exists(filepath)
