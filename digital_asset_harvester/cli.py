@@ -9,8 +9,6 @@ from typing import Iterable, Optional
 from tqdm import tqdm
 
 from digital_asset_harvester import (
-    MboxDataExtractor,
-    EmailPurchaseExtractor,
     EmailPurchaseExtractor,
     MboxDataExtractor,
     OllamaLLMClient,
@@ -18,15 +16,27 @@ from digital_asset_harvester import (
     log_event,
     write_purchase_data_to_csv,
 )
+from digital_asset_harvester.ingest.gmail_client import GmailClient
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Process an mbox file to extract cryptocurrency purchase information.",
+        description="Process emails to extract cryptocurrency purchase information.",
     )
-    parser.add_argument("mbox_file", help="Path to the mbox file")
+    source_group = parser.add_mutually_exclusive_group(required=True)
+    source_group.add_argument("--mbox-file", help="Path to the mbox file")
+    source_group.add_argument(
+        "--gmail",
+        action="store_true",
+        help="Import emails directly from Gmail",
+    )
+    parser.add_argument(
+        "--gmail-query",
+        default="from:coinbase OR from:binance",
+        help="The query to use when searching for emails in Gmail",
+    )
     parser.add_argument(
         "--output",
         default="output/purchase_data.csv",
@@ -148,7 +158,14 @@ def run(argv: Optional[list[str]] = None) -> int:
     logger = logging.getLogger(__name__)
 
     try:
-        mbox_reader = MboxDataExtractor(args.mbox_file)
+        if args.gmail:
+            logger.info("Fetching emails from Gmail...")
+            gmail_client = GmailClient()
+            emails = gmail_client.search_emails(args.gmail_query)
+        else:
+            logger.info(f"Loading emails from {args.mbox_file}...")
+            mbox_reader = MboxDataExtractor(args.mbox_file)
+            emails = mbox_reader.extract_emails()
         llm_client = OllamaLLMClient(settings=settings)
         extractor = EmailPurchaseExtractor(
             settings=settings,
@@ -156,7 +173,6 @@ def run(argv: Optional[list[str]] = None) -> int:
             logger_factory=logger_factory,
         )
 
-        emails = mbox_reader.extract_emails()
         purchases, metrics = process_emails(
             emails, extractor, logger_factory, show_progress=args.progress
         )

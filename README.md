@@ -33,9 +33,15 @@ A Python tool to extract cryptocurrency purchase information from email data sto
    ```
 
 4. **Process your emails**:
-   ```sh
-   digital-asset-harvester your_emails.mbox --output crypto_purchases.csv
-   ```
+
+   - **From an mbox file:**
+     ```sh
+     digital-asset-harvester --mbox-file your_emails.mbox --output crypto_purchases.csv
+     ```
+   - **Directly from Gmail:**
+     ```sh
+     digital-asset-harvester --gmail --output crypto_purchases.csv
+     ```
    _(or run `python -m digital_asset_harvester.cli` if you prefer module execution)_
 
 ## 📦 Install from source
@@ -198,11 +204,16 @@ venv\Scripts\activate.bat    # Command Prompt
 source venv/bin/activate
 ```
 
-1. Run the script with the path to your mbox file:
+1. Run the script:
 
-   ```sh
-   python main.py path/to/your.mbox --output path/to/output.csv
-   ```
+   - **From an mbox file:**
+     ```sh
+     python main.py --mbox-file path/to/your.mbox --output path/to/output.csv
+     ```
+   - **Directly from Gmail:**
+     ```sh
+     python main.py --gmail --output path/to/output.csv
+     ```
 
 2. The script will process the mbox file and output the purchase data to the specified CSV file.
 
@@ -401,6 +412,23 @@ set PYTHONPATH=%PYTHONPATH%;.
 export OLLAMA_HOST=http://localhost:11434
 export PYTHONPATH=$PYTHONPATH:.
 ```
+
+## Gmail API Setup
+
+To use the Gmail integration, you need to enable the Gmail API and create credentials.
+
+1. **Enable the Gmail API:**
+   - Go to the [Google Cloud Console](https://console.cloud.google.com/).
+   - Create a new project or select an existing one.
+   - In the API Library, search for "Gmail API" and enable it.
+
+2. **Create OAuth 2.0 Credentials:**
+   - Go to the "Credentials" page in the Google Cloud Console.
+   - Click "Create Credentials" and select "OAuth client ID".
+   - Choose "Desktop app" as the application type.
+   - Download the JSON file and save it as `credentials.json` in the root of the project.
+
+When you run the script with the `--gmail` flag for the first time, you will be prompted to authorize the application.
 
 ## License
 
