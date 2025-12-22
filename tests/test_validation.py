@@ -37,11 +37,6 @@ def test_purchase_validator_detects_issues():
     issues = validator.validate(record)
     fields = {issue.field for issue in issues}
 
-    assert {
-        "total_spent",
-        "amount",
-        "item_name",
-        "vendor",
-        "purchase_date",
-    }.issubset(fields)
-    assert "currency" not in fields
+    # currency should be valid when provided as 'usd' (case-insensitive), so the
+    # validator should report exactly the other failing fields.
+    assert {"total_spent", "amount", "item_name", "vendor", "purchase_date"} == fields

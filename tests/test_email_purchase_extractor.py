@@ -28,7 +28,9 @@ def extractor_factory_no_preprocessing(
 
 
 def test_is_crypto_purchase_email_positive(extractor_factory_no_preprocessing):
+    # Keep the no-preprocessing fixture to ensure the classifier is tested in isolation
     email_content = "Subject: Coinbase receipt\nFrom: no-reply@coinbase.com\nBody: You bought 0.1 BTC"
+
     responses = [
         {
             "is_crypto_purchase": True,
@@ -101,7 +103,7 @@ def test_extract_purchase_info_missing_fields_strict(
     assert extractor.extract_purchase_info(email_content) is None
 
 
-def test_process_email_successful_path(extractor_factory_no_preprocessing):
+def test_process_email_successful_path(extractor_factory, monkeypatch):
     email_content = "Subject: Coinbase\nFrom: no-reply@coinbase.com\nBody: You bought 0.05 BTC"
     responses = [
         {
@@ -121,7 +123,11 @@ def test_process_email_successful_path(extractor_factory_no_preprocessing):
         },
     ]
 
-    extractor = extractor_factory_no_preprocessing(responses)
+    extractor = extractor_factory(responses)
+    # Ensure preprocessing doesn't filter the email in this test
+    monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
+    monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
+    monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
 
     result = extractor.process_email(email_content)
 

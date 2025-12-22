@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 import pytest
 
 from digital_asset_harvester import (
+    StructuredLoggerFactory,
     EmailPurchaseExtractor,
     HarvesterSettings,
     LLMResult,
@@ -46,9 +47,11 @@ def extractor_factory(default_settings):
         prompt_manager = PromptManager()
         prompt_manager.register("classification", "${email_content}")
         prompt_manager.register("extraction", "${email_content}")
+        logger_factory = StructuredLoggerFactory(json_output=False)
         return EmailPurchaseExtractor(
             settings=default_settings,
             llm_client=stub_client,
+            logger_factory=logger_factory,
             prompts=prompt_manager,
         )
 
