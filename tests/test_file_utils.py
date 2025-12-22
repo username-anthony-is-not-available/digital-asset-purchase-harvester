@@ -1,8 +1,22 @@
-"""Tests for utility helpers."""
-
 import os
 import time
-from digital_asset_harvester.utils.file_utils import get_unique_filename
+from unittest.mock import patch
+from digital_asset_harvester.utils.file_utils import (
+    ensure_directory_exists,
+    get_unique_filename,
+)
+
+
+def test_ensure_directory_exists_creates_directory():
+    with patch("os.makedirs") as mock_makedirs:
+        ensure_directory_exists("path/to/file.txt")
+        mock_makedirs.assert_called_once_with("path/to", exist_ok=True)
+
+
+def test_ensure_directory_exists_handles_no_directory():
+    with patch("os.makedirs") as mock_makedirs:
+        ensure_directory_exists("file.txt")
+        mock_makedirs.assert_not_called()
 
 
 def test_get_unique_filename(tmp_path):

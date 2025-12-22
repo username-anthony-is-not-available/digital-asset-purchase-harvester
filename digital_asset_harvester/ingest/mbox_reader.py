@@ -1,12 +1,11 @@
-"""Utilities for reading email data from mbox files."""
-
-import email
 import mailbox
+import email
 from email.header import decode_header
 from typing import Any, Dict, Generator
 
-
 class MboxDataExtractor:
+    """Extracts data from an mbox file."""
+
     def __init__(self, mbox_file: str):
         self.mbox_file = mbox_file
 
@@ -23,7 +22,8 @@ class MboxDataExtractor:
                 for part in message.walk()
                 if part.get_content_type() == "text/plain"
             )
-        return message.get_payload(decode=True).decode(errors="ignore")
+        payload = message.get_payload(decode=True)
+        return payload.decode(errors="ignore") if isinstance(payload, (bytes, bytearray)) else str(payload)
 
     def extract_emails(self) -> Generator[Dict[str, Any], None, None]:
         try:
@@ -33,8 +33,8 @@ class MboxDataExtractor:
 
         for message in mbox:
             yield {
-                "subject": self.decode_header_value(message["subject"] or ""),
-                "sender": self.decode_header_value(message["from"] or ""),
-                "date": message["date"],
+                "subject": self.decode_header_value(message.get("subject", "") or ""),
+                "sender": self.decode_header_value(message.get("from", "") or ""),
+                "date": message.get("date", ""),
                 "body": self.extract_body(message),
             }
