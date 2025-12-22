@@ -3,13 +3,12 @@
 import email
 import mailbox
 from email.header import decode_header
-from typing import Any, Dict, List
+from typing import Any, Dict, Generator
 
 
 class MboxDataExtractor:
     def __init__(self, mbox_file: str):
         self.mbox_file = mbox_file
-        self.mbox = mailbox.mbox(mbox_file)
 
     def decode_header_value(self, value: str) -> str:
         decoded_value, encoding = decode_header(value)[0]
@@ -26,14 +25,16 @@ class MboxDataExtractor:
             )
         return message.get_payload(decode=True).decode(errors="ignore")
 
-    def extract_all_emails(self) -> List[Dict[str, Any]]:
-        all_emails = []
-        for message in self.mbox:
-            email_data = {
+    def extract_emails(self) -> Generator[Dict[str, Any], None, None]:
+        try:
+            mbox = mailbox.mbox(self.mbox_file)
+        except (FileNotFoundError, mailbox.Error):
+            return
+
+        for message in mbox:
+            yield {
                 "subject": self.decode_header_value(message["subject"] or ""),
                 "sender": self.decode_header_value(message["from"] or ""),
                 "date": message["date"],
                 "body": self.extract_body(message),
             }
-            all_emails.append(email_data)
-        return all_emails

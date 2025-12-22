@@ -156,13 +156,13 @@ def run(argv: Optional[list[str]] = None) -> int:
             logger_factory=logger_factory,
         )
 
-        emails = mbox_reader.extract_all_emails()
+        emails = mbox_reader.extract_emails()
         purchases, metrics = process_emails(
             emails, extractor, logger_factory, show_progress=args.progress
         )
 
         ensure_directory_exists(args.output)
-        write_purchase_data_to_csv(args.output, purchases)
+        write_purchase_data_to_csv(purchases, args.output)
 
         logger.info("Processing completed")
         logger.info("  Emails processed: %d", metrics.get("emails_processed"))
