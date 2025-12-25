@@ -111,6 +111,10 @@ Artifacts will appear under `dist/` and can be uploaded to a package index of yo
 - Configurable prompt templates with reusable manager
 - Structured logging and lightweight metrics summary reporting
 
+## Documentation
+
+- **[Exchange-Specific Email Format Guides](docs/EXCHANGE_FORMATS.md)**: A reference for the email formats used by various cryptocurrency exchanges.
+
 ## Project Structure
 
 ```
