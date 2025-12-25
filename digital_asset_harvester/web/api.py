@@ -1,0 +1,105 @@
+import shutil
+import uuid
+import csv
+import json
+import tempfile
+from fastapi import APIRouter, File, UploadFile, Depends, BackgroundTasks
+from fastapi.responses import RedirectResponse, StreamingResponse
+from io import StringIO
+from .. import (
+    EmailPurchaseExtractor,
+    MboxDataExtractor,
+    OllamaLLMClient,
+    get_settings,
+)
+from ..telemetry import StructuredLoggerFactory
+from ..cli import process_emails, configure_logging
+
+router = APIRouter()
+
+# In-memory store for task status and results
+tasks = {}
+
+DEFAULT_CSV_HEADERS = [
+    "email_subject", "vendor", "currency", "amount", "purchase_date",
+    "transaction_id", "crypto_currency", "crypto_amount", "confidence_score"
+]
+
+
+def get_logger_factory():
+    settings = get_settings()
+    return configure_logging(settings)
+
+def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLoggerFactory):
+    """Processes the mbox file and stores the result."""
+    tasks[task_id] = {"status": "processing", "result": None}
+
+    settings = get_settings()
+    llm_client = OllamaLLMClient(settings=settings)
+    extractor = EmailPurchaseExtractor(
+        settings=settings,
+        llm_client=llm_client,
+        logger_factory=logger_factory,
+    )
+
+    mbox_reader = MboxDataExtractor(temp_path)
+    emails = mbox_reader.extract_emails()
+
+    purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
+
+    tasks[task_id]["status"] = "complete"
+    tasks[task_id]["result"] = purchases
+
+@router.post("/upload")
+async def upload_file(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    logger_factory: StructuredLoggerFactory = Depends(get_logger_factory)
+):
+    task_id = str(uuid.uuid4())
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mbox") as temp_file:
+        shutil.copyfileobj(file.file, temp_file)
+        temp_path = temp_file.name
+
+    background_tasks.add_task(process_mbox_file, task_id, temp_path, logger_factory)
+
+    return RedirectResponse(url=f"/status/{task_id}", status_code=303)
+
+@router.get("/status/{task_id}")
+async def get_status(task_id: str):
+    return tasks.get(task_id, {"status": "not_found"})
+
+@router.get("/export/csv/{task_id}")
+async def export_csv(task_id: str):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        return {"error": "Task not found or not complete"}
+
+    output = StringIO()
+    results = task.get("result", [])
+
+    if not results:
+        writer = csv.writer(output)
+        writer.writerow(DEFAULT_CSV_HEADERS)
+    else:
+        writer = csv.DictWriter(output, fieldnames=results[0].keys())
+        writer.writeheader()
+        writer.writerows(results)
+
+    output.seek(0)
+
+    return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=purchases_{task_id}.csv"})
+
+@router.get("/export/json/{task_id}")
+async def export_json(task_id: str):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        return {"error": "Task not found or not complete"}
+
+    results = task.get("result", [])
+    return StreamingResponse(
+        iter([json.dumps(results, indent=2)]),
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename=purchases_{task_id}.json"},
+    )
