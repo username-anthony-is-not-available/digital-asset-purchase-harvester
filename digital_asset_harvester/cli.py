@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 from digital_asset_harvester import (
     EmailPurchaseExtractor,
+    HarvesterSettings,
     MboxDataExtractor,
     OllamaLLMClient,
     get_settings,
@@ -18,12 +19,14 @@ from digital_asset_harvester import (
 )
 from digital_asset_harvester.ingest.gmail_client import GmailClient
 from digital_asset_harvester.ingest.imap_client import ImapClient
+from digital_asset_harvester.output.koinly_writer import (
+    write_purchase_data_to_koinly_csv,
+)
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
 
 
-def build_parser() -> argparse.ArgumentParser:
-    settings = get_settings()
+def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Process emails to extract cryptocurrency purchase information.",
     )
@@ -65,6 +68,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--output",
         default="output/purchase_data.csv",
         help="Output CSV file path",
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=["csv", "koinly"],
+        default="csv",
+        help="The output format (default: csv)",
     )
     parser.add_argument(
         "--progress",
@@ -170,24 +179,43 @@ def _process_and_save_results(
     extractor: EmailPurchaseExtractor,
     logger_factory: StructuredLoggerFactory,
     output_path: str,
+    output_format: str,
     show_progress: bool,
+    settings: HarvesterSettings,
 ) -> None:
     """Helper to process emails and save the results."""
     purchases, metrics = process_emails(
         emails, extractor, logger_factory, show_progress=show_progress
     )
     ensure_directory_exists(output_path)
-    write_purchase_data_to_csv(purchases, output_path)
+
     logger = logging.getLogger(__name__)
+
+    if output_format == "koinly":
+        if settings.enable_koinly_output:
+            logger.info("Writing output in Koinly format to %s", output_path)
+            write_purchase_data_to_koinly_csv(purchases, output_path)
+        else:
+            logger.warning(
+                "Koinly output format is not enabled. "
+                "Set `enable_koinly_output = true` in your config or "
+                "`DAP_ENABLE_KOINLY_OUTPUT=true` env var. "
+                "Falling back to standard CSV output."
+            )
+            write_purchase_data_to_csv(purchases, output_path)
+    else:  # 'csv'
+        logger.info("Writing output in standard CSV format to %s", output_path)
+        write_purchase_data_to_csv(purchases, output_path)
+
     logger.info("Processing completed")
     logger.info("  Emails processed: %d", metrics.get("emails_processed"))
     logger.info("  Purchases detected: %d", metrics.get("purchases_detected"))
 
 
 def run(argv: Optional[list[str]] = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
     settings = get_settings()
+    parser = build_parser(settings)
+    args = parser.parse_args(argv)
 
     logger_factory = configure_logging(settings)
     logger = logging.getLogger(__name__)
@@ -205,7 +233,13 @@ def run(argv: Optional[list[str]] = None) -> int:
             gmail_client = GmailClient()
             emails = gmail_client.search_emails(args.gmail_query)
             _process_and_save_results(
-                emails, extractor, logger_factory, args.output, args.progress
+                emails,
+                extractor,
+                logger_factory,
+                args.output,
+                args.output_format,
+                args.progress,
+                settings,
             )
         elif settings.enable_imap and args.imap:
             logger.info("Fetching emails from IMAP server...")
@@ -222,14 +256,26 @@ def run(argv: Optional[list[str]] = None) -> int:
             ) as imap_client:
                 emails = imap_client.search_emails(args.imap_query)
                 _process_and_save_results(
-                    emails, extractor, logger_factory, args.output, args.progress
+                    emails,
+                    extractor,
+                    logger_factory,
+                    args.output,
+                    args.output_format,
+                    args.progress,
+                    settings,
                 )
         else:
             logger.info(f"Loading emails from {args.mbox_file}...")
             mbox_reader = MboxDataExtractor(args.mbox_file)
             emails = mbox_reader.extract_emails()
             _process_and_save_results(
-                emails, extractor, logger_factory, args.output, args.progress
+                emails,
+                extractor,
+                logger_factory,
+                args.output,
+                args.output_format,
+                args.progress,
+                settings,
             )
         return 0
 
