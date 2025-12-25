@@ -11,9 +11,9 @@ from digital_asset_harvester import (
     StructuredLoggerFactory,
     EmailPurchaseExtractor,
     HarvesterSettings,
-    LLMResult,
     get_settings_with_overrides,
 )
+from digital_asset_harvester.llm.provider import LLMResult
 from digital_asset_harvester.prompts import PromptManager
 
 

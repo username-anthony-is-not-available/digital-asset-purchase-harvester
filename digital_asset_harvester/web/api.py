@@ -9,7 +9,7 @@ from io import StringIO
 from .. import (
     EmailPurchaseExtractor,
     MboxDataExtractor,
-    OllamaLLMClient,
+    get_llm_client,
     get_settings,
 )
 from ..telemetry import StructuredLoggerFactory
@@ -35,7 +35,7 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
     tasks[task_id] = {"status": "processing", "result": None}
 
     settings = get_settings()
-    llm_client = OllamaLLMClient(settings=settings)
+    llm_client = get_llm_client()
     extractor = EmailPurchaseExtractor(
         settings=settings,
         llm_client=llm_client,

@@ -111,6 +111,24 @@ Artifacts will appear under `dist/` and can be uploaded to a package index of yo
 - Configurable prompt templates with reusable manager
 - Structured logging and lightweight metrics summary reporting
 
+### Cloud LLM Support (OpenAI, Anthropic)
+
+In addition to the default local LLM (Ollama), the harvester now supports cloud-based LLM providers.
+
+- **Enable Cloud Providers**: Set the `DAP_ENABLE_CLOUD_LLM` environment variable to `true`.
+- **Select a Provider**: Use `DAP_LLM_PROVIDER` to choose between `ollama`, `openai`, or `anthropic`.
+- **API Keys**: Provide the appropriate API key for your chosen cloud provider:
+  - `DAP_OPENAI_API_KEY`
+  - `DAP_ANTHROPIC_API_KEY`
+
+Example configuration:
+
+```sh
+export DAP_ENABLE_CLOUD_LLM=true
+export DAP_LLM_PROVIDER=openai
+export DAP_OPENAI_API_KEY="your-openai-api-key"
+```
+
 ## Documentation
 
 - **[Exchange-Specific Email Format Guides](docs/EXCHANGE_FORMATS.md)**: A reference for the email formats used by various cryptocurrency exchanges.
@@ -291,13 +309,14 @@ ENABLE_DEBUG_OUTPUT = False   # Detailed logging for troubleshooting
 
 ### LLM client customization
 
-`EmailPurchaseExtractor` now depends on `OllamaLLMClient`, which encapsulates retries, timeouts, and JSON parsing. You can provide a customised client (for example, with a different model or temperature) when instantiating the extractor:
+The application now uses a factory function, `get_llm_client`, to create the appropriate LLM client based on the current settings. You can still provide a custom client to the `EmailPurchaseExtractor`:
 
 ```python
-from digital_asset_harvester import EmailPurchaseExtractor, OllamaLLMClient, get_settings_with_overrides
+from digital_asset_harvester import EmailPurchaseExtractor, get_llm_client, get_settings_with_overrides
 
-settings = get_settings_with_overrides(llm_model_name="gemma3:4b")
-llm_client = OllamaLLMClient(settings=settings, default_retries=5)
+# Example of using the factory with custom settings
+settings = get_settings_with_overrides(llm_provider="openai", enable_cloud_llm=True)
+llm_client = get_llm_client(provider="openai")
 extractor = EmailPurchaseExtractor(settings=settings, llm_client=llm_client)
 ```
 

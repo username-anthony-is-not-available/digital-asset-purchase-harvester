@@ -24,6 +24,15 @@ class HarvesterSettings:
 	llm_max_retries: int = 3
 	llm_timeout_seconds: int = 30
 
+	enable_cloud_llm: bool = False
+	llm_provider: str = "ollama"
+
+	openai_api_key: str = ""
+	openai_model_name: str = "gpt-4-turbo-preview"
+
+	anthropic_api_key: str = ""
+	anthropic_model_name: str = "claude-3-sonnet-20240229"
+
 	enable_preprocessing: bool = True
 	enable_validation: bool = True
 	min_confidence_threshold: float = 0.6

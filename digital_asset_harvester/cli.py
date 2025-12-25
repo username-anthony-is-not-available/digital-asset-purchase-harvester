@@ -11,7 +11,7 @@ from tqdm import tqdm
 from digital_asset_harvester import (
     EmailPurchaseExtractor,
     MboxDataExtractor,
-    OllamaLLMClient,
+    get_llm_client,
     get_settings,
     log_event,
     write_purchase_data_to_csv,
@@ -193,7 +193,7 @@ def run(argv: Optional[list[str]] = None) -> int:
     logger = logging.getLogger(__name__)
 
     try:
-        llm_client = OllamaLLMClient(settings=settings)
+        llm_client = get_llm_client()
         extractor = EmailPurchaseExtractor(
             settings=settings,
             llm_client=llm_client,
