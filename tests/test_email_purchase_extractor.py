@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from digital_asset_harvester import get_settings_with_overrides
+from tests.fixtures.emails import EMAIL_FIXTURES
 
 
 @pytest.fixture
@@ -147,3 +148,85 @@ def test_process_email_filtered_by_preprocessing(extractor_factory):
         "has_purchase": False,
         "processing_notes": ["Email not classified as crypto purchase"],
     }
+
+
+def test_process_email_with_coinbase_fixture(extractor_factory, monkeypatch):
+    email_content = EMAIL_FIXTURES["coinbase_purchase"]
+    responses = [
+        {
+            "is_crypto_purchase": True,
+            "confidence": 0.9,
+            "reasoning": "Purchase confirmed",
+        },
+        {
+            "total_spent": 100.0,
+            "currency": "USD",
+            "amount": 0.001,
+            "item_name": "BTC",
+            "vendor": "Coinbase",
+            "purchase_date": "2024-01-01 12:00:00",
+            "confidence": 0.9,
+            "extraction_notes": "",
+        },
+    ]
+
+    extractor = extractor_factory(responses)
+    monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
+    monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
+    monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
+
+    result = extractor.process_email(email_content)
+
+    assert result["has_purchase"] is True
+    assert result["purchase_info"]["vendor"] == "Coinbase"
+
+
+def test_process_email_with_binance_fixture(extractor_factory, monkeypatch):
+    email_content = EMAIL_FIXTURES["binance_purchase"]
+    responses = [
+        {
+            "is_crypto_purchase": True,
+            "confidence": 0.9,
+            "reasoning": "Purchase confirmed",
+        },
+        {
+            "total_spent": 200.0,
+            "currency": "USD",
+            "amount": 0.1,
+            "item_name": "ETH",
+            "vendor": "Binance",
+            "purchase_date": "2024-01-02 12:00:00",
+            "confidence": 0.9,
+            "extraction_notes": "",
+        },
+    ]
+
+    extractor = extractor_factory(responses)
+    monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
+    monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
+    monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
+
+    result = extractor.process_email(email_content)
+
+    assert result["has_purchase"] is True
+    assert result["purchase_info"]["vendor"] == "Binance"
+
+
+def test_process_email_with_non_purchase_fixture(extractor_factory, monkeypatch):
+    email_content = EMAIL_FIXTURES["non_purchase"]
+    responses = [
+        {
+            "is_crypto_purchase": False,
+            "confidence": 0.9,
+            "reasoning": "Price alert",
+        }
+    ]
+
+    extractor = extractor_factory(responses)
+    monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
+    monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
+    monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
+
+    result = extractor.process_email(email_content)
+
+    assert result["has_purchase"] is False
