@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import base64
-import email
 import logging
 from email import message_from_bytes
-from typing import Iterator
+from typing import Any, Dict, Iterator
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from .email_parser import message_to_dict
 from .oauth import get_gmail_credentials
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class GmailClient:
         self.creds = get_gmail_credentials()
         self.service = build("gmail", "v1", credentials=self.creds)
 
-    def search_emails(self, query: str) -> Iterator[email.message.Message]:
+    def search_emails(self, query: str) -> Iterator[Dict[str, Any]]:
         """
         Searches for emails matching the given query.
 
@@ -41,7 +41,15 @@ class GmailClient:
                 messages = response.get("messages", [])
 
                 for message in messages:
-                    yield self._get_message_data(message["id"])
+                    raw_message = (
+                        self.service.users()
+                        .messages()
+                        .get(userId="me", id=message["id"], format="raw")
+                        .execute()
+                    )
+                    msg_str = base64.urlsafe_b64decode(raw_message["raw"].encode("ASCII"))
+                    email_msg = message_from_bytes(msg_str)
+                    yield message_to_dict(email_msg)
 
                 next_page_token = response.get("nextPageToken")
                 if not next_page_token:
@@ -50,28 +58,3 @@ class GmailClient:
         except HttpError as error:
             logger.error(f"An error occurred: {error}")
             return iter(())
-
-    def _get_message_data(self, message_id: str) -> email.message.Message:
-        """
-        Gets the data for a single email message.
-
-        :param message_id: The ID of the message to get.
-        :return: An email.message.Message object.
-        """
-        message = (
-            self.service.users()
-            .messages()
-            .get(userId="me", id=message_id, format="raw")
-            .execute()
-        )
-        return self._parse_message(message)
-
-    def _parse_message(self, message: dict) -> email.message.Message:
-        """
-        Parses a raw email message into a more usable format.
-
-        :param message: The raw message data.
-        :return: An email.message.Message object.
-        """
-        msg_str = base64.urlsafe_b64decode(message["raw"].encode("ASCII"))
-        return message_from_bytes(msg_str)

@@ -1,38 +1,51 @@
 from __future__ import annotations
 
 import os
+import json
+import msal
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 
-# The scope for reading Gmail messages.
-SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
-
+# Scopes for Gmail and Outlook
+GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+OUTLOOK_SCOPES = ["https://outlook.office.com/IMAP.AccessAsUser.All"]
 
 def get_gmail_credentials() -> Credentials:
     """
     Authenticates with the Gmail API using OAuth 2.0.
-
-    This function handles the OAuth 2.0 flow, including refreshing
-    and saving the user's access token.
-
-    :return: The authenticated credentials.
     """
     creds = None
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
+    if os.path.exists("gmail_token.json"):
+        creds = Credentials.from_authorized_user_file("gmail_token.json", GMAIL_SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", GMAIL_SCOPES)
             creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open("token.json", "w") as token:
+        with open("gmail_token.json", "w") as token:
             token.write(creds.to_json())
     return creds
+
+def get_outlook_credentials(client_id: str, authority: str) -> str:
+    """
+    Authenticates with the Outlook API using OAuth 2.0.
+    """
+    app = msal.PublicClientApplication(client_id=client_id, authority=authority)
+
+    accounts = app.get_accounts()
+    if accounts:
+        result = app.acquire_token_silent(OUTLOOK_SCOPES, account=accounts[0])
+        if result:
+            return result["access_token"]
+
+    flow = app.initiate_device_flow(scopes=OUTLOOK_SCOPES)
+    print(flow["message"])
+    result = app.acquire_token_by_device_flow(flow)
+
+    if "access_token" in result:
+        return result["access_token"]
+    else:
+        raise Exception(result.get("error_description", "Could not authenticate."))
