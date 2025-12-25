@@ -17,11 +17,13 @@ from digital_asset_harvester import (
     write_purchase_data_to_csv,
 )
 from digital_asset_harvester.ingest.gmail_client import GmailClient
+from digital_asset_harvester.ingest.imap_client import ImapClient
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
 
 
 def build_parser() -> argparse.ArgumentParser:
+    settings = get_settings()
     parser = argparse.ArgumentParser(
         description="Process emails to extract cryptocurrency purchase information.",
     )
@@ -32,6 +34,28 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Import emails directly from Gmail",
     )
+
+    if settings.enable_imap:
+        source_group.add_argument(
+            "--imap", action="store_true", help="Import emails from an IMAP server"
+        )
+        parser.add_argument("--imap-server", help="IMAP server address")
+        parser.add_argument("--imap-user", help="IMAP username")
+        parser.add_argument("--imap-password", help="IMAP password")
+        parser.add_argument(
+            "--imap-auth-type",
+            choices=["password", "gmail_oauth2", "outlook_oauth2"],
+            default="password",
+            help="IMAP authentication type",
+        )
+        parser.add_argument("--client-id", help="OAuth2 client ID")
+        parser.add_argument("--authority", help="OAuth2 authority URL")
+        parser.add_argument(
+            "--imap-query",
+            default="ALL",
+            help="The query to use when searching for emails via IMAP",
+        )
+
     parser.add_argument(
         "--gmail-query",
         default="from:coinbase OR from:binance",
@@ -90,30 +114,22 @@ def process_emails(
 
     results: list[dict] = []
 
-    # Convert to list to get total count for progress bar
-    emails_list = list(emails)
-    total_emails = len(emails_list)
-
-    # Create progress bar if requested
     iterator = tqdm(
-        emails_list,
+        emails,
         desc="Processing emails",
         unit="email",
         disable=not show_progress,
-        total=total_emails,
         ncols=100,
     )
 
     for idx, email in enumerate(iterator, 1):
         if show_progress:
-            # Update progress bar description with current email subject
             subject_preview = email.get("subject", "")[:40]
             iterator.set_postfix_str(f"Current: {subject_preview}...")
 
         logger.info(
-            "Processing email %d/%d: %s",
+            "Processing email %d: %s",
             idx,
-            total_emails,
             email.get("subject", "")[:50],
         )
         metrics.increment("emails_processed")
@@ -149,6 +165,25 @@ def process_emails(
     return results, metrics
 
 
+def _process_and_save_results(
+    emails: Iterable[dict],
+    extractor: EmailPurchaseExtractor,
+    logger_factory: StructuredLoggerFactory,
+    output_path: str,
+    show_progress: bool,
+) -> None:
+    """Helper to process emails and save the results."""
+    purchases, metrics = process_emails(
+        emails, extractor, logger_factory, show_progress=show_progress
+    )
+    ensure_directory_exists(output_path)
+    write_purchase_data_to_csv(purchases, output_path)
+    logger = logging.getLogger(__name__)
+    logger.info("Processing completed")
+    logger.info("  Emails processed: %d", metrics.get("emails_processed"))
+    logger.info("  Purchases detected: %d", metrics.get("purchases_detected"))
+
+
 def run(argv: Optional[list[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -158,14 +193,6 @@ def run(argv: Optional[list[str]] = None) -> int:
     logger = logging.getLogger(__name__)
 
     try:
-        if args.gmail:
-            logger.info("Fetching emails from Gmail...")
-            gmail_client = GmailClient()
-            emails = gmail_client.search_emails(args.gmail_query)
-        else:
-            logger.info(f"Loading emails from {args.mbox_file}...")
-            mbox_reader = MboxDataExtractor(args.mbox_file)
-            emails = mbox_reader.extract_emails()
         llm_client = OllamaLLMClient(settings=settings)
         extractor = EmailPurchaseExtractor(
             settings=settings,
@@ -173,16 +200,37 @@ def run(argv: Optional[list[str]] = None) -> int:
             logger_factory=logger_factory,
         )
 
-        purchases, metrics = process_emails(
-            emails, extractor, logger_factory, show_progress=args.progress
-        )
-
-        ensure_directory_exists(args.output)
-        write_purchase_data_to_csv(purchases, args.output)
-
-        logger.info("Processing completed")
-        logger.info("  Emails processed: %d", metrics.get("emails_processed"))
-        logger.info("  Purchases detected: %d", metrics.get("purchases_detected"))
+        if args.gmail:
+            logger.info("Fetching emails from Gmail...")
+            gmail_client = GmailClient()
+            emails = gmail_client.search_emails(args.gmail_query)
+            _process_and_save_results(
+                emails, extractor, logger_factory, args.output, args.progress
+            )
+        elif settings.enable_imap and args.imap:
+            logger.info("Fetching emails from IMAP server...")
+            if not all([args.imap_server, args.imap_user]):
+                logger.error("IMAP server and user are required.")
+                return 1
+            with ImapClient(
+                args.imap_server,
+                args.imap_user,
+                args.imap_password,
+                args.imap_auth_type,
+                args.client_id,
+                args.authority,
+            ) as imap_client:
+                emails = imap_client.search_emails(args.imap_query)
+                _process_and_save_results(
+                    emails, extractor, logger_factory, args.output, args.progress
+                )
+        else:
+            logger.info(f"Loading emails from {args.mbox_file}...")
+            mbox_reader = MboxDataExtractor(args.mbox_file)
+            emails = mbox_reader.extract_emails()
+            _process_and_save_results(
+                emails, extractor, logger_factory, args.output, args.progress
+            )
         return 0
 
     except (FileNotFoundError, IOError) as exc:

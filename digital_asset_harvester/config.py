@@ -42,6 +42,8 @@ class HarvesterSettings:
 	include_processing_metadata: bool = False
 	include_confidence_scores: bool = False
 
+	enable_imap: bool = False
+
 
 def _coerce_value(value: str, expected_type: Type[Any], *, field_name: str) -> Any:
 	"""Convert string environment values to the expected type."""
