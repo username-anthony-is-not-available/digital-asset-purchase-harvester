@@ -56,3 +56,36 @@ def test_extract_emails_malformed_file():
         extractor = MboxDataExtractor("malformed.mbox")
         emails = list(extractor.extract_emails())
         assert len(emails) == 0
+
+
+def test_extract_emails_multipart(tmp_path):
+    """Tests that multipart emails are parsed correctly."""
+    from email.message import Message
+
+    mbox_path = tmp_path / "test.mbox"
+    mbox = mailbox.mbox(mbox_path)
+    msg = mailbox.mboxMessage()
+    msg["Content-Type"] = "multipart/alternative"
+    msg["Subject"] = "Multipart Test"
+    msg["From"] = "multipart@example.com"
+
+    plain_part = Message()
+    plain_part.set_payload("This is the plain text part.")
+    plain_part["Content-Type"] = "text/plain"
+
+    html_part = Message()
+    html_part.set_payload("<html><body><p>This is the HTML part.</p></body></html>")
+    html_part["Content-Type"] = "text/html"
+
+    msg.set_payload([plain_part, html_part])
+
+    mbox.add(msg)
+    mbox.close()
+
+    extractor = MboxDataExtractor(mbox_path)
+    emails = list(extractor.extract_emails())
+
+    assert len(emails) == 1
+    assert emails[0]["subject"] == "Multipart Test"
+    assert "This is the plain text part." in emails[0]["body"]
+    assert "<html><body><p>This is the HTML part.</p></body></html>" not in emails[0]["body"]
