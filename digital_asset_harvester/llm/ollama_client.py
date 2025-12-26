@@ -6,12 +6,12 @@ import json
 import logging
 import random
 import time
-from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from ollama import Client
 
 from digital_asset_harvester.config import HarvesterSettings, get_settings
+from .provider import LLMProvider, LLMResult
 
 logger = logging.getLogger(__name__)
 
@@ -24,15 +24,7 @@ class LLMResponseFormatError(LLMError):
     """Raised when the LLM response cannot be parsed as expected."""
 
 
-@dataclass
-class LLMResult:
-    """Container for structured LLM responses."""
-
-    data: Dict[str, Any]
-    raw_text: str
-
-
-class OllamaLLMClient:
+class OllamaLLMClient(LLMProvider):
     """Thin wrapper around :class:`ollama.Client` with retries and JSON parsing."""
 
     def __init__(

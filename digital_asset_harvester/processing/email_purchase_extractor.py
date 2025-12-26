@@ -6,7 +6,9 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
 
 from digital_asset_harvester.config import HarvesterSettings, get_settings
-from digital_asset_harvester.llm import LLMError, OllamaLLMClient
+from digital_asset_harvester.llm import get_llm_client
+from digital_asset_harvester.llm.ollama_client import LLMError
+from digital_asset_harvester.llm.provider import LLMProvider
 from digital_asset_harvester.prompts import DEFAULT_PROMPTS, PromptManager
 from digital_asset_harvester.validation import PurchaseRecord, PurchaseValidator
 from digital_asset_harvester.telemetry import (
@@ -31,7 +33,7 @@ class PurchaseInfo:
 @dataclass
 class EmailPurchaseExtractor:
     settings: HarvesterSettings = field(default_factory=get_settings)
-    llm_client: OllamaLLMClient = field(default_factory=OllamaLLMClient)
+    llm_client: LLMProvider = field(default_factory=get_llm_client)
     logger_factory: StructuredLoggerFactory = field(
         default_factory=StructuredLoggerFactory
     )
