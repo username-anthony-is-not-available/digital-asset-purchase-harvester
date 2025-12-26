@@ -225,6 +225,16 @@ source venv/bin/activate
      python main.py --gmail --output path/to/output.csv
      ```
 
+### Output Formats
+
+By default, the tool outputs a standard CSV file. You can also specify the Koinly-compatible CSV format using the `--output-format` option:
+
+```sh
+python main.py --mbox-file path/to/your.mbox --output path/to/output.csv --output-format koinly
+```
+
+To enable the Koinly output format, you must set the `enable_koinly_output` feature flag to `true` in your configuration or set the `DAP_ENABLE_KOINLY_OUTPUT=true` environment variable.
+
 2. The script will process the mbox file and output the purchase data to the specified CSV file.
 
 3. When finished, deactivate the virtual environment:
