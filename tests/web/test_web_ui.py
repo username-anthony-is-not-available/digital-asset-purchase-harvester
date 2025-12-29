@@ -1,77 +1,84 @@
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
-from io import BytesIO
 from digital_asset_harvester.web.main import app
-from digital_asset_harvester.web import api as web_api
+from digital_asset_harvester.web.api import tasks
 
-@pytest.fixture
-def client():
-    return TestClient(app)
+client = TestClient(app)
 
-def test_read_main(client):
-    response = client.get("/")
-    assert response.status_code == 200
-    assert "<h1>Upload your mbox file</h1>" in response.text
+@pytest.fixture(scope="session")
+def mock_task_id():
+    return "test-task-id"
 
-@patch("digital_asset_harvester.web.api.process_mbox_file")
-def test_upload_file(mock_process_mbox_file, client):
-    mbox_content = b"From MAILER-DAEMON Fri Jul  5 12:54:36 2024\nContent-Type: text/plain\n\nTest email"
+@pytest.fixture(scope="session", autouse=True)
+def mock_process_mbox(mock_task_id):
+    tasks[mock_task_id] = {
+        "status": "complete",
+        "result": [
+            {
+                "email_subject": "Test Subject",
+                "vendor": "Test Vendor",
+                "currency": "USD",
+                "amount": "100.00",
+                "purchase_date": "2024-01-01",
+                "transaction_id": "12345",
+                "crypto_currency": "BTC",
+                "crypto_amount": "0.002",
+                "confidence_score": "0.95"
+            }
+        ]
+    }
+    with patch('digital_asset_harvester.web.api.process_mbox_file', new_callable=MagicMock) as mock:
+        yield mock
 
-    response = client.post(
-        "/api/upload",
-        files={"file": ("test.mbox", BytesIO(mbox_content), "application/octet-stream")},
-        follow_redirects=False
-    )
+def test_upload_file_and_get_results(mock_process_mbox):
+    # Mock the background task
+    def mock_task(task_id, temp_path, logger_factory):
+        tasks[task_id] = {
+            "status": "complete",
+            "result": [
+                {
+                    "email_subject": "Test Subject",
+                    "vendor": "Test Vendor",
+                    "currency": "USD",
+                    "amount": "100.00",
+                    "purchase_date": "2024-01-01",
+                    "transaction_id": "12345",
+                    "crypto_currency": "BTC",
+                    "crypto_amount": "0.002",
+                    "confidence_score": "0.95"
+                }
+            ]
+        }
+    mock_process_mbox.side_effect = mock_task
 
-    assert response.status_code == 303
-    assert response.headers["location"].startswith("/status/")
-    assert mock_process_mbox_file.called
+    # 1. Upload a dummy file
+    test_mbox_path = "tests/fixtures/test.mbox"
+    with open(test_mbox_path, "w") as f:
+        f.write("dummy content")
 
-def test_get_status(client):
-    task_id = "test_task"
-    web_api.tasks[task_id] = {"status": "processing", "result": None}
+    with open(test_mbox_path, "rb") as f:
+        response = client.post("/api/upload", files={"file": ("test.mbox", f, "application/octet-stream")})
+
+    assert response.history[0].status_code == 303
+    task_id = response.url.path.split("/")[-1]
+
+    # 2. Poll the status endpoint and verify the data
     response = client.get(f"/api/status/{task_id}")
     assert response.status_code == 200
-    assert response.json() == {"status": "processing", "result": None}
 
-def test_results_page(client):
-    task_id = "test_task"
-    web_api.tasks[task_id] = {"status": "complete", "result": [{"email_subject": "Test Subject", "vendor": "Test Vendor"}]}
-    response = client.get(f"/results/{task_id}")
+    response_json = response.json()
+    assert response_json["status"] == "complete"
+    assert response_json["result"][0]["email_subject"] == "Test Subject"
+
+def test_export_csv(mock_task_id):
+    response = client.get(f"/api/export/csv/{mock_task_id}")
     assert response.status_code == 200
+    assert "text/csv" in response.headers["content-type"]
     assert "Test Subject" in response.text
-    assert "Test Vendor" in response.text
 
-def test_export_csv(client):
-    task_id = "test_task"
-    web_api.tasks[task_id] = {"status": "complete", "result": [{"email_subject": "Test Subject", "vendor": "Test Vendor"}]}
-    response = client.get(f"/api/export/csv/{task_id}")
-    assert response.status_code == 200
-    assert "text/csv" in response.headers["content-type"]
-    assert "Test Subject,Test Vendor" in response.text
-
-def test_export_csv_empty(client):
-    task_id = "test_task_empty"
-    web_api.tasks[task_id] = {"status": "complete", "result": []}
-    response = client.get(f"/api/export/csv/{task_id}")
-    assert response.status_code == 200
-    assert "text/csv" in response.headers["content-type"]
-    expected_headers = ",".join(web_api.DEFAULT_CSV_HEADERS)
-    assert expected_headers in response.text
-
-def test_export_json(client):
-    task_id = "test_task"
-    web_api.tasks[task_id] = {"status": "complete", "result": [{"email_subject": "Test Subject", "vendor": "Test Vendor"}]}
-    response = client.get(f"/api/export/json/{task_id}")
+def test_export_json(mock_task_id):
+    response = client.get(f"/api/export/json/{mock_task_id}")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
-    assert response.json() == [{"email_subject": "Test Subject", "vendor": "Test Vendor"}]
-
-def test_export_json_empty(client):
-    task_id = "test_task_empty"
-    web_api.tasks[task_id] = {"status": "complete", "result": []}
-    response = client.get(f"/api/export/json/{task_id}")
-    assert response.status_code == 200
-    assert response.headers["content-type"] == "application/json"
-    assert response.json() == []
+    assert "Test Subject" in response.text

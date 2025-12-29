@@ -18,7 +18,3 @@ async def root(request: Request):
 async def status_page(request: Request, task_id: str):
     return templates.TemplateResponse("status.html", {"request": request, "task_id": task_id})
 
-@app.get("/results/{task_id}")
-async def results_page(request: Request, task_id: str):
-    task = tasks.get(task_id, {})
-    return templates.TemplateResponse("results.html", {"request": request, "purchases": task.get("result", [])})

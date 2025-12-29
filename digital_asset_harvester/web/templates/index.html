@@ -2,12 +2,16 @@
 <html>
 <head>
     <title>Digital Asset Purchase Harvester</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles.css">
 </head>
 <body>
-    <h1>Upload your mbox file</h1>
-    <form action="/api/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="file">
-        <input type="submit" value="Upload">
-    </form>
+    <div class="container">
+        <h1>Digital Asset Purchase Harvester</h1>
+        <p>Upload your mbox file to extract cryptocurrency purchase information.</p>
+        <form action="/api/upload" method="post" enctype="multipart/form-data" class="upload-form">
+            <input type="file" name="file">
+            <input type="submit" value="Upload and Process">
+        </form>
+    </div>
 </body>
 </html>
