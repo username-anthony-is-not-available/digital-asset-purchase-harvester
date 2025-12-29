@@ -66,11 +66,11 @@ class ImapClient:
         _, message_ids = self.client.search(None, query)
 
         for message_id in message_ids[0].split():
-            _, [message_data] = self.client.fetch(message_id, "(RFC822)")
+            _, message_data = self.client.fetch(message_id, "(RFC822)")
             email_msg = self._parse_message(message_data)
             yield message_to_dict(email_msg)
 
-    def _parse_message(self, message_data: tuple) -> email.message.Message:
+    def _parse_message(self, message_data: list) -> email.message.Message:
         """
         Parses a raw email message into a more usable format.
         """
