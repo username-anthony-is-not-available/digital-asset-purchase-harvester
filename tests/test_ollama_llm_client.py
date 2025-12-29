@@ -1,6 +1,6 @@
 import json
 from unittest.mock import MagicMock, patch
-from digital_asset_harvester.llm.client import (
+from digital_asset_harvester.llm.ollama_client import (
     LLMError,
     LLMResponseFormatError,
     OllamaLLMClient,
@@ -9,7 +9,7 @@ import pytest
 
 @pytest.fixture
 def mock_settings(mocker):
-    mock = mocker.patch("digital_asset_harvester.llm.client.get_settings")
+    mock = mocker.patch("digital_asset_harvester.llm.ollama_client.get_settings")
     mock.return_value.llm_model_name = "test-model"
     mock.return_value.llm_max_retries = 1
     mock.return_value.llm_timeout_seconds = 30.0
