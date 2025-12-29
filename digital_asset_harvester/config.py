@@ -52,7 +52,7 @@ class HarvesterSettings:
 	include_confidence_scores: bool = False
 
 	enable_imap: bool = False
-	enable_koinly_output: bool = False
+	enable_koinly_csv_export: bool = False
 
 
 def _coerce_value(value: str, expected_type: Type[Any], *, field_name: str) -> Any:

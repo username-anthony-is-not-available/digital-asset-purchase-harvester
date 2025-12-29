@@ -225,15 +225,23 @@ source venv/bin/activate
      python main.py --gmail --output path/to/output.csv
      ```
 
-### Output Formats
+### Koinly CSV Export
 
-By default, the tool outputs a standard CSV file. You can also specify the Koinly-compatible CSV format using the `--output-format` option:
+The Digital Asset Purchase Harvester can generate a CSV file compatible with Koinly's "universal" format for manual import. This allows you to easily upload your transaction data to Koinly for tax reporting.
+
+To use the Koinly CSV export, you must enable the `enable_koinly_csv_export` feature flag in your configuration. You can do this by setting the `DAP_ENABLE_KOINLY_CSV_EXPORT` environment variable to `true`:
 
 ```sh
-python main.py --mbox-file path/to/your.mbox --output path/to/output.csv --output-format koinly
+export DAP_ENABLE_KOINLY_CSV_EXPORT=true
 ```
 
-To enable the Koinly output format, you must set the `enable_koinly_output` feature flag to `true` in your configuration or set the `DAP_ENABLE_KOINLY_OUTPUT=true` environment variable.
+Once the feature flag is enabled, you can generate the Koinly-compatible CSV file by specifying `koinly` as the `--output-format`:
+
+```sh
+digital-asset-harvester --mbox-file your_emails.mbox --output-format koinly --output koinly_transactions.csv
+```
+
+This will create a `koinly_transactions.csv` file in the correct format for manual upload to Koinly.
 
 2. The script will process the mbox file and output the purchase data to the specified CSV file.
 
