@@ -9,6 +9,7 @@ The tool uses a combination of keyword filtering and LLM-based extraction to ide
 1.  [Coinbase Confirmation Email Format](#coinbase-confirmation-email-format)
 2.  [Binance Confirmation Email Format](#binance-confirmation-email-format)
 3.  [Kraken Confirmation Email Format](#kraken-confirmation-email-format)
+4.  [Sample Emails for Testing](#sample-emails-for-testing)
 
 ---
 
@@ -108,4 +109,45 @@ Cost: $35,000.00 USD
 Fee: $105.00 USD
 ...
 ----_boundary_--
+```
+
+---
+
+## Sample Emails for Testing
+
+This section provides a collection of sample emails that can be used for testing the email parsing and data extraction functionality. These samples are also used in the project's automated test suite.
+
+### Coinbase Purchase
+
+```eml
+From: Coinbase <no-reply@coinbase.com>
+Subject: Your Coinbase purchase of 0.001 BTC
+To: user@example.com
+Date: Tue, 15 Mar 2024 10:00:00 -0700
+
+You successfully purchased 0.001 BTC for $100.00 USD.
+```
+
+### Binance Purchase
+
+```eml
+From: Binance <do-not-reply@binance.com>
+Subject: Your order to buy 0.1 ETH has been filled
+To: user@example.com
+Date: Wed, 16 Mar 2024 12:30:00 +0000
+
+Your order to buy 0.1 ETH for 200.00 USD has been filled.
+```
+
+### Non-Purchase Email
+
+This is an example of an email that should be ignored by the harvester.
+
+```eml
+From: Crypto News <alerts@cryptonews.com>
+Subject: Bitcoin Price Alert
+To: user@example.com
+Date: Fri, 18 Mar 2024 10:00:00 -0700
+
+Bitcoin is up 5% in the last 24 hours.
 ```
