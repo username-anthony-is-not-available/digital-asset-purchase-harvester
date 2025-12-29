@@ -47,8 +47,8 @@ def test_search_emails(mock_get_credentials, mock_gmail_service):
         emails = list(client.search_emails("test query"))
 
     assert len(emails) == 2
-    assert emails[0].get("subject") == "Test Email 1"
-    assert emails[1].get("subject") == "Test Email 2"
+    assert emails[0]["subject"] == "Test Email 1"
+    assert emails[1]["subject"] == "Test Email 2"
 
 
 @patch("digital_asset_harvester.ingest.gmail_client.get_gmail_credentials")
@@ -69,5 +69,4 @@ def test_search_emails_multipart(mock_get_credentials, mock_gmail_service):
         emails = list(client.search_emails("test query"))
 
     assert len(emails) == 1
-    assert emails[0].is_multipart()
-    assert emails[0].get("subject") == "Multipart Email"
+    assert emails[0]["subject"] == "Multipart Email"

@@ -1,34 +1,30 @@
-"""Email fixtures for testing."""
+import pytest
 
 EMAIL_FIXTURES = {
-    "coinbase_purchase": {
-        "subject": "You received bitcoin",
-        "sender": "Coinbase <no-reply@coinbase.com>",
-        "date": "2024-01-01T12:00:00Z",
-        "body": """
-        Hi,
+    "coinbase_purchase": """
+    From: Coinbase <no-reply@coinbase.com>
+    Subject: Your Coinbase purchase of 0.001 BTC
 
-        You received 0.001 BTC.
+    You successfully purchased 0.001 BTC for $100.00 USD.
+    """,
+    "binance_purchase": """
+    From: Binance <do-not-reply@binance.com>
+    Subject: Your order to buy 0.1 ETH has been filled
 
-        Thanks,
-        The Coinbase Team
-        """,
-    },
-    "binance_purchase": {
-        "subject": "Your order to buy ETH has been filled",
-        "sender": "Binance <do-not-reply@binance.com>",
-        "date": "2024-01-02T12:00:00Z",
-        "body": """
-        Your order to buy 0.1 ETH has been filled.
+    Your order to buy 0.1 ETH for 200.00 USD has been filled.
+    """,
+    "non_purchase": """
+    From: Crypto News <alerts@cryptonews.com>
+    Subject: Bitcoin Price Alert
 
-        Price: $2,000
-        Total: $200
-        """,
-    },
-    "non_purchase": {
-        "subject": "Price Alert",
-        "sender": "Coinbase <no-reply@coinbase.com>",
-        "date": "2024-01-03T12:00:00Z",
-        "body": "BTC is up 5%",
-    },
+    Bitcoin is up 5% in the last 24 hours.
+    """,
 }
+
+
+@pytest.fixture
+def mock_purchase_email():
+    """
+    Provides a mock email body for testing.
+    """
+    return EMAIL_FIXTURES["coinbase_purchase"]

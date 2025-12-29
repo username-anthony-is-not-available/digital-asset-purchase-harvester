@@ -4,7 +4,7 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
-from digital_asset_harvester.llm.client import (
+from digital_asset_harvester.llm.ollama_client import (
     LLMError,
     LLMResponseFormatError,
     OllamaLLMClient,
@@ -12,7 +12,7 @@ from digital_asset_harvester.llm.client import (
 
 
 @patch("time.sleep", return_value=None)
-@patch("digital_asset_harvester.llm.client.Client")
+@patch("digital_asset_harvester.llm.ollama_client.Client")
 def test_generate_json_retry_logic(mock_client_constructor, mock_sleep):
     mock_client = MagicMock()
     mock_client_constructor.return_value = mock_client
@@ -36,7 +36,7 @@ def test_generate_json_retry_logic(mock_client_constructor, mock_sleep):
     assert mock_sleep.call_args_list[1][0][0] > 4.0  # 2**2 + jitter
 
 
-@patch("digital_asset_harvester.llm.client.Client")
+@patch("digital_asset_harvester.llm.ollama_client.Client")
 def test_generate_json_non_recoverable_error(mock_client_constructor):
     mock_client = MagicMock()
     mock_client_constructor.return_value = mock_client

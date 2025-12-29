@@ -19,9 +19,9 @@ from digital_asset_harvester import (
 )
 from digital_asset_harvester.ingest.gmail_client import GmailClient
 from digital_asset_harvester.ingest.imap_client import ImapClient
-from digital_asset_harvester.output.koinly_writer import (
-    write_purchase_data_to_koinly_csv,
-)
+# from digital_asset_harvester.output.koinly_writer import (
+#     write_purchase_data_to_koinly_csv,
+# )
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
 

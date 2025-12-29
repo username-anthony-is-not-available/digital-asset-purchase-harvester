@@ -174,15 +174,11 @@ def test_process_email_with_coinbase_fixture(mocker, monkeypatch):
             }
         ),
     ]
-    mocker.patch(
-        "digital_asset_harvester.processing.email_purchase_extractor.get_llm_client",
-        return_value=mock_llm_client,
-    )
     from digital_asset_harvester.processing.email_purchase_extractor import (
         EmailPurchaseExtractor,
     )
 
-    extractor = EmailPurchaseExtractor()
+    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
     monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
@@ -215,15 +211,11 @@ def test_process_email_with_binance_fixture(mocker, monkeypatch):
             }
         ),
     ]
-    mocker.patch(
-        "digital_asset_harvester.processing.email_purchase_extractor.get_llm_client",
-        return_value=mock_llm_client,
-    )
     from digital_asset_harvester.processing.email_purchase_extractor import (
         EmailPurchaseExtractor,
     )
 
-    extractor = EmailPurchaseExtractor()
+    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
     monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
@@ -242,15 +234,11 @@ def test_process_email_with_non_purchase_fixture(mocker, monkeypatch):
             "reasoning": "Price alert",
         }
     )
-    mocker.patch(
-        "digital_asset_harvester.processing.email_purchase_extractor.get_llm_client",
-        return_value=mock_llm_client,
-    )
     from digital_asset_harvester.processing.email_purchase_extractor import (
         EmailPurchaseExtractor,
     )
 
-    extractor = EmailPurchaseExtractor()
+    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
     monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
