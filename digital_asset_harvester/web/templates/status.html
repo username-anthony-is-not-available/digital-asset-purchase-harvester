@@ -2,15 +2,78 @@
 <html>
 <head>
     <title>Processing Status</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles.css">
+    <script>
+        function sortTable(columnIndex) {
+            var table, rows, switching, i, x, y, shouldSwitch;
+            table = document.querySelector("table");
+            switching = true;
+            while (switching) {
+                switching = false;
+                rows = table.rows;
+                for (i = 1; i < (rows.length - 1); i++) {
+                    shouldSwitch = false;
+                    x = rows[i].getElementsByTagName("TD")[columnIndex];
+                    y = rows[i + 1].getElementsByTagName("TD")[columnIndex];
+                    if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                }
+                if (shouldSwitch) {
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                }
+            }
+        }
+    </script>
 </head>
 <body>
-    <h1>Processing your file...</h1>
-    <p>Task ID: <span id="task-id">{{ task_id }}</span></p>
-    <p>Status: <span id="status">processing</span></p>
+    <div class="container">
+        <div id="processing-section">
+            <h1>Processing your file...</h1>
+            <p>Task ID: <span id="task-id">{{ task_id }}</span></p>
+            <p>Status: <span id="status">processing</span></p>
+        </div>
+
+        <div id="results-section" style="display: none;">
+            <h1>Extracted Purchases</h1>
+            <div class="export-buttons">
+                <a id="export-csv" href="#" download>
+                    <button>Export to CSV</button>
+                </a>
+                <a id="export-json" href="#" download>
+                    <button>Export to JSON</button>
+                </a>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)">Email Subject</th>
+                        <th onclick="sortTable(1)">Vendor</th>
+                        <th onclick="sortTable(2)">Currency</th>
+                        <th onclick="sortTable(3)">Amount</th>
+                        <th onclick="sortTable(4)">Purchase Date</th>
+                        <th onclick="sortTable(5)">Transaction ID</th>
+                        <th onclick="sortTable(6)">Crypto Currency</th>
+                        <th onclick="sortTable(7)">Crypto Amount</th>
+                        <th onclick="sortTable(8)">Confidence Score</th>
+                    </tr>
+                </thead>
+                <tbody id="results-tbody">
+                </tbody>
+            </table>
+        </div>
+    </div>
 
     <script>
         const taskId = document.getElementById('task-id').textContent;
         const statusElement = document.getElementById('status');
+        const processingSection = document.getElementById('processing-section');
+        const resultsSection = document.getElementById('results-section');
+        const resultsTbody = document.getElementById('results-tbody');
+        const exportCsv = document.getElementById('export-csv');
+        const exportJson = document.getElementById('export-json');
 
         const interval = setInterval(() => {
             fetch(`/api/status/${taskId}`)
@@ -19,8 +82,31 @@
                     statusElement.textContent = data.status;
                     if (data.status === 'complete') {
                         clearInterval(interval);
-                        // Redirect to a results page or display the results here
-                        window.location.href = `/results/${taskId}`;
+                        processingSection.style.display = 'none';
+                        resultsSection.style.display = 'block';
+                        exportCsv.href = `/api/export/csv/${taskId}`;
+                        exportJson.href = `/api/export/json/${taskId}`;
+
+                        const purchases = data.result || [];
+                        if (purchases.length === 0) {
+                            resultsTbody.innerHTML = '<tr><td colspan="9">No purchases found.</td></tr>';
+                        } else {
+                            purchases.forEach(purchase => {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${purchase.email_subject || ''}</td>
+                                    <td>${purchase.vendor || ''}</td>
+                                    <td>${purchase.currency || ''}</td>
+                                    <td>${purchase.amount || ''}</td>
+                                    <td>${purchase.purchase_date || ''}</td>
+                                    <td>${purchase.transaction_id || ''}</td>
+                                    <td>${purchase.crypto_currency || ''}</td>
+                                    <td>${purchase.crypto_amount || ''}</td>
+                                    <td>${purchase.confidence_score || ''}</td>
+                                `;
+                                resultsTbody.appendChild(row);
+                            });
+                        }
                     }
                 });
         }, 2000);

@@ -1,0 +1,50 @@
+body {
+    font-family: sans-serif;
+    margin: 2em;
+    background-color: #f9f9f9;
+}
+
+h1 {
+    color: #333;
+}
+
+.container {
+    background-color: #fff;
+    padding: 2em;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.upload-form {
+    margin-top: 2em;
+}
+
+.upload-form input[type="file"] {
+    border: 1px solid #ccc;
+    padding: 1em;
+    border-radius: 3px;
+}
+
+.upload-form input[type="submit"] {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    padding: 1em 2em;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+th {
+    background-color: #f2f2f2;
+}
+.export-buttons {
+    margin-bottom: 20px;
+}
