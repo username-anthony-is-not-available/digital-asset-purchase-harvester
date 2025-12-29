@@ -91,6 +91,87 @@ def test_run_mbox_calls_dependencies(mocker):
     m_ensure_dir.assert_called_once_with("output/purchase_data.csv")
     m_write_csv.assert_called_once()
 
+
+def test_run_imap_gmail_oauth2(mocker):
+    # GIVEN
+    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
+    m_get_settings.return_value.enable_imap = True
+    m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
+    m_imap_client = mocker.patch("digital_asset_harvester.cli.ImapClient")
+    m_llm_client = mocker.patch(
+        "digital_asset_harvester.llm.ollama_client.OllamaLLMClient"
+    )
+    m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
+    m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
+    m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
+    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
+
+    m_imap_client.return_value.__enter__.return_value.search_emails.return_value = []
+    m_process_emails.return_value = ([], MagicMock(get=lambda x: 0))
+    # WHEN
+    result = run(
+        [
+            "--imap",
+            "--imap-server",
+            "imap.gmail.com",
+            "--imap-user",
+            "user",
+            "--imap-auth-type",
+            "gmail_oauth2",
+        ]
+    )
+
+    # THEN
+    assert result == 0
+    m_imap_client.assert_called_once_with(
+        "imap.gmail.com", "user", None, "gmail_oauth2", None, None
+    )
+
+
+def test_run_imap_outlook_oauth2(mocker):
+    # GIVEN
+    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
+    m_get_settings.return_value.enable_imap = True
+    m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
+    m_imap_client = mocker.patch("digital_asset_harvester.cli.ImapClient")
+    m_llm_client = mocker.patch(
+        "digital_asset_harvester.llm.ollama_client.OllamaLLMClient"
+    )
+    m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
+    m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
+    m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
+    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
+
+    m_imap_client.return_value.__enter__.return_value.search_emails.return_value = []
+    m_process_emails.return_value = ([], MagicMock(get=lambda x: 0))
+    # WHEN
+    result = run(
+        [
+            "--imap",
+            "--imap-server",
+            "outlook.office365.com",
+            "--imap-user",
+            "user",
+            "--imap-auth-type",
+            "outlook_oauth2",
+            "--client-id",
+            "client_id",
+            "--authority",
+            "authority",
+        ]
+    )
+
+    # THEN
+    assert result == 0
+    m_imap_client.assert_called_once_with(
+        "outlook.office365.com",
+        "user",
+        None,
+        "outlook_oauth2",
+        "client_id",
+        "authority",
+    )
+
 def test_run_gmail_calls_dependencies(mocker):
     # GIVEN
     m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
@@ -134,6 +215,49 @@ def test_run_file_not_found(mocker, caplog):
     # THEN
     assert result == 1
     assert "Error processing mailbox: File not found" in caplog.text
+
+
+def test_run_imap_calls_dependencies(mocker):
+    # GIVEN
+    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
+    m_get_settings.return_value.enable_imap = True
+    m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
+    m_imap_client = mocker.patch("digital_asset_harvester.cli.ImapClient")
+    m_llm_client = mocker.patch(
+        "digital_asset_harvester.llm.ollama_client.OllamaLLMClient"
+    )
+    m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
+    m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
+    m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
+    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
+
+    m_imap_client.return_value.__enter__.return_value.search_emails.return_value = []
+    m_process_emails.return_value = ([], MagicMock(get=lambda x: 0))
+    # WHEN
+    result = run(
+        [
+            "--imap",
+            "--imap-server",
+            "imap.example.com",
+            "--imap-user",
+            "user",
+            "--imap-password",
+            "pass",
+        ]
+    )
+
+    # THEN
+    assert result == 0
+    m_get_settings.assert_called_once()
+    m_configure_logging.assert_called_once()
+    m_imap_client.assert_called_once_with(
+        "imap.example.com", "user", "pass", "password", None, None
+    )
+    m_llm_client.assert_called_once()
+    m_extractor.assert_called_once()
+    m_process_emails.assert_called_once()
+    m_ensure_dir.assert_called_once_with("output/purchase_data.csv")
+    m_write_csv.assert_called_once()
 
 
 # def test_run_koinly_output_enabled(mocker):
