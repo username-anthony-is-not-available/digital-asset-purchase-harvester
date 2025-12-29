@@ -260,45 +260,47 @@ def test_run_imap_calls_dependencies(mocker):
     m_write_csv.assert_called_once()
 
 
-# def test_run_koinly_output_enabled(mocker):
-#     # GIVEN
-#     m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
-#     m_get_settings.return_value.enable_koinly_output = True
-#     mocker.patch("digital_asset_harvester.cli.configure_logging")
-#     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
-#     mocker.patch("digital_asset_harvester.cli.OllamaLLMClient")
-#     mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
-#     mocker.patch("digital_asset_harvester.cli.process_emails", return_value=([], mocker.MagicMock()))
-#     m_write_koinly_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_koinly_csv")
-#     m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
+def test_run_koinly_output_enabled(mocker):
+    # GIVEN
+    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
+    m_get_settings.return_value.enable_koinly_csv_export = True
+    mocker.patch("digital_asset_harvester.cli.configure_logging")
+    mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
+    mocker.patch(        "digital_asset_harvester.llm.ollama_client.OllamaLLMClient"
+    )
+    mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
+    mocker.patch("digital_asset_harvester.cli.process_emails", return_value=([], mocker.MagicMock()))
+    m_write_koinly_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_koinly_csv")
+    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
 
-#     # WHEN
-#     run(["--mbox-file", "test.mbox", "--output-format", "koinly"])
+    # WHEN
+    run(["--mbox-file", "test.mbox", "--output-format", "koinly"])
 
-#     # THEN
-#     m_write_koinly_csv.assert_called_once()
-#     m_write_csv.assert_not_called()
+    # THEN
+    m_write_koinly_csv.assert_called_once()
+    m_write_csv.assert_not_called()
 
 
-# def test_run_koinly_output_disabled(mocker, caplog):
-#     # GIVEN
-#     m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
-#     m_get_settings.return_value.enable_koinly_output = False
-#     mocker.patch("digital_asset_harvester.cli.configure_logging")
-#     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
-#     mocker.patch("digital_asset_harvester.cli.OllamaLLMClient")
-#     mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
-#     mocker.patch("digital_asset_harvester.cli.process_emails", return_value=([], mocker.MagicMock()))
-#     m_write_koinly_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_koinly_csv")
-#     m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
+def test_run_koinly_output_disabled(mocker, caplog):
+    # GIVEN
+    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
+    m_get_settings.return_value.enable_koinly_csv_export = False
+    mocker.patch("digital_asset_harvester.cli.configure_logging")
+    mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
+    mocker.patch(        "digital_asset_harvester.llm.ollama_client.OllamaLLMClient"
+    )
+    mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
+    mocker.patch("digital_asset_harvester.cli.process_emails", return_value=([], mocker.MagicMock()))
+    m_write_koinly_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_koinly_csv")
+    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
 
-#     # WHEN
-#     run(["--mbox-file", "test.mbox", "--output-format", "koinly"])
+    # WHEN
+    run(["--mbox-file", "test.mbox", "--output-format", "koinly"])
 
-#     # THEN
-#     m_write_koinly_csv.assert_not_called()
-#     m_write_csv.assert_called_once()
-#     assert "Koinly output format is not enabled" in caplog.text
+    # THEN
+    m_write_koinly_csv.assert_not_called()
+    m_write_csv.assert_called_once()
+    assert "Koinly output format is not enabled" in caplog.text
 
 
 def test_main(mocker):
