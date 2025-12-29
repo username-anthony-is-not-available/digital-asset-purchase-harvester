@@ -17,8 +17,9 @@ if TYPE_CHECKING:
 def get_llm_client(provider: str | None = None) -> LLMProvider:
     """Get the configured LLM client.
 
-    This factory function reads the application settings to determine which
-    LLM provider to instantiate.
+    This factory function is the single point of entry for creating LLM clients.
+    It reads the application settings to determine which LLM provider to
+    instantiate.
 
     Args:
         provider: The name of the LLM provider to use. If not specified,
