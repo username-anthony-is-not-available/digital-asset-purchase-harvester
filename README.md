@@ -49,6 +49,10 @@ A Python tool to extract cryptocurrency purchase information from email data sto
      ```sh
      digital-asset-harvester --gmail --output crypto_purchases.csv
      ```
+   - **From an IMAP server:**
+      ```sh
+      digital-asset-harvester --imap --imap-server imap.example.com --imap-user user@example.com --output crypto_purchases.csv
+      ```
      _(or run `python -m digital_asset_harvester.cli` if you prefer module execution)_
 
 ## 📦 Install from source
@@ -455,6 +459,48 @@ To use the Gmail integration, you need to enable the Gmail API and create creden
    - Download the JSON file and save it as `credentials.json` in the root of the project.
 
 When you run the script with the `--gmail` flag for the first time, you will be prompted to authorize the application.
+
+## IMAP Server Setup
+
+To use the IMAP integration, you need to provide the server address and your credentials.
+
+### Password Authentication
+
+If your IMAP server uses password authentication, you can provide your credentials using the `--imap-user` and `--imap-password` arguments:
+
+```sh
+digital-asset-harvester --imap \
+  --imap-server imap.example.com \
+  --imap-user user@example.com \
+  --imap-password your_password \
+  --output crypto_purchases.csv
+```
+
+### Gmail (OAuth2)
+
+If you're using Gmail, you'll need to use OAuth2. First, follow the instructions in the "Gmail API Setup" section to get your `credentials.json` file. Then, you can run the script with the `--imap-auth-type gmail_oauth2` argument:
+
+```sh
+digital-asset-harvester --imap \
+  --imap-server imap.gmail.com \
+  --imap-user user@gmail.com \
+  --imap-auth-type gmail_oauth2 \
+  --output crypto_purchases.csv
+```
+
+### Outlook (OAuth2)
+
+If you're using Outlook, you'll need to use OAuth2. First, you'll need to register an application in the Azure portal and get a client ID and authority URL. Then, you can run the script with the `--imap-auth-type outlook_oauth2` argument:
+
+```sh
+digital-asset-harvester --imap \
+  --imap-server outlook.office365.com \
+  --imap-user user@outlook.com \
+  --imap-auth-type outlook_oauth2 \
+  --client-id your_client_id \
+  --authority https://login.microsoftonline.com/your_tenant_id \
+  --output crypto_purchases.csv
+```
 
 ## License
 
