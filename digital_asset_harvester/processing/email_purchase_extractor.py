@@ -286,15 +286,22 @@ class EmailPurchaseExtractor:
         lines = email_content.split("\n")
         metadata = {"subject": "", "sender": "", "body": ""}
 
-        for i, line in enumerate(lines):
+        body_started = False
+        body_lines = []
+
+        for line in lines:
+            if body_started:
+                body_lines.append(line)
+                continue
+
             if line.startswith("Subject: "):
                 metadata["subject"] = line[9:].strip()
             elif line.startswith("From: "):
                 metadata["sender"] = line[6:].strip()
-            elif line.startswith("Body: "):
-                metadata["body"] = "\n".join(lines[i + 1 :]).strip()
-                break
+            elif line.strip() == "" and "subject" in metadata and "sender" in metadata:
+                body_started = True
 
+        metadata["body"] = "\n".join(body_lines).strip()
         return metadata
 
     def _is_likely_crypto_related(self, email_content: str) -> bool:
