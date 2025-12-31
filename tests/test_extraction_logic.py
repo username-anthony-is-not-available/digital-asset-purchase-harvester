@@ -1,18 +1,13 @@
 from tests.fixtures.emails import EMAIL_FIXTURES
-from digital_asset_harvester.processing.email_purchase_extractor import (
-    EmailPurchaseExtractor,
-)
-from digital_asset_harvester.llm.provider import LLMResult
 
 
-def test_extract_purchase_info(mocker):
+def test_extract_purchase_info_coinbase(extractor_factory):
     """
-    Tests that purchase info is correctly extracted from an email.
+    Tests that purchase info is correctly extracted from a Coinbase email.
     """
     email_content = EMAIL_FIXTURES["coinbase_purchase"]
-    mock_llm_client = mocker.Mock()
-    mock_llm_client.generate_json.return_value = LLMResult(
-        data={
+    llm_responses = [
+        {
             "total_spent": 100.0,
             "currency": "USD",
             "amount": 0.001,
@@ -20,17 +15,26 @@ def test_extract_purchase_info(mocker):
             "vendor": "Coinbase",
             "purchase_date": "2024-01-01 12:00:00",
             "confidence": 0.9,
-            "extraction_notes": "",
-        },
-        raw_text="",
-    )
-
-    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+        }
+    ]
+    extractor = extractor_factory(llm_responses)
     result = extractor.extract_purchase_info(email_content)
 
+    assert result
     assert result["total_spent"] == 100.0
     assert result["currency"] == "USD"
     assert result["amount"] == 0.001
     assert result["item_name"] == "BTC"
     assert result["vendor"] == "Coinbase"
     assert result["purchase_date"] == "2024-01-01 12:00:00 UTC"
+
+
+def test_extract_purchase_info_extraction_fails(extractor_factory):
+    """
+    Tests that extract_purchase_info returns None when extraction fails.
+    """
+    email_content = EMAIL_FIXTURES["binance_purchase"]
+    llm_responses = [{"error": "extraction failed"}]
+    extractor = extractor_factory(llm_responses)
+    result = extractor.extract_purchase_info(email_content)
+    assert result is None

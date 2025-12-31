@@ -64,3 +64,11 @@ def _reset_extractor_factory_cache():
     from functools import lru_cache
 
     lru_cache(maxsize=None)(extractor_factory).cache_clear()
+
+
+@pytest.fixture
+def mbox_file_path() -> str:
+    """Returns the path to the test mbox file."""
+    from pathlib import Path
+
+    return str(Path(__file__).parent / "fixtures" / "test_emails.mbox")
