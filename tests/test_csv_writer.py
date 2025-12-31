@@ -95,3 +95,77 @@ def test_write_purchase_data_empty_records(tmp_path):
     filepath = os.path.join(tmp_path, "purchases.csv")
     write_purchase_data_to_csv(filepath, [])
     assert not os.path.exists(filepath)
+
+
+def test_write_purchase_data_to_koinly_csv(tmp_path):
+    """Verify that purchase data is correctly written to a Koinly-compatible CSV file."""
+    filepath = os.path.join(tmp_path, "koinly.csv")
+    records = [
+        PurchaseRecord(
+            total_spent=Decimal("123.45"),
+            currency="USD",
+            amount=Decimal("0.01"),
+            item_name="BTC",
+            vendor="Coinbase",
+            purchase_date="2024-01-10 10:00:00 UTC",
+        ),
+        PurchaseRecord(
+            total_spent=Decimal("543.21"),
+            currency="USD",
+            amount=Decimal("0.2"),
+            item_name="ETH",
+            vendor="Binance",
+            purchase_date="2024-01-11 11:00:00 UTC",
+        ),
+    ]
+
+    from digital_asset_harvester.output.koinly_writer import write_purchase_data_to_koinly_csv
+
+    write_purchase_data_to_koinly_csv(filepath, records)
+
+    assert os.path.exists(filepath)
+
+    with open(filepath, "r", newline="", encoding="utf-8") as csvfile:
+        reader = list(csv.reader(csvfile))
+        assert reader[0] == [
+            "Date",
+            "Sent Amount",
+            "Sent Currency",
+            "Received Amount",
+            "Received Currency",
+            "Fee Amount",
+            "Fee Currency",
+            "Net Worth Amount",
+            "Net Worth Currency",
+            "Label",
+            "Description",
+            "TxHash",
+        ]
+        assert reader[1] == [
+            "2024-01-10 10:00:00 UTC",
+            "123.45",
+            "USD",
+            "0.01",
+            "BTC",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Purchase of 0.01 BTC from Coinbase",
+            "",
+        ]
+        assert reader[2] == [
+            "2024-01-11 11:00:00 UTC",
+            "543.21",
+            "USD",
+            "0.2",
+            "ETH",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "Purchase of 0.2 ETH from Binance",
+            "",
+        ]
