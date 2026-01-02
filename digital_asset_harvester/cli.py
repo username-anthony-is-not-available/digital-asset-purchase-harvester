@@ -19,9 +19,16 @@ from digital_asset_harvester import (
 )
 from digital_asset_harvester.ingest.gmail_client import GmailClient
 from digital_asset_harvester.ingest.imap_client import ImapClient
-from digital_asset_harvester.output.koinly_writer import (
-    write_purchase_data_to_koinly_csv,
-)
+
+# Optional Koinly writer (not yet implemented)
+try:
+    from digital_asset_harvester.output.koinly_writer import (
+        write_purchase_data_to_koinly_csv,
+    )
+    KOINLY_AVAILABLE = True
+except ImportError:
+    KOINLY_AVAILABLE = False
+
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
 
@@ -192,16 +199,22 @@ def _process_and_save_results(
     logger = logging.getLogger(__name__)
 
     if output_format == "koinly":
-        if settings.enable_koinly_csv_export:
+        if settings.enable_koinly_csv_export and KOINLY_AVAILABLE:
             logger.info("Writing output in Koinly format to %s", output_path)
             write_purchase_data_to_koinly_csv(purchases, output_path)
         else:
-            logger.warning(
-                "Koinly output format is not enabled. "
-                "Set `enable_koinly_csv_export = true` in your config or "
-                "`DAP_ENABLE_KOINLY_CSV_EXPORT=true` env var. "
-                "Falling back to standard CSV output."
-            )
+            if not KOINLY_AVAILABLE:
+                logger.warning(
+                    "Koinly output format is not available (module not implemented). "
+                    "Falling back to standard CSV output."
+                )
+            else:
+                logger.warning(
+                    "Koinly output format is not enabled. "
+                    "Set `enable_koinly_csv_export = true` in your config or "
+                    "`DAP_ENABLE_KOINLY_CSV_EXPORT=true` env var. "
+                    "Falling back to standard CSV output."
+                )
             write_purchase_data_to_csv(purchases, output_path)
     else:  # 'csv'
         logger.info("Writing output in standard CSV format to %s", output_path)

@@ -15,3 +15,56 @@ From: Crypto News <alerts@cryptonews.com>
 Subject: Bitcoin Price Alert
 
 Bitcoin is up 5% in the last 24 hours.
+
+From MAILER-DAEMON Mon Nov 12 11:33:00 2023
+From: Kraken <noreply@kraken.com>
+Subject: Trade Confirmation: Buy 0.5 XMR
+
+You have successfully bought 0.5 XMR for 50.00 EUR.
+Transaction ID: KRK-2024-001
+Date: 2024-01-12
+
+From MAILER-DAEMON Mon Nov 12 11:34:00 2023
+From: Gemini <orders@gemini.com>
+Subject: Order Confirmation - Buy BTC
+
+Your order to purchase 0.005 BTC for $150.00 has been completed.
+Transaction ID: GEM-2024-001
+Date: 2024-01-15
+
+From MAILER-DAEMON Mon Nov 12 11:35:00 2023
+From: Ledger <hello@ledger.com>
+Subject: Ledger Nano X is back in stock!
+
+Don't miss out on our new hardware wallet. Get 10% off with code CRYPTO10.
+
+From MAILER-DAEMON Mon Nov 12 11:36:00 2023
+From: Coinbase <no-reply@coinbase.com>
+Subject: Withdrawal Confirmation
+
+You have successfully withdrawn 0.5 ETH to your external wallet.
+This is not a purchase.
+
+From MAILER-DAEMON Mon Nov 12 11:37:00 2023
+From: FTX <noreply@ftx.com>
+Subject: Trade Executed: BUY 10 MATIC
+
+Trade Details:
+Amount: 10 MATIC
+Price per unit: $0.85
+Total: $8.50 USD
+
+From MAILER-DAEMON Mon Nov 12 11:38:00 2023
+From: Binance <alerts@binance.com>
+Subject: Price Alert: BTC reached $50,000
+
+Bitcoin has reached your target price of $50,000.
+This is just an alert, no transaction occurred.
+
+From MAILER-DAEMON Mon Nov 12 11:39:00 2023
+From: Gemini <security@gemini.com>
+Subject: Security Alert: New device login
+
+A new device has been logged into your account from IP 192.168.1.1.
+If this wasn't you, please secure your account immediately.
+
