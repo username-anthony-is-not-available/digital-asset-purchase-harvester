@@ -22,6 +22,11 @@ from digital_asset_harvester.ingest.imap_client import ImapClient
 from digital_asset_harvester.output.koinly_writer import (
     write_purchase_data_to_koinly_csv,
 )
+from digital_asset_harvester.output.koinly_api_client import (
+    KoinlyApiClient,
+    KoinlyApiError,
+    KoinlyAuthenticationError,
+)
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
 
@@ -71,9 +76,13 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output-format",
-        choices=["csv", "koinly"],
+        choices=["csv", "koinly", "koinly-api"],
         default="csv",
-        help="The output format (default: csv)",
+        help="The output format (default: csv, koinly for CSV export, koinly-api for direct API upload)",
+    )
+    parser.add_argument(
+        "--koinly-wallet-id",
+        help="Koinly wallet ID for API uploads (optional)",
     )
     parser.add_argument(
         "--progress",
@@ -182,6 +191,7 @@ def _process_and_save_results(
     output_format: str,
     show_progress: bool,
     settings: HarvesterSettings,
+    koinly_wallet_id: Optional[str] = None,
 ) -> None:
     """Helper to process emails and save the results."""
     purchases, metrics = process_emails(
@@ -200,6 +210,56 @@ def _process_and_save_results(
                 "Koinly output format is not enabled. "
                 "Set `enable_koinly_csv_export = true` in your config or "
                 "`DAP_ENABLE_KOINLY_CSV_EXPORT=true` env var. "
+                "Falling back to standard CSV output."
+            )
+            write_purchase_data_to_csv(purchases, output_path)
+    elif output_format == "koinly-api":
+        if settings.enable_koinly_api:
+            if not settings.koinly_api_key:
+                logger.error(
+                    "Koinly API key is required for API upload. "
+                    "Set `DAP_KOINLY_API_KEY` environment variable."
+                )
+                return
+            
+            logger.info("Uploading transactions to Koinly via API...")
+            try:
+                with KoinlyApiClient(
+                    api_key=settings.koinly_api_key,
+                    api_url=settings.koinly_api_url,
+                ) as client:
+                    # Test connection first
+                    if not client.test_connection():
+                        logger.error("Failed to connect to Koinly API")
+                        return
+                    
+                    # Upload transactions
+                    result = client.upload_transactions(
+                        purchases,
+                        wallet_id=koinly_wallet_id,
+                    )
+                    logger.info(
+                        "Successfully uploaded %d transactions to Koinly",
+                        len(purchases),
+                    )
+                    logger.debug("Upload result: %s", result)
+                    
+                    # Also save a backup CSV
+                    backup_path = output_path.replace(".csv", "_backup.csv")
+                    logger.info("Saving backup CSV to %s", backup_path)
+                    write_purchase_data_to_koinly_csv(purchases, backup_path)
+                    
+            except KoinlyAuthenticationError as e:
+                logger.error("Koinly authentication error: %s", e)
+            except KoinlyApiError as e:
+                logger.error("Koinly API error: %s", e)
+            except Exception as e:
+                logger.error("Unexpected error uploading to Koinly: %s", e)
+        else:
+            logger.warning(
+                "Koinly API upload is not enabled. "
+                "Set `enable_koinly_api = true` in your config or "
+                "`DAP_ENABLE_KOINLY_API=true` env var. "
                 "Falling back to standard CSV output."
             )
             write_purchase_data_to_csv(purchases, output_path)
@@ -240,6 +300,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                 args.output_format,
                 args.progress,
                 settings,
+                koinly_wallet_id=getattr(args, 'koinly_wallet_id', None),
             )
         elif settings.enable_imap and args.imap:
             logger.info("Fetching emails from IMAP server...")
@@ -263,6 +324,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                     args.output_format,
                     args.progress,
                     settings,
+                    koinly_wallet_id=getattr(args, 'koinly_wallet_id', None),
                 )
         else:
             logger.info(f"Loading emails from {args.mbox_file}...")
@@ -276,6 +338,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                 args.output_format,
                 args.progress,
                 settings,
+                koinly_wallet_id=getattr(args, 'koinly_wallet_id', None),
             )
         return 0
 
