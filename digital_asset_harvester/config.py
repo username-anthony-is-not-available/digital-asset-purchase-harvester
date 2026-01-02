@@ -53,6 +53,11 @@ class HarvesterSettings:
 
 	enable_imap: bool = False
 	enable_koinly_csv_export: bool = False
+	enable_koinly_api: bool = False
+	
+	koinly_api_key: str = ""
+	koinly_portfolio_id: str = ""
+	koinly_api_base_url: str = "https://api.koinly.io/v1"
 
 
 def _coerce_value(value: str, expected_type: Type[Any], *, field_name: str) -> Any:
