@@ -247,6 +247,47 @@ digital-asset-harvester --mbox-file your_emails.mbox --output-format koinly --ou
 
 This will create a `koinly_transactions.csv` file in the correct format for manual upload to Koinly.
 
+### Koinly Direct API Integration (Beta)
+
+**Note:** As of January 2026, Koinly does not have a publicly documented API for direct transaction uploads. This feature provides a framework for future integration when the API becomes available.
+
+You can enable the Koinly API integration to upload transactions directly to your Koinly account (when the API is available):
+
+1. **Enable the feature flag:**
+
+   ```sh
+   export DAP_ENABLE_KOINLY_API=true
+   ```
+
+2. **Set your Koinly API key:**
+
+   ```sh
+   export DAP_KOINLY_API_KEY="your-koinly-api-key"
+   ```
+
+3. **Run the harvester with the `koinly-api` output format:**
+
+   ```sh
+   digital-asset-harvester --mbox-file your_emails.mbox --output-format koinly-api --output backup.csv
+   ```
+
+4. **Optional: Specify a wallet ID** (if you want to upload transactions to a specific wallet):
+
+   ```sh
+   digital-asset-harvester --mbox-file your_emails.mbox --output-format koinly-api --koinly-wallet-id wallet123 --output backup.csv
+   ```
+
+**Features:**
+- Automatic retry logic for transient errors
+- Backup CSV file created automatically
+- Authentication validation before upload
+- Detailed error logging
+
+**Configuration options:**
+- `DAP_ENABLE_KOINLY_API`: Enable/disable the Koinly API integration (default: `false`)
+- `DAP_KOINLY_API_KEY`: Your Koinly API key
+- `DAP_KOINLY_API_URL`: Custom API URL (default: `https://api.koinly.io/api/v1`)
+
 2. The script will process the mbox file and output the purchase data to the specified CSV file.
 
 3. When finished, deactivate the virtual environment:

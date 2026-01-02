@@ -182,10 +182,21 @@ def test_koinly_api_client_upload_transactions_auth_error(mock_client_class):
 @patch("digital_asset_harvester.output.koinly_api_client.httpx.Client")
 def test_koinly_api_client_upload_transactions_retry_on_server_error(mock_client_class):
     """Test that client retries on server errors."""
+    import httpx
+    
     # First two attempts fail with 500, third succeeds
     mock_response_fail = Mock()
     mock_response_fail.status_code = 500
-    mock_response_fail.raise_for_status.side_effect = Exception("Server error")
+    mock_request = Mock()
+    
+    def raise_http_error():
+        raise httpx.HTTPStatusError(
+            "Server error",
+            request=mock_request,
+            response=mock_response_fail
+        )
+    
+    mock_response_fail.raise_for_status.side_effect = raise_http_error
     
     mock_response_success = Mock()
     mock_response_success.status_code = 200

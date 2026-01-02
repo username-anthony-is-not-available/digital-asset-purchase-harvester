@@ -100,6 +100,8 @@ class KoinlyApiClient:
             logger.info("Successfully connected to Koinly API")
             return True
             
+        except KoinlyAuthenticationError:
+            raise
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error testing Koinly connection: {e}")
             return False
