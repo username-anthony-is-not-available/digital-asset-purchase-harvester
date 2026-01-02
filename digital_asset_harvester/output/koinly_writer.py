@@ -1,44 +1,31 @@
-"""Koinly CSV output helpers."""
+"""Koinly CSV writer for digital_asset_harvester."""
 
 from __future__ import annotations
 
 import csv
-from typing import Iterable
+from typing import Any, Dict, List
 
 
 class KoinlyReportGenerator:
-    """Generator for Koinly-formatted CSV reports.
+    """Generator for Koinly-compatible CSV reports."""
 
-    Note: This is a placeholder implementation. The Koinly export feature
-    is controlled by the enable_koinly_csv_export setting.
-    """
+    def __init__(self) -> None:
+        """Initialize the Koinly report generator."""
+        pass
 
-    def generate(self, records: Iterable[object]) -> list[dict]:
-        """Generate Koinly-formatted records.
-
-        Args:
-            records: Purchase records to convert to Koinly format
-
-        Returns:
-            List of dictionaries in Koinly universal CSV format
-
-        Note: This is a placeholder that returns an empty list.
-        Actual implementation would convert purchase records to Koinly format.
-        """
-        return []
+    def generate_report(self, purchases: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Generate Koinly-compatible report from purchase data."""
+        # Placeholder implementation
+        return purchases
 
 
-def write_purchase_data_to_koinly_csv(records: Iterable[object], filepath: str) -> None:
-    """Write purchase records to a Koinly-compatible CSV file.
-
-    This is a placeholder implementation for the Koinly CSV export feature.
-    """
-    records_list = list(records)
-    if not records_list:
+def write_purchase_data_to_koinly_csv(purchases: List[Dict[str, Any]], output_file: str) -> None:
+    """Write purchase data to a Koinly-compatible CSV file."""
+    if not purchases:
         return
 
-    # Koinly universal format headers
-    header = [
+    # Koinly universal format columns
+    fieldnames = [
         "Date",
         "Sent Amount",
         "Sent Currency",
@@ -53,7 +40,24 @@ def write_purchase_data_to_koinly_csv(records: Iterable[object], filepath: str) 
         "TxHash",
     ]
 
-    with open(filepath, "w", newline="", encoding="utf-8") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(header)
-        # Placeholder - would need actual conversion logic
+    with open(output_file, "w", newline="", encoding="utf-8") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for purchase in purchases:
+            # Map our purchase data to Koinly format
+            row = {
+                "Date": purchase.get("date", ""),
+                "Sent Amount": purchase.get("amount", ""),
+                "Sent Currency": purchase.get("fiat_currency", "USD"),
+                "Received Amount": purchase.get("crypto_amount", ""),
+                "Received Currency": purchase.get("currency", ""),
+                "Fee Amount": "",
+                "Fee Currency": "",
+                "Net Worth Amount": "",
+                "Net Worth Currency": "",
+                "Label": "buy",
+                "Description": (f"Purchase from {purchase.get('vendor', 'Unknown')}"),
+                "TxHash": purchase.get("transaction_id", ""),
+            }
+            writer.writerow(row)
