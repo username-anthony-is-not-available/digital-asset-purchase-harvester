@@ -13,7 +13,7 @@ def write_purchase_data_to_koinly_csv(
     purchases: List[Any], output_path: str
 ) -> None:
     """Placeholder for Koinly CSV export.
-    
+
     Args:
         purchases: List of purchase data
         output_path: Path to write the CSV file
