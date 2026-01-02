@@ -552,7 +552,17 @@ When you run the script with the `--gmail` flag for the first time, you will be 
 
 ## IMAP Server Setup
 
-To use the IMAP integration, you need to provide the server address and your credentials.
+To use the IMAP integration, you need to enable the feature flag and provide the server address and credentials.
+
+### Enabling IMAP
+
+The IMAP feature is controlled by the `enable_imap` feature flag. You can enable it by setting the `DAP_ENABLE_IMAP` environment variable to `true`:
+
+```sh
+export DAP_ENABLE_IMAP=true
+```
+
+Alternatively, you can set `ENABLE_IMAP = True` in your `advanced_config.py` file.
 
 ### Password Authentication
 

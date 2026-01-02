@@ -9,12 +9,12 @@ from typing import Any, Dict, List
 class KoinlyReportGenerator:
     """Generator for Koinly-compatible CSV reports."""
 
-    def __init__(self) -> None:
-        """Initialize the Koinly report generator."""
-        pass
-
     def generate_report(self, purchases: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Generate Koinly-compatible report from purchase data."""
+        """Generate Koinly-compatible report from purchase data.
+
+        TODO: Implement actual Koinly report generation logic.
+        Currently returns purchases unchanged as a placeholder.
+        """
         # Placeholder implementation
         return purchases
 
