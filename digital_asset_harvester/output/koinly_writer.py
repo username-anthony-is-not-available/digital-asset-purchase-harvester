@@ -7,13 +7,24 @@ from typing import Iterable
 
 
 class KoinlyReportGenerator:
-    """Generator for Koinly-formatted CSV reports."""
+    """Generator for Koinly-formatted CSV reports.
 
-    def __init__(self):
-        pass
+    Note: This is a placeholder implementation. The Koinly export feature
+    is controlled by the enable_koinly_csv_export setting.
+    """
 
-    def generate(self, records: Iterable[object]) -> list:
-        """Generate Koinly-formatted records."""
+    def generate(self, records: Iterable[object]) -> list[dict]:
+        """Generate Koinly-formatted records.
+
+        Args:
+            records: Purchase records to convert to Koinly format
+
+        Returns:
+            List of dictionaries in Koinly universal CSV format
+
+        Note: This is a placeholder that returns an empty list.
+        Actual implementation would convert purchase records to Koinly format.
+        """
         return []
 
 
