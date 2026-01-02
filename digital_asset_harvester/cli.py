@@ -19,6 +19,10 @@ from digital_asset_harvester import (
 )
 from digital_asset_harvester.ingest.gmail_client import GmailClient
 from digital_asset_harvester.ingest.imap_client import ImapClient
+from digital_asset_harvester.integrations.koinly_api_client import (
+    KoinlyApiClient,
+    KoinlyApiError,
+)
 from digital_asset_harvester.output.koinly_writer import (
     write_purchase_data_to_koinly_csv,
 )
@@ -74,6 +78,11 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
         choices=["csv", "koinly"],
         default="csv",
         help="The output format (default: csv)",
+    )
+    parser.add_argument(
+        "--koinly-upload",
+        action="store_true",
+        help="Upload transactions directly to Koinly via API (requires enable_koinly_api flag)",
     )
     parser.add_argument(
         "--progress",
@@ -182,6 +191,7 @@ def _process_and_save_results(
     output_format: str,
     show_progress: bool,
     settings: HarvesterSettings,
+    koinly_upload: bool = False,
 ) -> None:
     """Helper to process emails and save the results."""
     purchases, metrics = process_emails(
@@ -190,6 +200,35 @@ def _process_and_save_results(
     ensure_directory_exists(output_path)
 
     logger = logging.getLogger(__name__)
+    
+    # Handle Koinly API upload if requested
+    if koinly_upload:
+        if not settings.enable_koinly_api:
+            logger.error(
+                "Koinly API upload requested but not enabled. "
+                "Set DAP_ENABLE_KOINLY_API=true environment variable."
+            )
+            logger.info("Falling back to CSV export...")
+        else:
+            logger.info("Attempting to upload transactions to Koinly via API...")
+            try:
+                client = KoinlyApiClient(
+                    api_key=settings.koinly_api_key,
+                    portfolio_id=settings.koinly_portfolio_id,
+                    base_url=settings.koinly_api_base_url,
+                )
+                result = client.upload_purchases(purchases)
+                logger.info("Upload successful: %s", result)
+                logger.info("Processing completed")
+                logger.info("  Emails processed: %d", metrics.get("emails_processed"))
+                logger.info("  Purchases detected: %d", metrics.get("purchases_detected"))
+                return
+            except KoinlyApiError as e:
+                logger.error("Koinly API upload failed: %s", e)
+                logger.info("Falling back to CSV export...")
+            except Exception as e:
+                logger.error("Unexpected error during Koinly API upload: %s", e)
+                logger.info("Falling back to CSV export...")
 
     if output_format == "koinly":
         if settings.enable_koinly_csv_export:
@@ -240,6 +279,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                 args.output_format,
                 args.progress,
                 settings,
+                args.koinly_upload,
             )
         elif settings.enable_imap and args.imap:
             logger.info("Fetching emails from IMAP server...")
@@ -263,6 +303,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                     args.output_format,
                     args.progress,
                     settings,
+                    args.koinly_upload,
                 )
         else:
             logger.info(f"Loading emails from {args.mbox_file}...")
@@ -276,6 +317,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                 args.output_format,
                 args.progress,
                 settings,
+                args.koinly_upload,
             )
         return 0
 
