@@ -247,6 +247,33 @@ digital-asset-harvester --mbox-file your_emails.mbox --output-format koinly --ou
 
 This will create a `koinly_transactions.csv` file in the correct format for manual upload to Koinly.
 
+### Koinly API Integration (Experimental)
+
+**Note:** Koinly does not currently provide a public API for uploading transactions. The API integration feature is implemented as a placeholder for future compatibility.
+
+The harvester includes a Koinly API client that is designed to support direct transaction uploads when Koinly releases an API. To enable this feature:
+
+```sh
+export DAP_ENABLE_KOINLY_API=true
+export DAP_KOINLY_API_KEY=your_api_key
+export DAP_KOINLY_PORTFOLIO_ID=your_portfolio_id
+```
+
+Then use the `--koinly-upload` flag:
+
+```sh
+digital-asset-harvester --mbox-file your_emails.mbox --koinly-upload
+```
+
+**Current Status:** When the API upload is attempted, the client will provide informative error messages and automatically fall back to CSV export. The CSV file can then be manually uploaded through Koinly's web interface at https://app.koinly.io.
+
+**Manual Upload Process:**
+1. Generate a Koinly CSV file as described above
+2. Log in to your Koinly account
+3. Navigate to: Wallets > Add Wallet > File Import
+4. Upload the generated CSV file
+5. Review and confirm the imported transactions
+
 2. The script will process the mbox file and output the purchase data to the specified CSV file.
 
 3. When finished, deactivate the virtual environment:
