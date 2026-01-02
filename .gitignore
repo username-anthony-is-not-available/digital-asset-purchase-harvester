@@ -173,4 +173,7 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-output/
+# Output files directory (not source code)
+/output/
+*.csv
+
