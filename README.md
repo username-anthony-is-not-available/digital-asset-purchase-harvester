@@ -55,6 +55,32 @@ A Python tool to extract cryptocurrency purchase information from email data sto
       ```
      _(or run `python -m digital_asset_harvester.cli` if you prefer module execution)_
 
+## 🌐 Web UI
+
+The Digital Asset Purchase Harvester now includes an interactive web interface for processing email files.
+
+### Starting the Web Server
+
+```sh
+python run_web.py
+```
+
+The web interface will be available at `http://localhost:8000`
+
+### Using the Web UI
+
+1. **Upload**: Navigate to the home page and upload your mbox file
+2. **Processing**: The file will be processed in the background, and you'll see a real-time status page
+3. **Results**: Once complete, view extracted purchases in a sortable table
+4. **Export**: Download results in CSV or JSON format
+
+The web UI provides:
+- 📤 File upload with background processing
+- 📊 Real-time processing status updates
+- 📋 Interactive table display with sortable columns
+- 💾 Export options (CSV and JSON)
+- 🔄 Process multiple files sequentially
+
 ## 📦 Install from source
 
 You can install the package locally in editable mode to get the console script:

@@ -12,9 +12,9 @@ app.include_router(api_router, prefix="/api")
 
 @app.get("/")
 async def root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 @app.get("/status/{task_id}")
 async def status_page(request: Request, task_id: str):
-    return templates.TemplateResponse("status.html", {"request": request, "task_id": task_id})
+    return templates.TemplateResponse(request, "status.html", {"task_id": task_id})
 
