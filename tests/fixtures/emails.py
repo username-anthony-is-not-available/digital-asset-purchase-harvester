@@ -154,10 +154,19 @@ def purchase_emails():
     """
     Returns only purchase-related email fixtures.
     """
-    return {
-        k: v for k, v in EMAIL_FIXTURES.items()
-        if "purchase" in k and "non_purchase" not in k and "failed" not in k
+    purchase_types = {
+        "coinbase_purchase",
+        "binance_purchase",
+        "kraken_purchase",
+        "complex_purchase",
+        "gemini_purchase",
+        "ftx_purchase",
+        "coinspot_purchase",
+        "partial_data_purchase",
+        "multi_currency_purchase",
+        "encoded_subject_purchase",
     }
+    return {k: v for k, v in EMAIL_FIXTURES.items() if k in purchase_types}
 
 
 @pytest.fixture
@@ -165,10 +174,15 @@ def non_purchase_emails():
     """
     Returns only non-purchase email fixtures.
     """
-    return {
-        k: v for k, v in EMAIL_FIXTURES.items()
-        if "purchase" not in k or "non_purchase" in k or "failed" in k
-        or "alert" in k or "newsletter" in k or "marketing" in k
-        or "withdrawal" in k or "deposit" in k
+    non_purchase_types = {
+        "non_purchase",
+        "marketing_email",
+        "security_alert",
+        "price_alert_not_purchase",
+        "newsletter_crypto",
+        "withdrawal_email",
+        "deposit_confirmation",
+        "failed_purchase",
     }
+    return {k: v for k, v in EMAIL_FIXTURES.items() if k in non_purchase_types}
 

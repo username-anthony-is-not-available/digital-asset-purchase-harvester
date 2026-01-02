@@ -1,6 +1,4 @@
 from digital_asset_harvester.ingest.mbox_reader import MboxDataExtractor
-import tempfile
-import os
 
 
 def test_mbox_reader_initialization():
@@ -45,22 +43,19 @@ def test_mbox_reader_extract_emails_from_test_file(mbox_file_path):
     assert binance_body is not None
 
 
-def test_mbox_reader_extract_emails_empty_file():
+def test_mbox_reader_extract_emails_empty_file(tmp_path):
     """
     Tests that extract_emails handles an empty mbox file gracefully.
     """
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.mbox', delete=False) as f:
-        temp_path = f.name
+    temp_file = tmp_path / "empty.mbox"
+    temp_file.write_text("")
     
-    try:
-        reader = MboxDataExtractor(temp_path)
-        emails = list(reader.extract_emails())
-        assert emails == []
-    finally:
-        os.unlink(temp_path)
+    reader = MboxDataExtractor(str(temp_file))
+    emails = list(reader.extract_emails())
+    assert emails == []
 
 
-def test_mbox_reader_extract_emails_single_email():
+def test_mbox_reader_extract_emails_single_email(tmp_path):
     """
     Tests extracting a single email from an mbox file.
     """
@@ -70,21 +65,17 @@ Subject: Single Test Email
 
 This is a test email body.
 """
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.mbox', delete=False) as f:
-        f.write(mbox_content)
-        temp_path = f.name
+    temp_file = tmp_path / "single.mbox"
+    temp_file.write_text(mbox_content)
     
-    try:
-        reader = MboxDataExtractor(temp_path)
-        emails = list(reader.extract_emails())
-        assert len(emails) == 1
-        assert emails[0]["subject"] == "Single Test Email"
-        assert "test email body" in emails[0]["body"]
-    finally:
-        os.unlink(temp_path)
+    reader = MboxDataExtractor(str(temp_file))
+    emails = list(reader.extract_emails())
+    assert len(emails) == 1
+    assert emails[0]["subject"] == "Single Test Email"
+    assert "test email body" in emails[0]["body"]
 
 
-def test_mbox_reader_handles_malformed_email():
+def test_mbox_reader_handles_malformed_email(tmp_path):
     """
     Tests that the reader handles malformed emails gracefully.
     """
@@ -94,17 +85,13 @@ This is not properly formatted
 
 Body without proper headers
 """
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.mbox', delete=False) as f:
-        f.write(mbox_content)
-        temp_path = f.name
+    temp_file = tmp_path / "malformed.mbox"
+    temp_file.write_text(mbox_content)
     
-    try:
-        reader = MboxDataExtractor(temp_path)
-        emails = list(reader.extract_emails())
-        # Should still extract something, even if malformed
-        assert isinstance(emails, list)
-    finally:
-        os.unlink(temp_path)
+    reader = MboxDataExtractor(str(temp_file))
+    emails = list(reader.extract_emails())
+    # Should still extract something, even if malformed
+    assert isinstance(emails, list)
 
 
 def test_mbox_reader_extract_emails_with_metadata(mbox_file_path):
