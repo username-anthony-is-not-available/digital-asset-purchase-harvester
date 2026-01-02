@@ -11,6 +11,43 @@ A Python tool to extract cryptocurrency purchase information from email data sto
 - The project is not actively maintained
 - Uses local LLM (Ollama) for email parsing and analysis
 
+## 🐳 Docker Quick Start
+
+Get started with Docker in one command:
+
+```bash
+./setup.sh
+```
+
+This automated setup script will:
+- Check and install Docker if needed
+- Build the Docker image
+- Set up Ollama service with the required model
+- Start all services with docker-compose
+
+**Manual Docker commands:**
+
+```bash
+# Build and start services
+docker-compose up -d
+
+# Run the harvester
+docker-compose exec harvester digital-asset-harvester --help
+
+# Process emails
+docker-compose exec harvester digital-asset-harvester \
+  --mbox-file /app/your_emails.mbox \
+  --output /app/output/crypto_purchases.csv
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+> **Note**: Place your `.mbox` files in the project directory - they will be accessible in the container at `/app/`. Output files are saved to `./output/`.
+
 ## ⚡ Quick Start
 
 1. **Set up the project environment**:
