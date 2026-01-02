@@ -1,7 +1,7 @@
 """Tests for the Koinly API client."""
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from digital_asset_harvester.output.koinly_api_client import (
     KoinlyApiClient,

@@ -2,7 +2,6 @@
 
 import csv
 import os
-from decimal import Decimal
 
 import pytest
 
@@ -10,7 +9,6 @@ from digital_asset_harvester.output.koinly_writer import (
     KoinlyReportGenerator,
     write_purchase_data_to_koinly_csv,
 )
-from digital_asset_harvester.validation import PurchaseRecord
 
 
 def test_koinly_report_generator_format_transaction():

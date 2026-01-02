@@ -9,10 +9,6 @@ from typing import Iterable, Dict, Any
 class KoinlyReportGenerator:
     """Generate Koinly-compatible CSV reports from purchase data."""
 
-    def __init__(self):
-        """Initialize the Koinly report generator."""
-        pass
-
     def format_transaction(self, purchase: Dict[str, Any]) -> Dict[str, str]:
         """Convert a purchase record to Koinly Universal CSV format.
         

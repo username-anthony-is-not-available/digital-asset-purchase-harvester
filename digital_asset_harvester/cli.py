@@ -300,7 +300,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                 args.output_format,
                 args.progress,
                 settings,
-                koinly_wallet_id=getattr(args, 'koinly_wallet_id', None),
+                koinly_wallet_id=args.koinly_wallet_id,
             )
         elif settings.enable_imap and args.imap:
             logger.info("Fetching emails from IMAP server...")
@@ -324,7 +324,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                     args.output_format,
                     args.progress,
                     settings,
-                    koinly_wallet_id=getattr(args, 'koinly_wallet_id', None),
+                    koinly_wallet_id=args.koinly_wallet_id,
                 )
         else:
             logger.info(f"Loading emails from {args.mbox_file}...")
@@ -338,7 +338,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                 args.output_format,
                 args.progress,
                 settings,
-                koinly_wallet_id=getattr(args, 'koinly_wallet_id', None),
+                koinly_wallet_id=args.koinly_wallet_id,
             )
         return 0
 
