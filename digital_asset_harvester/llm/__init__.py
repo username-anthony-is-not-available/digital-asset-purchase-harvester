@@ -33,7 +33,8 @@ def get_llm_client(provider: str | None = None) -> LLMProvider:
 
     if not settings.enable_cloud_llm and provider_name != "ollama":
         raise ValueError(
-            "Cloud LLM providers are not enabled. " "Set `enable_cloud_llm` to True in settings to use them."
+            "Cloud LLM providers are not enabled. "
+            "Set `enable_cloud_llm` to True in settings to use them."
         )
 
     if provider_name == "ollama":
