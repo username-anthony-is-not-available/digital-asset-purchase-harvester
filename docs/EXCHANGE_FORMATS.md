@@ -293,7 +293,7 @@ From: "Crypto Exchange" <noreply@crypto.com>
 To: user@example.com
 Subject: Your order #12345 has been executed
 Date: Tue, 1 Jan 2024 12:30:00 +0000
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8
 
 Your market order to buy 2.5 SOL has been filled at a price of $25.00 per SOL.
 Total cost: $62.50 USD.
@@ -515,10 +515,11 @@ Common validation errors:
 To test extraction improvements:
 
 1.  **Add test email:** Place sample in `tests/fixtures/emails.py`
-2.  **Run tests:** `pytest tests/test_email_purchase_extractor.py`
-3.  **Check output:** Verify extracted data matches expectations
-4.  **Adjust prompts:** Modify extraction prompts if needed
-5.  **Iterate:** Refine until accuracy improves
+2.  **Run specific tests:** `pytest tests/test_email_purchase_extractor.py -v`
+3.  **Run full test suite:** `pytest tests/ -m "not integration and not performance"` to verify all functionality
+4.  **Check output:** Verify extracted data matches expectations
+5.  **Adjust prompts:** Modify extraction prompts if needed
+6.  **Iterate:** Refine until accuracy improves
 
 ### Getting Help
 
