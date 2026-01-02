@@ -29,21 +29,21 @@ This automated setup script will:
 
 ```bash
 # Build and start services
-docker-compose up -d
+docker compose up -d
 
 # Run the harvester
-docker-compose exec harvester digital-asset-harvester --help
+docker compose exec harvester digital-asset-harvester --help
 
 # Process emails
-docker-compose exec harvester digital-asset-harvester \
+docker compose exec harvester digital-asset-harvester \
   --mbox-file /app/your_emails.mbox \
   --output /app/output/crypto_purchases.csv
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Stop services
-docker-compose down
+docker compose down
 ```
 
 > **Note**: Place your `.mbox` files in the project directory - they will be accessible in the container at `/app/`. Output files are saved to `./output/`.

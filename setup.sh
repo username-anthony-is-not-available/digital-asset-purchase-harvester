@@ -15,7 +15,6 @@ NC='\033[0m' # No Color
 
 # Configuration
 DOCKER_IMAGE_NAME="digital-asset-harvester"
-DOCKER_COMPOSE_VERSION="2.20.0"
 OLLAMA_MODEL="llama3.2:3b"
 
 # Helper functions
@@ -88,12 +87,8 @@ check_docker() {
 check_docker_compose() {
     print_header "Checking Docker Compose Installation"
     
-    if command_exists docker-compose || docker compose version >/dev/null 2>&1; then
-        if command_exists docker-compose; then
-            COMPOSE_VERSION=$(docker-compose --version)
-        else
-            COMPOSE_VERSION=$(docker compose version)
-        fi
+    if docker compose version >/dev/null 2>&1; then
+        COMPOSE_VERSION=$(docker compose version)
         print_success "Docker Compose is installed: $COMPOSE_VERSION"
     else
         print_warning "Docker Compose is not installed"
@@ -170,8 +165,6 @@ create_docker_compose() {
     if [ ! -f "docker-compose.yml" ]; then
         print_info "Creating docker-compose.yml..."
         cat > docker-compose.yml <<'EOF'
-version: '3.8'
-
 services:
   harvester:
     build: .
@@ -281,7 +274,7 @@ setup_ollama_model() {
     print_header "Setting up Ollama Model"
     
     print_info "Starting Ollama service..."
-    docker-compose up -d ollama
+    docker compose up -d ollama
     
     # Wait for Ollama to be ready
     print_info "Waiting for Ollama service to be ready..."
@@ -290,9 +283,9 @@ setup_ollama_model() {
     # Pull the model
     print_info "Pulling Ollama model: $OLLAMA_MODEL"
     print_warning "This may take several minutes depending on your internet connection..."
-    docker-compose exec -T ollama ollama pull "$OLLAMA_MODEL" || {
+    docker compose exec -T ollama ollama pull "$OLLAMA_MODEL" || {
         print_warning "Failed to pull model automatically"
-        print_info "You can pull it manually later with: docker-compose exec ollama ollama pull $OLLAMA_MODEL"
+        print_info "You can pull it manually later with: docker compose exec ollama ollama pull $OLLAMA_MODEL"
     }
     
     print_success "Ollama setup complete"
@@ -303,11 +296,11 @@ start_services() {
     print_header "Starting Services"
     
     print_info "Starting all services with Docker Compose..."
-    docker-compose up -d
+    docker compose up -d
     
     print_success "All services started successfully"
-    print_info "Harvester container: docker-compose exec harvester bash"
-    print_info "View logs: docker-compose logs -f"
+    print_info "Harvester container: docker compose exec harvester bash"
+    print_info "View logs: docker compose logs -f"
 }
 
 # Display usage information
@@ -318,16 +311,16 @@ show_usage() {
     echo "The Docker environment is now set up!"
     echo ""
     echo "Available commands:"
-    echo "  docker-compose up -d              # Start all services"
-    echo "  docker-compose down               # Stop all services"
-    echo "  docker-compose logs -f            # View logs"
-    echo "  docker-compose exec harvester bash # Access container shell"
+    echo "  docker compose up -d              # Start all services"
+    echo "  docker compose down               # Stop all services"
+    echo "  docker compose logs -f            # View logs"
+    echo "  docker compose exec harvester bash # Access container shell"
     echo ""
     echo "Run the harvester:"
-    echo "  docker-compose exec harvester digital-asset-harvester --help"
+    echo "  docker compose exec harvester digital-asset-harvester --help"
     echo ""
     echo "Example:"
-    echo "  docker-compose exec harvester digital-asset-harvester \\"
+    echo "  docker compose exec harvester digital-asset-harvester \\"
     echo "    --mbox-file /app/your_emails.mbox \\"
     echo "    --output /app/output/crypto_purchases.csv"
     echo ""
