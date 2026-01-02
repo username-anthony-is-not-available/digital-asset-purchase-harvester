@@ -72,7 +72,7 @@ class KoinlyApiClient:
             timeout: Request timeout in seconds
         """
         if not httpx:
-            raise ImportError("httpx is required for Koinly API client. " "Install it with: pip install httpx")
+            raise ImportError("httpx is required for Koinly API client. Install it with: pip install httpx")
 
         if not api_key:
             raise ValueError("Koinly API key is required")
@@ -149,7 +149,7 @@ class KoinlyApiClient:
         Raises:
             KoinlyApiError: If upload fails
         """
-        logger.warning("Koinly API upload attempted but not available. " "Use CSV export instead.")
+        logger.warning("Koinly API upload attempted but not available. Use CSV export instead.")
 
         raise KoinlyApiError(
             "Koinly does not currently offer a public API for direct transaction uploads. "
