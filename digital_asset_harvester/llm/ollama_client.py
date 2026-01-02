@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional
 from ollama import Client
 
 from digital_asset_harvester.config import HarvesterSettings, get_settings
+
 from .provider import LLMProvider, LLMResult
 
 logger = logging.getLogger(__name__)
@@ -62,9 +63,7 @@ class OllamaLLMClient(LLMProvider):
 
         for attempt in range(1, attempts + 1):
             try:
-                logger.debug(
-                    "LLM generate_json attempt %d/%d with model %s", attempt, attempts, chosen_model
-                )
+                logger.debug("LLM generate_json attempt %d/%d with model %s", attempt, attempts, chosen_model)
                 response = self._client.generate(
                     model=chosen_model,
                     prompt=prompt,
@@ -79,9 +78,7 @@ class OllamaLLMClient(LLMProvider):
 
                 payload = json.loads(raw_text)
                 if not isinstance(payload, dict):
-                    raise LLMResponseFormatError(
-                        f"Expected JSON object from LLM, received {type(payload).__name__}"
-                    )
+                    raise LLMResponseFormatError(f"Expected JSON object from LLM, received {type(payload).__name__}")
                 return LLMResult(data=payload, raw_text=raw_text)
 
             except LLMResponseFormatError as exc:

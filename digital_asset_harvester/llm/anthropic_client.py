@@ -11,6 +11,7 @@ from typing import Any, Dict, Optional
 from anthropic import Anthropic, AnthropicError
 
 from digital_asset_harvester.config import HarvesterSettings, get_settings
+
 from .ollama_client import LLMError, LLMResponseFormatError
 from .provider import LLMProvider, LLMResult
 
@@ -76,25 +77,17 @@ class AnthropicLLMClient(LLMProvider):
                     json_text = raw_text[start_index:end_index]
                     payload = json.loads(json_text)
                 except (ValueError, json.JSONDecodeError) as exc:
-                    raise LLMResponseFormatError(
-                        f"Could not extract JSON from response: {raw_text}"
-                    ) from exc
+                    raise LLMResponseFormatError(f"Could not extract JSON from response: {raw_text}") from exc
 
                 if not isinstance(payload, dict):
-                    raise LLMResponseFormatError(
-                        f"Expected JSON object from LLM, received {type(payload).__name__}"
-                    )
+                    raise LLMResponseFormatError(f"Expected JSON object from LLM, received {type(payload).__name__}")
                 return LLMResult(data=payload, raw_text=raw_text)
 
             except LLMResponseFormatError as exc:
-                logger.warning(
-                    "LLM response format error on attempt %d: %s", attempt, exc
-                )
+                logger.warning("LLM response format error on attempt %d: %s", attempt, exc)
                 last_error = exc
             except (json.JSONDecodeError, TypeError, AttributeError) as exc:
-                logger.warning(
-                    "Could not parse LLM response on attempt %d: %s", attempt, exc
-                )
+                logger.warning("Could not parse LLM response on attempt %d: %s", attempt, exc)
                 last_error = LLMResponseFormatError(str(exc))
             except AnthropicError as exc:
                 logger.warning("Anthropic API error on attempt %d: %s", attempt, exc)
