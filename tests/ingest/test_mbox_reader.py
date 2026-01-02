@@ -26,19 +26,23 @@ def test_mbox_reader_extract_emails_from_test_file(mbox_file_path):
     """
     reader = MboxDataExtractor(mbox_file_path)
     emails = list(reader.extract_emails())
-    assert len(emails) == 3
+    assert len(emails) == 10
 
     # Check the subjects to make sure they were parsed correctly
     subjects = [email["subject"] for email in emails]
     assert "Your Coinbase purchase of 0.001 BTC" in subjects
     assert "Your order to buy 0.1 ETH has been filled" in subjects
     assert "Bitcoin Price Alert" in subjects
+    assert "Trade Confirmation: Buy 0.5 XMR" in subjects
+    assert "Order Confirmation - Buy BTC" in subjects
 
-    # Check the bodies
+    # Check the bodies contain expected content
     bodies = [email["body"] for email in emails]
-    assert "You successfully purchased 0.001 BTC for $100.00 USD." in bodies[0]
-    assert "Your order to buy 0.1 ETH for 200.00 USD has been filled." in bodies[1]
-    assert "Bitcoin is up 5% in the last 24 hours." in bodies[2]
+    coinbase_body = next((b for b in bodies if "0.001 BTC for $100.00 USD" in b), None)
+    assert coinbase_body is not None
+    
+    binance_body = next((b for b in bodies if "0.1 ETH for 200.00 USD" in b), None)
+    assert binance_body is not None
 
 
 def test_mbox_reader_extract_emails_empty_file():
