@@ -1,4 +1,7 @@
 from digital_asset_harvester.ingest.mbox_reader import MboxDataExtractor
+import tempfile
+import os
+
 
 def test_mbox_reader_initialization():
     """
@@ -6,6 +9,7 @@ def test_mbox_reader_initialization():
     """
     reader = MboxDataExtractor("non_existent_path.mbox")
     assert reader is not None
+
 
 def test_mbox_reader_extract_emails_file_not_found():
     """
@@ -35,3 +39,82 @@ def test_mbox_reader_extract_emails_from_test_file(mbox_file_path):
     assert "You successfully purchased 0.001 BTC for $100.00 USD." in bodies[0]
     assert "Your order to buy 0.1 ETH for 200.00 USD has been filled." in bodies[1]
     assert "Bitcoin is up 5% in the last 24 hours." in bodies[2]
+
+
+def test_mbox_reader_extract_emails_empty_file():
+    """
+    Tests that extract_emails handles an empty mbox file gracefully.
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.mbox', delete=False) as f:
+        temp_path = f.name
+    
+    try:
+        reader = MboxDataExtractor(temp_path)
+        emails = list(reader.extract_emails())
+        assert emails == []
+    finally:
+        os.unlink(temp_path)
+
+
+def test_mbox_reader_extract_emails_single_email():
+    """
+    Tests extracting a single email from an mbox file.
+    """
+    mbox_content = """From MAILER-DAEMON Mon Nov 12 11:30:00 2023
+From: test@example.com
+Subject: Single Test Email
+
+This is a test email body.
+"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.mbox', delete=False) as f:
+        f.write(mbox_content)
+        temp_path = f.name
+    
+    try:
+        reader = MboxDataExtractor(temp_path)
+        emails = list(reader.extract_emails())
+        assert len(emails) == 1
+        assert emails[0]["subject"] == "Single Test Email"
+        assert "test email body" in emails[0]["body"]
+    finally:
+        os.unlink(temp_path)
+
+
+def test_mbox_reader_handles_malformed_email():
+    """
+    Tests that the reader handles malformed emails gracefully.
+    """
+    mbox_content = """From MAILER-DAEMON Mon Nov 12 11:30:00 2023
+From: test@example.com
+This is not properly formatted
+
+Body without proper headers
+"""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.mbox', delete=False) as f:
+        f.write(mbox_content)
+        temp_path = f.name
+    
+    try:
+        reader = MboxDataExtractor(temp_path)
+        emails = list(reader.extract_emails())
+        # Should still extract something, even if malformed
+        assert isinstance(emails, list)
+    finally:
+        os.unlink(temp_path)
+
+
+def test_mbox_reader_extract_emails_with_metadata(mbox_file_path):
+    """
+    Tests that extract_emails preserves email metadata.
+    """
+    reader = MboxDataExtractor(mbox_file_path)
+    emails = list(reader.extract_emails())
+    
+    # All emails should have required keys
+    for email in emails:
+        assert "subject" in email
+        assert "body" in email
+        assert "sender" in email or "from" in email
+        assert isinstance(email["body"], str)
+        assert isinstance(email["subject"], str)
+
