@@ -6,9 +6,16 @@ import json
 import logging
 import random
 import time
-from typing import Any, Dict, Optional
+from typing import Optional
 
-from openai import OpenAI, OpenAIError
+try:
+    from openai import OpenAI, OpenAIError
+
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+    OpenAI = None
+    OpenAIError = Exception
 
 from digital_asset_harvester.config import HarvesterSettings, get_settings
 
@@ -28,6 +35,9 @@ class OpenAILLMClient(LLMProvider):
         client: Optional[OpenAI] = None,
         default_retries: Optional[int] = None,
     ) -> None:
+        if not OPENAI_AVAILABLE or OpenAI is None:
+            raise ImportError("OpenAI dependency is not installed. Install it with: pip install openai")
+
         self.settings = settings or get_settings()
         self._client = client or OpenAI(
             api_key=self.settings.openai_api_key,

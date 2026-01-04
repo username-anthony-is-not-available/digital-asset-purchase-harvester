@@ -6,9 +6,16 @@ import json
 import logging
 import random
 import time
-from typing import Any, Dict, Optional
+from typing import Optional
 
-from anthropic import Anthropic, AnthropicError
+try:
+    from anthropic import Anthropic, AnthropicError
+
+    ANTHROPIC_AVAILABLE = True
+except ImportError:
+    ANTHROPIC_AVAILABLE = False
+    Anthropic = None
+    AnthropicError = Exception
 
 from digital_asset_harvester.config import HarvesterSettings, get_settings
 
@@ -28,6 +35,9 @@ class AnthropicLLMClient(LLMProvider):
         client: Optional[Anthropic] = None,
         default_retries: Optional[int] = None,
     ) -> None:
+        if not ANTHROPIC_AVAILABLE or Anthropic is None:
+            raise ImportError("Anthropic dependency is not installed. Install it with: pip install anthropic")
+
         self.settings = settings or get_settings()
         self._client = client or Anthropic(
             api_key=self.settings.anthropic_api_key,

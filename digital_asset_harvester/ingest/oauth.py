@@ -1,21 +1,33 @@
 from __future__ import annotations
 
 import os
-import json
-import msal
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+try:
+    import msal
+    from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+
+    OAUTH_DEPENDENCIES_AVAILABLE = True
+except ImportError:
+    OAUTH_DEPENDENCIES_AVAILABLE = False
+    msal = None
+    Request = None
+    Credentials = None
+    InstalledAppFlow = None
 
 # Scopes for Gmail and Outlook
 GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 OUTLOOK_SCOPES = ["https://outlook.office.com/IMAP.AccessAsUser.All"]
 
+
 def get_gmail_credentials() -> Credentials:
     """
     Authenticates with the Gmail API using OAuth 2.0.
     """
+    if not OAUTH_DEPENDENCIES_AVAILABLE:
+        raise ImportError("Gmail dependencies (google-auth, google-auth-oauthlib) are not installed.")
+
     creds = None
     if os.path.exists("gmail_token.json"):
         creds = Credentials.from_authorized_user_file("gmail_token.json", GMAIL_SCOPES)
@@ -29,10 +41,14 @@ def get_gmail_credentials() -> Credentials:
             token.write(creds.to_json())
     return creds
 
+
 def get_outlook_credentials(client_id: str, authority: str) -> str:
     """
     Authenticates with the Outlook API using OAuth 2.0.
     """
+    if not OAUTH_DEPENDENCIES_AVAILABLE or msal is None:
+        raise ImportError("Outlook dependencies (msal) are not installed.")
+
     app = msal.PublicClientApplication(client_id=client_id, authority=authority)
 
     accounts = app.get_accounts()

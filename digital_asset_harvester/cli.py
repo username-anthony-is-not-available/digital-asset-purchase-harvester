@@ -26,11 +26,10 @@ from digital_asset_harvester.integrations.koinly_api_client import (
 from digital_asset_harvester.output.koinly_writer import (
     write_purchase_data_to_koinly_csv,
 )
-
-KOINLY_AVAILABLE = True
-
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
+
+KOINLY_AVAILABLE = True
 
 
 def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
@@ -83,7 +82,7 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
     parser.add_argument(
         "--koinly-upload",
         action="store_true",
-        help="Upload transactions directly to Koinly via API (requires enable_koinly_api flag)",
+        help="Upload transactions to Koinly (requires API support)",
     )
     parser.add_argument(
         "--progress",
@@ -332,3 +331,9 @@ def run(argv: Optional[list[str]] = None) -> int:
 
 def main(argv: Optional[list[str]] = None) -> int:
     return run(argv)
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(main())
