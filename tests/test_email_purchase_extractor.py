@@ -71,6 +71,9 @@ def test_extract_purchase_info_success(mocker):
         "item_name": "ETH",
         "vendor": "Binance",
         "purchase_date": "2024-01-01 12:00:00 UTC",
+        "confidence": 0.9,
+        "extraction_notes": "",
+        "extraction_method": "llm",
     }
 
 
