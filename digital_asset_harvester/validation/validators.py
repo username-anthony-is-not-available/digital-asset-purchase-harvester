@@ -54,13 +54,13 @@ class PurchaseValidator:
     def validate(self, record: PurchaseRecord) -> List[ValidationIssue]:
         issues: List[ValidationIssue] = []
 
-        if record.total_spent <= Decimal("0"):
+        if record.total_spent is not None and record.total_spent <= Decimal("0"):
             issues.append(ValidationIssue("total_spent", "must be greater than zero"))
 
-        if record.amount <= Decimal("0"):
+        if record.amount is not None and record.amount <= Decimal("0"):
             issues.append(ValidationIssue("amount", "must be greater than zero"))
 
-        if not ISO_CURRENCY_PATTERN.match(record.currency.upper()):
+        if record.currency and not ISO_CURRENCY_PATTERN.match(record.currency.upper()):
             issues.append(ValidationIssue("currency", "must be ISO 4217 uppercase code"))
 
         lower_item = record.item_name.lower()

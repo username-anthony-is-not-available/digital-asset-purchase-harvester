@@ -247,3 +247,83 @@ def test_process_email_with_non_purchase_fixture(mocker, monkeypatch):
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
     result = extractor.process_email(email_content)
     assert result["has_purchase"] is False
+
+
+def test_process_email_with_binance_deposit_fixture(mocker, monkeypatch):
+    email_content = EMAIL_FIXTURES["binance_deposit"]
+    mock_llm_client = mocker.Mock()
+    mock_llm_client.generate_json.side_effect = [
+        mocker.Mock(
+            data={
+                "is_crypto_purchase": True,
+                "confidence": 0.9,
+                "reasoning": "Deposit confirmed",
+            }
+        ),
+        mocker.Mock(
+            data={
+                "transaction_type": "deposit",
+                "total_spent": None,
+                "currency": None,
+                "amount": 0.1,
+                "item_name": "BTC",
+                "vendor": "Binance",
+                "purchase_date": "2024-01-02 12:00:00",
+                "confidence": 0.9,
+                "extraction_notes": "",
+            }
+        ),
+    ]
+    from digital_asset_harvester.processing.email_purchase_extractor import (
+        EmailPurchaseExtractor,
+    )
+
+    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
+    monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
+    monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
+    result = extractor.process_email(email_content)
+    assert result["has_purchase"] is True
+    assert result["purchase_info"]["vendor"] == "Binance"
+    assert result["purchase_info"]["amount"] == 0.1
+    assert result["purchase_info"]["item_name"] == "BTC"
+
+
+def test_process_email_with_binance_withdrawal_fixture(mocker, monkeypatch):
+    email_content = EMAIL_FIXTURES["binance_withdrawal"]
+    mock_llm_client = mocker.Mock()
+    mock_llm_client.generate_json.side_effect = [
+        mocker.Mock(
+            data={
+                "is_crypto_purchase": True,
+                "confidence": 0.9,
+                "reasoning": "Withdrawal confirmed",
+            }
+        ),
+        mocker.Mock(
+            data={
+                "transaction_type": "withdrawal",
+                "total_spent": None,
+                "currency": None,
+                "amount": 0.5,
+                "item_name": "ETH",
+                "vendor": "Binance",
+                "purchase_date": "2024-01-02 12:00:00",
+                "confidence": 0.9,
+                "extraction_notes": "",
+            }
+        ),
+    ]
+    from digital_asset_harvester.processing.email_purchase_extractor import (
+        EmailPurchaseExtractor,
+    )
+
+    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
+    monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
+    monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
+    result = extractor.process_email(email_content)
+    assert result["has_purchase"] is True
+    assert result["purchase_info"]["vendor"] == "Binance"
+    assert result["purchase_info"]["amount"] == 0.5
+    assert result["purchase_info"]["item_name"] == "ETH"

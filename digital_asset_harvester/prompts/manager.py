@@ -84,13 +84,14 @@ Extract the following information with high accuracy:
 
 COMMON EMAIL PATTERNS TO LOOK FOR:
 - Coinbase: "You bought X BTC for $Y USD", "Order #12345 completed"
-- Binance: "Buy order filled", "Transaction completed" 
+- Binance: "Buy order filled", "Transaction completed", "Deposit Successful", "Withdrawal Successful"
 - Kraken: "Order executed", "Trade confirmation"
 - General: "Purchase confirmation", "Transaction receipt", "Order summary"
 
 EXTRACTION EXAMPLES:
 - "You bought 0.001 BTC for $25.00 USD" → total_spent: 25.00, currency: "USD", amount: 0.001, item_name: "BTC"
 - "Order filled: 0.5 ETH at $1,500.00" → total_spent: 1500.00, currency: "USD", amount: 0.5, item_name: "ETH"
+- "Binance - Deposit Successful - You've received 0.1 BTC" → total_spent: null, currency: null, amount: 0.1, item_name: "BTC"
 - "$100.00 USD → 0.0025 Bitcoin" → total_spent: 100.00, currency: "USD", amount: 0.0025, item_name: "Bitcoin"
 
 IMPORTANT RULES:
@@ -103,6 +104,7 @@ IMPORTANT RULES:
 
 Return JSON with this exact structure:
 {
+    "transaction_type": "buy" | "deposit" | "withdrawal",
     "total_spent": float or null,
     "currency": string or null,
     "amount": float or null, 
