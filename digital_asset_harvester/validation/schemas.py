@@ -15,6 +15,8 @@ class PurchaseRecord:
     item_name: str
     vendor: str
     purchase_date: str
+    confidence: Optional[float] = None
+    extraction_method: Optional[str] = None
 
     @classmethod
     def from_raw(cls, data):
@@ -24,6 +26,15 @@ class PurchaseRecord:
         except (InvalidOperation, TypeError):
             raise ValueError("Invalid numeric value")
 
+        confidence_val = data.get("confidence")
+        if confidence_val is not None:
+            try:
+                confidence = float(confidence_val)
+            except (ValueError, TypeError):
+                confidence = None
+        else:
+            confidence = None
+
         return cls(
             total_spent=total_spent,
             currency=str(data.get("currency", "")),
@@ -31,4 +42,6 @@ class PurchaseRecord:
             item_name=str(data.get("item_name", "")),
             vendor=str(data.get("vendor", "")),
             purchase_date=str(data.get("purchase_date", "")),
+            confidence=confidence,
+            extraction_method=data.get("extraction_method"),
         )

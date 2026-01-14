@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
 
 from digital_asset_harvester.config import HarvesterSettings, get_settings
+from digital_asset_harvester.confidence import calculate_confidence
 from digital_asset_harvester.llm import get_llm_client
 from digital_asset_harvester.llm.ollama_client import LLMError
 from digital_asset_harvester.llm.provider import LLMProvider
@@ -521,14 +522,16 @@ class EmailPurchaseExtractor:
                 "%Y-%m-%d %H:%M:%S %Z"
             )
 
-        # Clean up the response by removing extraction metadata
-        cleaned_data = {
-            k: v
-            for k, v in purchase_data.items()
-            if k not in ["confidence", "extraction_notes"]
-        }
+        purchase_data["extraction_method"] = "llm"
 
-        return cleaned_data
+        # Clean up the response by removing extraction metadata
+        # cleaned_data = {
+        #     k: v
+        #     for k, v in purchase_data.items()
+        #     if k not in ["extraction_notes"]
+        # }
+
+        return purchase_data
 
     def _validate_purchase_data(self, purchase_data: Dict[str, Any]) -> bool:
         """Validate extracted purchase data for basic sanity checks."""
@@ -582,6 +585,12 @@ class EmailPurchaseExtractor:
                 "has_purchase": False,
                 "processing_notes": processing_notes,
             }
+
+        # Create a PurchaseRecord to pass to calculate_confidence
+        purchase_record = PurchaseRecord.from_raw(purchase_info)
+
+        # Calculate and update the confidence score
+        purchase_info["confidence"] = calculate_confidence(purchase_record)
 
         # Validate the extracted data
         if not self._validate_purchase_data(purchase_info):
