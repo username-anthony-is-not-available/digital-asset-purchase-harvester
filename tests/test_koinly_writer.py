@@ -11,21 +11,20 @@ from digital_asset_harvester.output.koinly_writer import (
 def test_koinly_report_generator_format_date():
     """Test date formatting for Koinly."""
     generator = KoinlyReportGenerator()
-    
+
     # Test various date formats
     assert generator._format_date("2024-01-15 10:30:00") == "2024-01-15 10:30:00"
     assert generator._format_date("2024-01-15") == "2024-01-15 00:00:00"
     assert generator._format_date("2024/01/15") == "2024-01-15 00:00:00"
-    
-    # Test empty date (should return current time)
-    result = generator._format_date("")
-    assert len(result) == 19  # YYYY-MM-DD HH:MM:SS format
+
+    # Test empty date
+    assert generator._format_date("") == ""
 
 
 def test_koinly_report_generator_convert_purchase():
     """Test converting purchase record to Koinly row."""
     generator = KoinlyReportGenerator()
-    
+
     purchase = {
         "total_spent": 100.50,
         "currency": "USD",
@@ -35,17 +34,53 @@ def test_koinly_report_generator_convert_purchase():
         "purchase_date": "2024-01-15 10:30:00",
         "transaction_id": "abc123",
     }
-    
+
     row = generator._convert_purchase_to_koinly_row(purchase)
-    
+
     assert row["Date"] == "2024-01-15 10:30:00"
     assert row["Sent Amount"] == "100.5"
     assert row["Sent Currency"] == "USD"
     assert row["Received Amount"] == "0.002"
     assert row["Received Currency"] == "BTC"
-    assert row["Label"] == "purchase"
+    assert row["Label"] == "buy"
     assert "Coinbase" in row["Description"]
     assert row["TxHash"] == "abc123"
+
+
+def test_koinly_report_generator_convert_deposit():
+    """Test converting a deposit record to a Koinly row."""
+    generator = KoinlyReportGenerator()
+    purchase = {
+        "transaction_type": "deposit",
+        "amount": 0.1,
+        "item_name": "BTC",
+        "vendor": "Binance",
+        "purchase_date": "2024-01-15 10:30:00",
+    }
+    row = generator._convert_purchase_to_koinly_row(purchase)
+    assert row["Label"] == "deposit"
+    assert row["Received Amount"] == "0.1"
+    assert row["Received Currency"] == "BTC"
+    assert row["Sent Amount"] == ""
+    assert row["Sent Currency"] == ""
+
+
+def test_koinly_report_generator_convert_withdrawal():
+    """Test converting a withdrawal record to a Koinly row."""
+    generator = KoinlyReportGenerator()
+    purchase = {
+        "transaction_type": "withdrawal",
+        "amount": 0.5,
+        "item_name": "ETH",
+        "vendor": "Binance",
+        "purchase_date": "2024-01-15 10:30:00",
+    }
+    row = generator._convert_purchase_to_koinly_row(purchase)
+    assert row["Label"] == "withdrawal"
+    assert row["Sent Amount"] == "0.5"
+    assert row["Sent Currency"] == "ETH"
+    assert row["Received Amount"] == ""
+    assert row["Received Currency"] == ""
 
 
 def test_koinly_report_generator_generate_csv_rows():

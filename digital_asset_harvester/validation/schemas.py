@@ -21,8 +21,13 @@ class PurchaseRecord:
     @classmethod
     def from_raw(cls, data):
         try:
-            total_spent = Decimal(str(data.get("total_spent")))
-            amount = Decimal(str(data.get("amount")))
+            total_spent_raw = data.get("total_spent")
+            total_spent = (
+                Decimal(str(total_spent_raw)) if total_spent_raw is not None else None
+            )
+
+            amount_raw = data.get("amount")
+            amount = Decimal(str(amount_raw)) if amount_raw is not None else None
         except (InvalidOperation, TypeError):
             raise ValueError("Invalid numeric value")
 
@@ -35,9 +40,10 @@ class PurchaseRecord:
         else:
             confidence = None
 
+        currency_val = data.get("currency")
         return cls(
             total_spent=total_spent,
-            currency=str(data.get("currency", "")),
+            currency=str(currency_val) if currency_val is not None else "",
             amount=amount,
             item_name=str(data.get("item_name", "")),
             vendor=str(data.get("vendor", "")),

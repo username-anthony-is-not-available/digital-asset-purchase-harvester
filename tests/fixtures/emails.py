@@ -130,6 +130,20 @@ EMAIL_FIXTURES = {
 
     Successfully purchased 0.1 BTC for $5000.
     """,
+    "binance_deposit": """
+    From: Binance <do-not-reply@binance.com>
+    Subject: Deposit Successful
+
+    You have successfully deposited 0.1 BTC.
+    Transaction ID: BIN-DEP-2024-001
+    """,
+    "binance_withdrawal": """
+    From: Binance <do-not-reply@binance.com>
+    Subject: Withdrawal Successful
+
+    You have successfully withdrawn 0.5 ETH.
+    Transaction ID: BIN-WDR-2024-002
+    """,
 }
 
 

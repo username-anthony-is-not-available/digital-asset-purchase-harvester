@@ -240,6 +240,7 @@ class EmailPurchaseExtractor:
         "successful",
         "acquired",
         "deposit",
+        "withdrawal",
         "trade",
         "exchange",
         "convert",
@@ -445,8 +446,15 @@ class EmailPurchaseExtractor:
             logger.info("No purchase information found in the email")
             return None
 
-        # Validate required fields
-        required_fields = {"total_spent", "currency", "amount", "item_name", "vendor"}
+        # Validate required fields based on transaction type
+        is_deposit_or_withdrawal = "deposit" in purchase_data.get("transaction_type", "").lower() or \
+                                   "withdrawal" in purchase_data.get("transaction_type", "").lower()
+
+        if is_deposit_or_withdrawal:
+            required_fields = {"amount", "item_name", "vendor"}
+        else:
+            required_fields = {"total_spent", "currency", "amount", "item_name", "vendor"}
+
         missing_fields = {
             field
             for field in required_fields

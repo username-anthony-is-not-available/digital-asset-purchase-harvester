@@ -3,20 +3,73 @@
 from __future__ import annotations
 
 import csv
+from datetime import datetime
 from typing import Any, Dict, List
 
 
 class KoinlyReportGenerator:
     """Generator for Koinly-compatible CSV reports."""
 
-    def generate_report(self, purchases: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Generate Koinly-compatible report from purchase data.
+    def _format_date(self, date_str: str) -> str:
+        """Format date string to Koinly's required format."""
+        if not date_str:
+            return ""
+        try:
+            if " " in date_str:
+                dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+            else:
+                dt = datetime.strptime(date_str, "%Y-%m-%d")
+            return dt.strftime("%Y-%m-%d %H:%M:%S")
+        except (ValueError, TypeError):
+            try:
+                dt = datetime.strptime(date_str, "%Y/%m/%d")
+                return dt.strftime("%Y-%m-%d %H:%M:%S")
+            except (ValueError, TypeError):
+                return date_str
 
-        TODO: Implement actual Koinly report generation logic.
-        Currently returns purchases unchanged as a placeholder.
-        """
-        # Placeholder implementation
-        return purchases
+    def _convert_purchase_to_koinly_row(self, purchase: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert a single purchase record to a Koinly CSV row."""
+        tx_type = purchase.get("transaction_type", "buy")
+        row = {
+            "Date": self._format_date(purchase.get("purchase_date", "")),
+            "Fee Amount": "",
+            "Fee Currency": "",
+            "Net Worth Amount": "",
+            "Net Worth Currency": "",
+            "Description": f"{tx_type.capitalize()} from {purchase.get('vendor', 'Unknown')}",
+            "TxHash": purchase.get("transaction_id", ""),
+        }
+
+        if tx_type == "deposit":
+            row.update({
+                "Label": "deposit",
+                "Sent Amount": "",
+                "Sent Currency": "",
+                "Received Amount": str(purchase.get("amount", "")),
+                "Received Currency": purchase.get("item_name", ""),
+            })
+        elif tx_type == "withdrawal":
+            row.update({
+                "Label": "withdrawal",
+                "Sent Amount": str(purchase.get("amount", "")),
+                "Sent Currency": purchase.get("item_name", ""),
+                "Received Amount": "",
+                "Received Currency": "",
+            })
+        else:  # Default to buy
+            row.update({
+                "Label": "buy",
+                "Sent Amount": str(purchase.get("total_spent", "")),
+                "Sent Currency": purchase.get("currency", ""),
+                "Received Amount": str(purchase.get("amount", "")),
+                "Received Currency": purchase.get("item_name", ""),
+            })
+
+        return row
+
+    def generate_csv_rows(self, purchases: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Generate a list of Koinly-compatible CSV rows."""
+        return [self._convert_purchase_to_koinly_row(p) for p in purchases]
 
 
 def write_purchase_data_to_koinly_csv(purchases: List[Dict[str, Any]], output_file: str) -> None:
@@ -24,7 +77,6 @@ def write_purchase_data_to_koinly_csv(purchases: List[Dict[str, Any]], output_fi
     if not purchases:
         return
 
-    # Koinly universal format columns
     fieldnames = [
         "Date",
         "Sent Amount",
@@ -43,21 +95,15 @@ def write_purchase_data_to_koinly_csv(purchases: List[Dict[str, Any]], output_fi
     with open(output_file, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
+        generator = KoinlyReportGenerator()
 
-        for purchase in purchases:
-            # Map our purchase data to Koinly format
-            row = {
-                "Date": purchase.get("date", ""),
-                "Sent Amount": purchase.get("amount", ""),
-                "Sent Currency": purchase.get("fiat_currency", "USD"),
-                "Received Amount": purchase.get("crypto_amount", ""),
-                "Received Currency": purchase.get("currency", ""),
-                "Fee Amount": "",
-                "Fee Currency": "",
-                "Net Worth Amount": "",
-                "Net Worth Currency": "",
-                "Label": "buy",
-                "Description": (f"Purchase from {purchase.get('vendor', 'Unknown')}"),
-                "TxHash": purchase.get("transaction_id", ""),
-            }
-            writer.writerow(row)
+        # Handle both dicts and objects
+        purchase_dicts = []
+        for p in purchases:
+            if isinstance(p, dict):
+                purchase_dicts.append(p)
+            else:
+                purchase_dicts.append(vars(p))
+
+        rows = generator.generate_csv_rows(purchase_dicts)
+        writer.writerows(rows)
