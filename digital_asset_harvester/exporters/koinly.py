@@ -8,7 +8,13 @@ from typing import Any, Dict, List
 
 
 class KoinlyReportGenerator:
-    """Generator for Koinly-compatible CSV reports."""
+    """Generator for Koinly-compatible CSV reports.
+
+    Note: This implementation does not currently populate the "Fee Amount",
+    "Fee Currency", "Net Worth Amount", or "Net Worth Currency" fields, as this
+    data is not available in the PurchaseRecord model. This could be a future
+    enhancement.
+    """
 
     def _format_date(self, date_str: str) -> str:
         """Format date string to Koinly's required format."""
