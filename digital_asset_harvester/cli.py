@@ -23,7 +23,7 @@ from digital_asset_harvester.integrations.koinly_api_client import (
     KoinlyApiClient,
     KoinlyApiError,
 )
-from digital_asset_harvester.output.koinly_writer import (
+from digital_asset_harvester.exporters.koinly import (
     write_purchase_data_to_koinly_csv,
 )
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory

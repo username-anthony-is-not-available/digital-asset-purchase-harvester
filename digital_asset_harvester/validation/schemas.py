@@ -9,12 +9,14 @@ from typing import Optional
 
 @dataclass(frozen=True)
 class PurchaseRecord:
-    total_spent: Decimal
+    total_spent: Optional[Decimal]
     currency: str
     amount: Decimal
     item_name: str
     vendor: str
     purchase_date: str
+    transaction_type: str
+    transaction_id: Optional[str] = None
     confidence: Optional[float] = None
     extraction_method: Optional[str] = None
 
@@ -48,6 +50,8 @@ class PurchaseRecord:
             item_name=str(data.get("item_name", "")),
             vendor=str(data.get("vendor", "")),
             purchase_date=str(data.get("purchase_date", "")),
+            transaction_type=str(data.get("transaction_type", "buy")),
+            transaction_id=str(data.get("transaction_id", "")) or None,
             confidence=confidence,
             extraction_method=data.get("extraction_method"),
         )
