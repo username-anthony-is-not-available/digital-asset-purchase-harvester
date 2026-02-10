@@ -3,7 +3,7 @@ import uuid
 import csv
 import json
 import tempfile
-from fastapi import APIRouter, File, UploadFile, Depends, BackgroundTasks
+from fastapi import APIRouter, File, UploadFile, Depends, BackgroundTasks, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from io import StringIO
 from .. import (
@@ -21,14 +21,22 @@ router = APIRouter()
 tasks = {}
 
 DEFAULT_CSV_HEADERS = [
-    "email_subject", "vendor", "currency", "amount", "purchase_date",
-    "transaction_id", "crypto_currency", "crypto_amount", "confidence_score"
+    "email_subject",
+    "vendor",
+    "currency",
+    "amount",
+    "purchase_date",
+    "transaction_id",
+    "crypto_currency",
+    "crypto_amount",
+    "confidence_score",
 ]
 
 
 def get_logger_factory():
     settings = get_settings()
     return configure_logging(settings)
+
 
 def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLoggerFactory):
     """Processes the mbox file and stores the result."""
@@ -50,11 +58,12 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
     tasks[task_id]["status"] = "complete"
     tasks[task_id]["result"] = purchases
 
+
 @router.post("/upload")
 async def upload_file(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    logger_factory: StructuredLoggerFactory = Depends(get_logger_factory)
+    logger_factory: StructuredLoggerFactory = Depends(get_logger_factory),
 ):
     task_id = str(uuid.uuid4())
 
@@ -66,9 +75,11 @@ async def upload_file(
 
     return RedirectResponse(url=f"/status/{task_id}", status_code=303)
 
+
 @router.get("/status/{task_id}")
 async def get_status(task_id: str):
     return tasks.get(task_id, {"status": "not_found"})
+
 
 @router.get("/export/csv/{task_id}")
 async def export_csv(task_id: str):
@@ -89,7 +100,10 @@ async def export_csv(task_id: str):
 
     output.seek(0)
 
-    return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=purchases_{task_id}.csv"})
+    return StreamingResponse(
+        output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=purchases_{task_id}.csv"}
+    )
+
 
 @router.get("/export/json/{task_id}")
 async def export_json(task_id: str):
@@ -103,3 +117,17 @@ async def export_json(task_id: str):
         media_type="application/json",
         headers={"Content-Disposition": f"attachment; filename=purchases_{task_id}.json"},
     )
+
+
+@router.put("/task/{task_id}/records/{index}")
+async def update_record(task_id: str, index: int, updated_record: dict):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    if index < 0 or index >= len(results):
+        raise HTTPException(status_code=404, detail="Record index out of bounds")
+
+    results[index].update(updated_record)
+    return {"status": "success", "updated_record": results[index]}

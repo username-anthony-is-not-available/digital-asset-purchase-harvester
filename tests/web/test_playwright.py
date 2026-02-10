@@ -1,6 +1,7 @@
 import pytest
 from playwright.sync_api import Page, expect
 
+
 def test_homepage(page: Page, live_server_url):
     page.goto(live_server_url)
 
@@ -19,6 +20,7 @@ def test_homepage(page: Page, live_server_url):
     # Check for the submit button
     submit_button = page.locator("input[type='submit']")
     expect(submit_button).to_have_value("Upload and Process")
+
 
 def test_upload_file_and_get_results(page: Page, live_server_url):
     page.goto(live_server_url)
@@ -61,3 +63,57 @@ def test_upload_file_and_get_results(page: Page, live_server_url):
     expect(binance_row).to_contain_text("Binance")
     expect(binance_row).to_contain_text("200.00")
     expect(binance_row).to_contain_text("0.1")
+
+
+def test_confidence_filtering(page: Page, live_server_url):
+    page.goto(live_server_url)
+
+    # Upload and get to results
+    test_mbox_path = "tests/fixtures/test_emails.mbox"
+    page.set_input_files("input[type='file']", test_mbox_path)
+    page.click("input[type='submit']")
+    page.wait_for_selector("#results-section")
+
+    # Check that both rows are visible (default threshold 0)
+    expect(page.locator("tr", has_text="Coinbase")).to_be_visible()
+    expect(page.locator("tr", has_text="Binance")).to_be_visible()
+
+    # Set threshold to 1.0 (both should disappear since mock has 0.95)
+    page.locator("#confidence-threshold").evaluate("el => { el.value = 1.0; el.dispatchEvent(new Event('input')); }")
+
+    expect(page.locator("tr", has_text="Coinbase")).not_to_be_visible()
+    expect(page.locator("tr", has_text="Binance")).not_to_be_visible()
+
+    # Set threshold back to 0.5
+    page.locator("#confidence-threshold").evaluate("el => { el.value = 0.5; el.dispatchEvent(new Event('input')); }")
+    expect(page.locator("tr", has_text="Coinbase")).to_be_visible()
+    expect(page.locator("tr", has_text="Binance")).to_be_visible()
+
+
+def test_manual_edit(page: Page, live_server_url):
+    page.goto(live_server_url)
+
+    # Upload and get to results
+    test_mbox_path = "tests/fixtures/test_emails.mbox"
+    page.set_input_files("input[type='file']", test_mbox_path)
+    page.click("input[type='submit']")
+    page.wait_for_selector("#results-section")
+
+    # Click Edit on the first row (Coinbase)
+    coinbase_row = page.locator("#row-0")
+    coinbase_row.get_by_role("button", name="Edit").click()
+
+    # Change the vendor
+    vendor_input = coinbase_row.locator(".edit-vendor")
+    vendor_input.fill("Updated Coinbase")
+
+    # Change the amount
+    amount_input = coinbase_row.locator(".edit-amount")
+    amount_input.fill("150.00")
+
+    # Save
+    coinbase_row.get_by_role("button", name="Save").click()
+
+    # Verify changes in view mode
+    expect(coinbase_row.locator(".view-vendor")).to_have_text("Updated Coinbase")
+    expect(coinbase_row.locator(".view-amount")).to_have_text("150.00")

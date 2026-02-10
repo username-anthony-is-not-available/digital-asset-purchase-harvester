@@ -6,9 +6,11 @@ from digital_asset_harvester.web.api import tasks
 
 client = TestClient(app)
 
+
 @pytest.fixture(scope="session")
 def mock_task_id():
     return "test-task-id"
+
 
 @pytest.fixture(scope="session", autouse=True)
 def mock_process_mbox(mock_task_id):
@@ -16,7 +18,7 @@ def mock_process_mbox(mock_task_id):
         "status": "complete",
         "result": [
             {
-                "email_subject": "Test Subject",
+                "email_subject": "Your Coinbase purchase of 0.001 BTC",
                 "vendor": "Test Vendor",
                 "currency": "USD",
                 "amount": "100.00",
@@ -24,12 +26,13 @@ def mock_process_mbox(mock_task_id):
                 "transaction_id": "12345",
                 "crypto_currency": "BTC",
                 "crypto_amount": "0.002",
-                "confidence_score": "0.95"
+                "confidence_score": "0.95",
             }
-        ]
+        ],
     }
-    with patch('digital_asset_harvester.web.api.process_mbox_file', new_callable=MagicMock) as mock:
+    with patch("digital_asset_harvester.web.api.process_mbox_file", new_callable=MagicMock) as mock:
         yield mock
+
 
 def test_upload_file_and_get_results(mock_process_mbox):
     # Mock the background task
@@ -46,10 +49,11 @@ def test_upload_file_and_get_results(mock_process_mbox):
                     "transaction_id": "12345",
                     "crypto_currency": "BTC",
                     "crypto_amount": "0.002",
-                    "confidence_score": "0.95"
+                    "confidence_score": "0.95",
                 }
-            ]
+            ],
         }
+
     mock_process_mbox.side_effect = mock_task
 
     # 1. Upload a dummy file
@@ -69,16 +73,40 @@ def test_upload_file_and_get_results(mock_process_mbox):
 
     response_json = response.json()
     assert response_json["status"] == "complete"
-    assert response_json["result"][0]["email_subject"] == "Test Subject"
+    assert response_json["result"][0]["email_subject"] == "Your Coinbase purchase of 0.001 BTC"
+
 
 def test_export_csv(mock_task_id):
     response = client.get(f"/api/export/csv/{mock_task_id}")
     assert response.status_code == 200
     assert "text/csv" in response.headers["content-type"]
-    assert "Test Subject" in response.text
+    assert "Your Coinbase purchase of 0.001 BTC" in response.text
+
 
 def test_export_json(mock_task_id):
     response = client.get(f"/api/export/json/{mock_task_id}")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
-    assert "Test Subject" in response.text
+    assert "Your Coinbase purchase of 0.001 BTC" in response.text
+
+
+def test_update_record(mock_task_id):
+    updated_data = {"vendor": "Updated Vendor", "amount": "200.00"}
+    response = client.put(f"/api/task/{mock_task_id}/records/0", json=updated_data)
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    assert response.json()["updated_record"]["vendor"] == "Updated Vendor"
+    assert response.json()["updated_record"]["amount"] == "200.00"
+
+    # Verify the update is reflected in the task store
+    assert tasks[mock_task_id]["result"][0]["vendor"] == "Updated Vendor"
+
+
+def test_update_record_not_found(mock_task_id):
+    response = client.put(f"/api/task/non-existent/records/0", json={})
+    assert response.status_code == 404
+
+
+def test_update_record_out_of_bounds(mock_task_id):
+    response = client.put(f"/api/task/{mock_task_id}/records/999", json={})
+    assert response.status_code == 404

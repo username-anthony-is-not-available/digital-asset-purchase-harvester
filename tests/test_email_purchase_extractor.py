@@ -138,9 +138,7 @@ def test_process_email_successful_path(mocker, monkeypatch):
 
 def test_process_email_filtered_by_preprocessing(mocker):
     email_content = "Subject: Dinner order\nFrom: restaurant@example.com\nBody: Your order has shipped"
-    mocker.patch(
-        "digital_asset_harvester.processing.email_purchase_extractor.get_llm_client"
-    )
+    mocker.patch("digital_asset_harvester.processing.email_purchase_extractor.get_llm_client")
     from digital_asset_harvester.processing.email_purchase_extractor import (
         EmailPurchaseExtractor,
     )

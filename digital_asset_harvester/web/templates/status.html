@@ -3,6 +3,18 @@
 <head>
     <title>Processing Status</title>
     <link rel="stylesheet" type="text/css" href="/static/styles.css">
+    <style>
+        .editable-input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .filter-section {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f2f2f2;
+            border-radius: 5px;
+        }
+    </style>
     <script>
         function sortTable(columnIndex) {
             var table, rows, switching, i, x, y, shouldSwitch;
@@ -26,6 +38,79 @@
                 }
             }
         }
+
+        function filterByConfidence() {
+            const threshold = parseFloat(document.getElementById('confidence-threshold').value);
+            document.getElementById('threshold-value').textContent = threshold.toFixed(2);
+            const rows = document.querySelectorAll('#results-tbody tr');
+            rows.forEach(row => {
+                const confidence = parseFloat(row.getAttribute('data-confidence'));
+                if (isNaN(confidence) || confidence >= threshold) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        function editRow(index) {
+            const row = document.querySelector(`#row-${index}`);
+            row.querySelectorAll('.view-mode').forEach(el => el.style.display = 'none');
+            row.querySelectorAll('.edit-mode').forEach(el => el.style.display = 'block');
+        }
+
+        function cancelEdit(index) {
+            const row = document.querySelector(`#row-${index}`);
+            row.querySelectorAll('.view-mode').forEach(el => el.style.display = 'block');
+            row.querySelectorAll('.edit-mode').forEach(el => el.style.display = 'none');
+
+            // Reset input values to match view-mode text
+            row.querySelector('.edit-vendor').value = row.querySelector('.view-vendor').textContent;
+            row.querySelector('.edit-currency').value = row.querySelector('.view-currency').textContent;
+            row.querySelector('.edit-amount').value = row.querySelector('.view-amount').textContent;
+            row.querySelector('.edit-date').value = row.querySelector('.view-date').textContent;
+            row.querySelector('.edit-tid').value = row.querySelector('.view-tid').textContent;
+            row.querySelector('.edit-cc').value = row.querySelector('.view-cc').textContent;
+            row.querySelector('.edit-ca').value = row.querySelector('.view-ca').textContent;
+        }
+
+        async function saveRow(index, taskId) {
+            const row = document.querySelector(`#row-${index}`);
+            const updatedRecord = {
+                vendor: row.querySelector('.edit-vendor').value,
+                currency: row.querySelector('.edit-currency').value,
+                amount: row.querySelector('.edit-amount').value,
+                purchase_date: row.querySelector('.edit-date').value,
+                transaction_id: row.querySelector('.edit-tid').value,
+                crypto_currency: row.querySelector('.edit-cc').value,
+                crypto_amount: row.querySelector('.edit-ca').value
+            };
+
+            const response = await fetch(`/api/task/${taskId}/records/${index}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updatedRecord)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const record = data.updated_record;
+                // Update view mode
+                row.querySelector('.view-vendor').textContent = record.vendor || '';
+                row.querySelector('.view-currency').textContent = record.currency || '';
+                row.querySelector('.view-amount').textContent = record.amount || '';
+                row.querySelector('.view-date').textContent = record.purchase_date || '';
+                row.querySelector('.view-tid').textContent = record.transaction_id || '';
+                row.querySelector('.view-cc').textContent = record.crypto_currency || '';
+                row.querySelector('.view-ca').textContent = record.crypto_amount || '';
+
+                cancelEdit(index);
+            } else {
+                alert('Failed to save changes');
+            }
+        }
     </script>
 </head>
 <body>
@@ -38,6 +123,13 @@
 
         <div id="results-section" style="display: none;">
             <h1>Extracted Purchases</h1>
+
+            <div class="filter-section">
+                <label for="confidence-threshold">Confidence Threshold: </label>
+                <input type="range" id="confidence-threshold" min="0" max="1" step="0.05" value="0" oninput="filterByConfidence()">
+                <span id="threshold-value">0.00</span>
+            </div>
+
             <div class="export-buttons">
                 <a id="export-csv" href="#" download>
                     <button>Export to CSV</button>
@@ -61,6 +153,7 @@
                         <th onclick="sortTable(6)">Crypto Currency</th>
                         <th onclick="sortTable(7)">Crypto Amount</th>
                         <th onclick="sortTable(8)">Confidence Score</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="results-tbody">
@@ -92,20 +185,48 @@
 
                         const purchases = data.result || [];
                         if (purchases.length === 0) {
-                            resultsTbody.innerHTML = '<tr><td colspan="9">No purchases found.</td></tr>';
+                            resultsTbody.innerHTML = '<tr><td colspan="10">No purchases found.</td></tr>';
                         } else {
-                            purchases.forEach(purchase => {
+                            purchases.forEach((purchase, index) => {
                                 const row = document.createElement('tr');
+                                row.id = `row-${index}`;
+                                row.setAttribute('data-confidence', purchase.confidence_score || 0);
                                 row.innerHTML = `
                                     <td>${purchase.email_subject || ''}</td>
-                                    <td>${purchase.vendor || ''}</td>
-                                    <td>${purchase.currency || ''}</td>
-                                    <td>${purchase.amount || ''}</td>
-                                    <td>${purchase.purchase_date || ''}</td>
-                                    <td>${purchase.transaction_id || ''}</td>
-                                    <td>${purchase.crypto_currency || ''}</td>
-                                    <td>${purchase.crypto_amount || ''}</td>
+                                    <td>
+                                        <span class="view-mode view-vendor">${purchase.vendor || ''}</span>
+                                        <input type="text" class="edit-mode edit-vendor editable-input" value="${purchase.vendor || ''}" style="display:none">
+                                    </td>
+                                    <td>
+                                        <span class="view-mode view-currency">${purchase.currency || ''}</span>
+                                        <input type="text" class="edit-mode edit-currency editable-input" value="${purchase.currency || ''}" style="display:none">
+                                    </td>
+                                    <td>
+                                        <span class="view-mode view-amount">${purchase.amount || ''}</span>
+                                        <input type="text" class="edit-mode edit-amount editable-input" value="${purchase.amount || ''}" style="display:none">
+                                    </td>
+                                    <td>
+                                        <span class="view-mode view-date">${purchase.purchase_date || ''}</span>
+                                        <input type="text" class="edit-mode edit-date editable-input" value="${purchase.purchase_date || ''}" style="display:none">
+                                    </td>
+                                    <td>
+                                        <span class="view-mode view-tid">${purchase.transaction_id || ''}</span>
+                                        <input type="text" class="edit-mode edit-tid editable-input" value="${purchase.transaction_id || ''}" style="display:none">
+                                    </td>
+                                    <td>
+                                        <span class="view-mode view-cc">${purchase.crypto_currency || ''}</span>
+                                        <input type="text" class="edit-mode edit-cc editable-input" value="${purchase.crypto_currency || ''}" style="display:none">
+                                    </td>
+                                    <td>
+                                        <span class="view-mode view-ca">${purchase.crypto_amount || ''}</span>
+                                        <input type="text" class="edit-mode edit-ca editable-input" value="${purchase.crypto_amount || ''}" style="display:none">
+                                    </td>
                                     <td>${purchase.confidence_score || ''}</td>
+                                    <td>
+                                        <button class="view-mode" onclick="editRow(${index})">Edit</button>
+                                        <button class="edit-mode" onclick="saveRow(${index}, '${taskId}')" style="display:none">Save</button>
+                                        <button class="edit-mode" onclick="cancelEdit(${index})" style="display:none">Cancel</button>
+                                    </td>
                                 `;
                                 resultsTbody.appendChild(row);
                             });

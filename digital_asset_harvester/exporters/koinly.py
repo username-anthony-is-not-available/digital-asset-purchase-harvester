@@ -47,29 +47,35 @@ class KoinlyReportGenerator:
         }
 
         if tx_type == "deposit":
-            row.update({
-                "Label": "deposit",
-                "Sent Amount": "",
-                "Sent Currency": "",
-                "Received Amount": str(purchase.get("amount", "")),
-                "Received Currency": purchase.get("item_name", ""),
-            })
+            row.update(
+                {
+                    "Label": "deposit",
+                    "Sent Amount": "",
+                    "Sent Currency": "",
+                    "Received Amount": str(purchase.get("amount", "")),
+                    "Received Currency": purchase.get("item_name", ""),
+                }
+            )
         elif tx_type == "withdrawal":
-            row.update({
-                "Label": "withdrawal",
-                "Sent Amount": str(purchase.get("amount", "")),
-                "Sent Currency": purchase.get("item_name", ""),
-                "Received Amount": "",
-                "Received Currency": "",
-            })
+            row.update(
+                {
+                    "Label": "withdrawal",
+                    "Sent Amount": str(purchase.get("amount", "")),
+                    "Sent Currency": purchase.get("item_name", ""),
+                    "Received Amount": "",
+                    "Received Currency": "",
+                }
+            )
         else:  # Default to buy
-            row.update({
-                "Label": "buy",
-                "Sent Amount": str(purchase.get("total_spent", "")),
-                "Sent Currency": purchase.get("currency", ""),
-                "Received Amount": str(purchase.get("amount", "")),
-                "Received Currency": purchase.get("item_name", ""),
-            })
+            row.update(
+                {
+                    "Label": "buy",
+                    "Sent Amount": str(purchase.get("total_spent", "")),
+                    "Sent Currency": purchase.get("currency", ""),
+                    "Received Amount": str(purchase.get("amount", "")),
+                    "Received Currency": purchase.get("item_name", ""),
+                }
+            )
 
         return row
 

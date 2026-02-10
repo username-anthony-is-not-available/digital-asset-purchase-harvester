@@ -24,9 +24,7 @@ class PurchaseRecord:
     def from_raw(cls, data):
         try:
             total_spent_raw = data.get("total_spent")
-            total_spent = (
-                Decimal(str(total_spent_raw)) if total_spent_raw is not None else None
-            )
+            total_spent = Decimal(str(total_spent_raw)) if total_spent_raw is not None else None
 
             amount_raw = data.get("amount")
             amount = Decimal(str(amount_raw)) if amount_raw is not None else None
