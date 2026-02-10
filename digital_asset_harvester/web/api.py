@@ -3,7 +3,7 @@ import uuid
 import csv
 import json
 import tempfile
-from fastapi import APIRouter, File, UploadFile, Depends, BackgroundTasks
+from fastapi import APIRouter, File, UploadFile, Depends, BackgroundTasks, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from io import StringIO
 from .. import (
@@ -103,3 +103,16 @@ async def export_json(task_id: str):
         media_type="application/json",
         headers={"Content-Disposition": f"attachment; filename=purchases_{task_id}.json"},
     )
+
+@router.put("/task/{task_id}/records/{index}")
+async def update_record(task_id: str, index: int, updated_record: dict):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    if index < 0 or index >= len(results):
+        raise HTTPException(status_code=404, detail="Record index out of bounds")
+
+    results[index].update(updated_record)
+    return {"status": "success", "updated_record": results[index]}

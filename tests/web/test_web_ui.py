@@ -82,3 +82,25 @@ def test_export_json(mock_task_id):
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
     assert "Test Subject" in response.text
+
+def test_update_record(mock_task_id):
+    updated_data = {
+        "vendor": "Updated Vendor",
+        "amount": "200.00"
+    }
+    response = client.put(f"/api/task/{mock_task_id}/records/0", json=updated_data)
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    assert response.json()["updated_record"]["vendor"] == "Updated Vendor"
+    assert response.json()["updated_record"]["amount"] == "200.00"
+
+    # Verify the update is reflected in the task store
+    assert tasks[mock_task_id]["result"][0]["vendor"] == "Updated Vendor"
+
+def test_update_record_not_found(mock_task_id):
+    response = client.put(f"/api/task/non-existent/records/0", json={})
+    assert response.status_code == 404
+
+def test_update_record_out_of_bounds(mock_task_id):
+    response = client.put(f"/api/task/{mock_task_id}/records/999", json={})
+    assert response.status_code == 404
