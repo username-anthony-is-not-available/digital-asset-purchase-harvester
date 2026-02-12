@@ -62,6 +62,14 @@ class KoinlyReportGenerator:
                 "Received Amount": "",
                 "Received Currency": "",
             })
+        elif tx_type == "staking_reward":
+            row.update({
+                "Label": "staking",
+                "Sent Amount": "",
+                "Sent Currency": "",
+                "Received Amount": str(purchase.get("amount", "")),
+                "Received Currency": purchase.get("item_name", ""),
+            })
         else:  # Default to buy
             row.update({
                 "Label": "buy",

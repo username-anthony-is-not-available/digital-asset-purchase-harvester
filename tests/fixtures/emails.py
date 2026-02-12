@@ -144,6 +144,28 @@ EMAIL_FIXTURES = {
     You have successfully withdrawn 0.5 ETH.
     Transaction ID: BIN-WDR-2024-002
     """,
+    "coinbase_staking_reward": """
+    From: Coinbase <no-reply@coinbase.com>
+    Subject: You've earned a staking reward
+
+    You just earned 0.00001234 ETH in staking rewards!
+    Your new balance is 1.23456789 ETH.
+    Transaction ID: CB-STAKE-2025-ABC
+    """,
+    "binance_staking_reward": """
+    From: Binance <do-not-reply@binance.com>
+    Subject: Distribution Confirmation
+
+    Your account has been credited with 0.5 SOL for SOL Staking.
+    Reference: BIN-STAKE-2025-XYZ
+    """,
+    "kraken_staking_reward": """
+    From: Kraken <noreply@kraken.com>
+    Subject: Staking Reward Received
+
+    We've credited your account with 10.5 ADA in staking rewards.
+    ID: KR-STAKE-2025-999
+    """,
 }
 
 
