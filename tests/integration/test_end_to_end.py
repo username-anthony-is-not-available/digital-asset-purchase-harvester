@@ -7,7 +7,6 @@ Run with: pytest tests/integration/ -v --timeout=300
 import csv
 import mailbox
 
-
 import pytest
 
 from digital_asset_harvester import (
@@ -82,10 +81,7 @@ def test_end_to_end_single_purchase(temp_mbox_file, sample_coinbase_email, tmp_p
 
     # Verify purchase data (be flexible with LLM extraction)
     assert purchase["vendor"].lower() in ["coinbase", "coinbase.com"]
-    assert (
-        "btc" in purchase["item_name"].lower()
-        or "bitcoin" in purchase["item_name"].lower()
-    )
+    assert "btc" in purchase["item_name"].lower() or "bitcoin" in purchase["item_name"].lower()
     assert float(purchase["amount"]) > 0
     assert float(purchase["total_spent"]) > 0
     assert purchase["currency"] == "USD"

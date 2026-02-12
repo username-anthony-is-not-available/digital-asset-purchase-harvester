@@ -1,6 +1,9 @@
 from decimal import Decimal
+
 import pytest
+
 from digital_asset_harvester.validation.schemas import PurchaseRecord
+
 
 def test_purchase_record_from_raw_handles_invalid_numeric():
     with pytest.raises(ValueError):

@@ -1,8 +1,8 @@
 """Tests for the email_parser module."""
 
 import email
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 import pytest
 
@@ -52,7 +52,7 @@ class TestExtractBody:
         msg = MIMEMultipart()
         text_part = MIMEText("This is the text body")
         msg.attach(text_part)
-        
+
         body = extract_body(msg)
         assert body == "This is the text body"
 
@@ -63,7 +63,7 @@ class TestExtractBody:
         html_part = MIMEText("<html><body>HTML body</body></html>", "html")
         msg.attach(text_part)
         msg.attach(html_part)
-        
+
         body = extract_body(msg)
         assert "Plain text body" in body
 
@@ -72,12 +72,12 @@ class TestExtractBody:
         msg = MIMEMultipart()
         text_part = MIMEText("Email body with attachment")
         msg.attach(text_part)
-        
+
         # Add an attachment
         attachment = MIMEText("attachment content")
         attachment.add_header("Content-Disposition", "attachment", filename="test.txt")
         msg.attach(attachment)
-        
+
         body = extract_body(msg)
         assert "Email body with attachment" in body
         assert "attachment content" not in body
@@ -105,9 +105,9 @@ class TestMessageToDict:
         msg["Subject"] = "Test Subject"
         msg["From"] = "sender@example.com"
         msg["Date"] = "Mon, 01 Jan 2024 12:00:00 +0000"
-        
+
         result = message_to_dict(msg)
-        
+
         assert result["subject"] == "Test Subject"
         assert result["sender"] == "sender@example.com"
         assert result["date"] == "Mon, 01 Jan 2024 12:00:00 +0000"
@@ -116,9 +116,9 @@ class TestMessageToDict:
     def test_message_to_dict_missing_headers(self):
         """Test converting email with missing headers."""
         msg = MIMEText("Body only")
-        
+
         result = message_to_dict(msg)
-        
+
         assert result["subject"] == ""
         assert result["sender"] == ""
         assert result["date"] == ""
@@ -130,9 +130,9 @@ class TestMessageToDict:
         msg["Subject"] = "Your Coinbase purchase of 0.001 BTC"
         msg["From"] = "Coinbase <no-reply@coinbase.com>"
         msg["Date"] = "Mon, 01 Jan 2024 12:00:00 +0000"
-        
+
         result = message_to_dict(msg)
-        
+
         assert "Coinbase purchase" in result["subject"]
         assert "Coinbase" in result["sender"]
         assert "0.001 BTC" in result["body"]
@@ -143,12 +143,12 @@ class TestMessageToDict:
         msg["Subject"] = "Multipart Email"
         msg["From"] = "test@example.com"
         msg["Date"] = "Mon, 01 Jan 2024 12:00:00 +0000"
-        
+
         text_part = MIMEText("This is the body")
         msg.attach(text_part)
-        
+
         result = message_to_dict(msg)
-        
+
         assert result["subject"] == "Multipart Email"
         assert result["sender"] == "test@example.com"
         assert "This is the body" in result["body"]
@@ -158,8 +158,8 @@ class TestMessageToDict:
         msg = MIMEText("Purchase confirmed")
         msg["Subject"] = "Bitcoin Purchase: ₿ 1.5 BTC"
         msg["From"] = "Exchange <support@exchange.com>"
-        
+
         result = message_to_dict(msg)
-        
+
         assert "Bitcoin Purchase" in result["subject"]
         assert "Exchange" in result["sender"]

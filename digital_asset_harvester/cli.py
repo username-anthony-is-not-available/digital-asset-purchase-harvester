@@ -17,14 +17,14 @@ from digital_asset_harvester import (
     log_event,
     write_purchase_data_to_csv,
 )
+from digital_asset_harvester.exporters.koinly import (
+    write_purchase_data_to_koinly_csv,
+)
 from digital_asset_harvester.ingest.gmail_client import GmailClient
 from digital_asset_harvester.ingest.imap_client import ImapClient
 from digital_asset_harvester.integrations.koinly_api_client import (
     KoinlyApiClient,
     KoinlyApiError,
-)
-from digital_asset_harvester.exporters.koinly import (
-    write_purchase_data_to_koinly_csv,
 )
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
@@ -75,7 +75,7 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output-format",
-        choices=["csv", "koinly"],
+        choices=["csv", "koinly", "cryptotaxcalculator", "cra"],
         default="csv",
         help="The output format (default: csv)",
     )

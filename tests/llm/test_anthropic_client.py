@@ -51,9 +51,7 @@ def test_generate_json_malformed():
     mock_response = MockMessage([MockContent("not-json")])
     mock_client = MockAnthropicClient([mock_response])
     settings = get_settings_with_overrides(anthropic_api_key="test")
-    client = AnthropicLLMClient(
-        settings=settings, client=mock_client, default_retries=1
-    )
+    client = AnthropicLLMClient(settings=settings, client=mock_client, default_retries=1)
 
     with pytest.raises(LLMResponseFormatError):
         client.generate_json("prompt")
@@ -63,9 +61,7 @@ def test_generate_json_exhausts_retries():
     """Test that the client gives up after exhausting retries."""
     mock_client = MockAnthropicClient([])
     settings = get_settings_with_overrides(anthropic_api_key="test")
-    client = AnthropicLLMClient(
-        settings=settings, client=mock_client, default_retries=2
-    )
+    client = AnthropicLLMClient(settings=settings, client=mock_client, default_retries=2)
 
     with pytest.raises(LLMError):
         client.generate_json("prompt")

@@ -20,9 +20,7 @@ def test_get_llm_client_ollama(mocker):
 def test_get_llm_client_openai(mocker):
     """Verify that the factory returns the correct client for OpenAI."""
     mocker.patch("openai.OpenAI")
-    mock_settings = get_settings_with_overrides(
-        llm_provider="openai", enable_cloud_llm=True, openai_api_key="test"
-    )
+    mock_settings = get_settings_with_overrides(llm_provider="openai", enable_cloud_llm=True, openai_api_key="test")
     mocker.patch("digital_asset_harvester.llm.get_settings", return_value=mock_settings)
     client = get_llm_client()
     assert isinstance(client, OpenAILLMClient)

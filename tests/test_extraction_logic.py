@@ -156,4 +156,3 @@ def test_extract_purchase_info_partial_data(extractor_factory):
     # With strict validation disabled or handling missing fields
     # Result might be None or contain partial data
     assert result is None or isinstance(result, dict)
-

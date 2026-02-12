@@ -1,5 +1,7 @@
 """Calculate the confidence of an extraction."""
+
 from __future__ import annotations
+
 import enum
 
 from digital_asset_harvester.validation.schemas import PurchaseRecord

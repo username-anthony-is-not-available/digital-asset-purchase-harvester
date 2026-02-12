@@ -221,4 +221,3 @@ def non_purchase_emails():
         "failed_purchase",
     }
     return {k: v for k, v in EMAIL_FIXTURES.items() if k in non_purchase_types}
-

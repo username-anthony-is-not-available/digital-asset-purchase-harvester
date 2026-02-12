@@ -154,4 +154,3 @@ def test_process_email_newsletter(extractor_factory):
     extractor = extractor_factory(llm_responses)
     result = extractor.process_email(email_content)
     assert not result["has_purchase"]
-
