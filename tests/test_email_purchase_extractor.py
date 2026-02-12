@@ -327,3 +327,126 @@ def test_process_email_with_binance_withdrawal_fixture(mocker, monkeypatch):
     assert result["purchase_info"]["vendor"] == "Binance"
     assert result["purchase_info"]["amount"] == 0.5
     assert result["purchase_info"]["item_name"] == "ETH"
+
+
+def test_process_email_with_coinbase_staking_reward(mocker, monkeypatch):
+    email_content = EMAIL_FIXTURES["coinbase_staking_reward"]
+    mock_llm_client = mocker.Mock()
+    mock_llm_client.generate_json.side_effect = [
+        mocker.Mock(
+            data={
+                "is_crypto_purchase": True,
+                "confidence": 0.9,
+                "reasoning": "Staking reward earned",
+            }
+        ),
+        mocker.Mock(
+            data={
+                "transaction_type": "staking_reward",
+                "total_spent": None,
+                "currency": None,
+                "amount": 0.00001234,
+                "item_name": "ETH",
+                "vendor": "Coinbase",
+                "purchase_date": "2025-01-01 12:00:00",
+                "transaction_id": "CB-STAKE-2025-ABC",
+                "confidence": 0.9,
+                "extraction_notes": "",
+            }
+        ),
+    ]
+    from digital_asset_harvester.processing.email_purchase_extractor import (
+        EmailPurchaseExtractor,
+    )
+
+    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
+    monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
+    monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
+    result = extractor.process_email(email_content)
+    assert result["has_purchase"] is True
+    assert result["purchase_info"]["transaction_type"] == "staking_reward"
+    assert result["purchase_info"]["amount"] == 0.00001234
+    assert result["purchase_info"]["transaction_id"] == "CB-STAKE-2025-ABC"
+
+
+def test_process_email_with_binance_staking_reward(mocker, monkeypatch):
+    email_content = EMAIL_FIXTURES["binance_staking_reward"]
+    mock_llm_client = mocker.Mock()
+    mock_llm_client.generate_json.side_effect = [
+        mocker.Mock(
+            data={
+                "is_crypto_purchase": True,
+                "confidence": 0.9,
+                "reasoning": "Distribution confirmation",
+            }
+        ),
+        mocker.Mock(
+            data={
+                "transaction_type": "staking_reward",
+                "total_spent": None,
+                "currency": None,
+                "amount": 0.5,
+                "item_name": "SOL",
+                "vendor": "Binance",
+                "purchase_date": "2025-01-01 12:00:00",
+                "transaction_id": "BIN-STAKE-2025-XYZ",
+                "confidence": 0.9,
+                "extraction_notes": "",
+            }
+        ),
+    ]
+    from digital_asset_harvester.processing.email_purchase_extractor import (
+        EmailPurchaseExtractor,
+    )
+
+    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
+    monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
+    monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
+    result = extractor.process_email(email_content)
+    assert result["has_purchase"] is True
+    assert result["purchase_info"]["transaction_type"] == "staking_reward"
+    assert result["purchase_info"]["amount"] == 0.5
+    assert result["purchase_info"]["transaction_id"] == "BIN-STAKE-2025-XYZ"
+
+
+def test_process_email_with_kraken_staking_reward(mocker, monkeypatch):
+    email_content = EMAIL_FIXTURES["kraken_staking_reward"]
+    mock_llm_client = mocker.Mock()
+    mock_llm_client.generate_json.side_effect = [
+        mocker.Mock(
+            data={
+                "is_crypto_purchase": True,
+                "confidence": 0.9,
+                "reasoning": "Staking reward received",
+            }
+        ),
+        mocker.Mock(
+            data={
+                "transaction_type": "staking_reward",
+                "total_spent": None,
+                "currency": None,
+                "amount": 10.5,
+                "item_name": "ADA",
+                "vendor": "Kraken",
+                "purchase_date": "2025-01-01 12:00:00",
+                "transaction_id": "KR-STAKE-2025-999",
+                "confidence": 0.9,
+                "extraction_notes": "",
+            }
+        ),
+    ]
+    from digital_asset_harvester.processing.email_purchase_extractor import (
+        EmailPurchaseExtractor,
+    )
+
+    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
+    monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
+    monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
+    result = extractor.process_email(email_content)
+    assert result["has_purchase"] is True
+    assert result["purchase_info"]["transaction_type"] == "staking_reward"
+    assert result["purchase_info"]["amount"] == 10.5
+    assert result["purchase_info"]["transaction_id"] == "KR-STAKE-2025-999"

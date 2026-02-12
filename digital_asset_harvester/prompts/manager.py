@@ -42,9 +42,9 @@ EMAIL CONTENT:
 ${email_content}
 
 ANALYSIS CRITERIA:
-- Look for ACTUAL purchase/buy transactions, order confirmations, or trade executions
+- Look for ACTUAL purchase/buy transactions, order confirmations, trade executions, or staking rewards/distributions
 - Cryptocurrency exchanges: Coinbase, Binance, Kraken, Gemini, etc.
-- Purchase indicators: "bought", "purchased", "order filled", "transaction completed", "payment processed"
+- Purchase indicators: "bought", "purchased", "order filled", "transaction completed", "payment processed", "staking reward", "earned", "distribution confirmation"
 - Specific amounts and cryptocurrency names (Bitcoin, Ethereum, BTC, ETH, etc.)
 - Transaction IDs, order numbers, or confirmation codes
 
@@ -84,27 +84,29 @@ Extract the following information with high accuracy:
 
 COMMON EMAIL PATTERNS TO LOOK FOR:
 - Coinbase: "You bought X BTC for $Y USD", "Order #12345 completed"
-- Binance: "Buy order filled", "Transaction completed", "Deposit Successful", "Withdrawal Successful"
-- Kraken: "Order executed", "Trade confirmation"
-- General: "Purchase confirmation", "Transaction receipt", "Order summary"
+- Binance: "Buy order filled", "Transaction completed", "Deposit Successful", "Withdrawal Successful", "Distribution Confirmation"
+- Kraken: "Order executed", "Trade confirmation", "Staking Reward Received"
+- General: "Purchase confirmation", "Transaction receipt", "Order summary", "You just earned X staking rewards"
 
 EXTRACTION EXAMPLES:
-- "You bought 0.001 BTC for $25.00 USD" → total_spent: 25.00, currency: "USD", amount: 0.001, item_name: "BTC"
-- "Order filled: 0.5 ETH at $1,500.00" → total_spent: 1500.00, currency: "USD", amount: 0.5, item_name: "ETH"
-- "Binance - Deposit Successful - You've received 0.1 BTC" → total_spent: null, currency: null, amount: 0.1, item_name: "BTC"
-- "$100.00 USD → 0.0025 Bitcoin" → total_spent: 100.00, currency: "USD", amount: 0.0025, item_name: "Bitcoin"
+- "You bought 0.001 BTC for $25.00 USD" → total_spent: 25.00, currency: "USD", amount: 0.001, item_name: "BTC", transaction_type: "buy"
+- "Order filled: 0.5 ETH at $1,500.00" → total_spent: 1500.00, currency: "USD", amount: 0.5, item_name: "ETH", transaction_type: "buy"
+- "Binance - Deposit Successful - You've received 0.1 BTC" → total_spent: null, currency: null, amount: 0.1, item_name: "BTC", transaction_type: "deposit"
+- "You just earned 0.0001 ETH in staking rewards" → total_spent: null, currency: null, amount: 0.0001, item_name: "ETH", transaction_type: "staking_reward"
+- "$100.00 USD → 0.0025 Bitcoin" → total_spent: 100.00, currency: "USD", amount: 0.0025, item_name: "Bitcoin", transaction_type: "buy"
 
 IMPORTANT RULES:
 - Extract EXACT numerical values, don't round or estimate
 - Use null for any field you cannot determine with confidence
 - For item_name, use the EXACT term from the email (BTC vs Bitcoin, ETH vs Ethereum)
 - For vendor, extract the actual company name, not generic terms
+- Extract transaction IDs, reference numbers, or order numbers into a "transaction_id" field if available
 - Parse dates carefully - look for transaction time, not email send time
 - If timezone missing, assume ${default_timezone}
 
 Return JSON with this exact structure:
 {
-    "transaction_type": "buy" | "deposit" | "withdrawal",
+    "transaction_type": "buy" | "deposit" | "withdrawal" | "staking_reward",
     "total_spent": float or null,
     "currency": string or null,
     "amount": float or null, 

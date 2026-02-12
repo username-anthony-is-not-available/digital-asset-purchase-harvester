@@ -250,6 +250,10 @@ class EmailPurchaseExtractor:
         "instant buy",
         "recurring buy",
         "auto-invest",
+        "staking",
+        "reward",
+        "earned",
+        "distribution",
     }
 
     # Email patterns that indicate non-purchase content
@@ -447,10 +451,11 @@ class EmailPurchaseExtractor:
             return None
 
         # Validate required fields based on transaction type
-        is_deposit_or_withdrawal = "deposit" in purchase_data.get("transaction_type", "").lower() or \
-                                   "withdrawal" in purchase_data.get("transaction_type", "").lower()
+        is_deposit_withdrawal_or_reward = "deposit" in purchase_data.get("transaction_type", "").lower() or \
+                                          "withdrawal" in purchase_data.get("transaction_type", "").lower() or \
+                                          "staking_reward" in purchase_data.get("transaction_type", "").lower()
 
-        if is_deposit_or_withdrawal:
+        if is_deposit_withdrawal_or_reward:
             required_fields = {"amount", "item_name", "vendor"}
         else:
             required_fields = {"total_spent", "currency", "amount", "item_name", "vendor"}

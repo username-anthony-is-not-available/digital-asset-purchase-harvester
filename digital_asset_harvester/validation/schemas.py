@@ -15,7 +15,7 @@ class PurchaseRecord:
     item_name: str
     vendor: str
     purchase_date: str
-    transaction_type: str
+    transaction_type: str = "buy"
     transaction_id: Optional[str] = None
     confidence: Optional[float] = None
     extraction_method: Optional[str] = None

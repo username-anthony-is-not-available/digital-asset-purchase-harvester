@@ -94,6 +94,23 @@ class TestKoinlyReportGenerator:
         assert withdrawal_row["TxHash"] == "txn789"
         assert withdrawal_row["Description"] == "Withdrawal from Kraken"
 
+    def test_convert_staking_reward_to_koinly_row(self):
+        generator = KoinlyReportGenerator()
+        reward = {
+            "transaction_type": "staking_reward",
+            "amount": Decimal("0.01"),
+            "item_name": "ETH",
+            "vendor": "Coinbase",
+            "purchase_date": "2024-01-01",
+        }
+        row = generator._convert_purchase_to_koinly_row(reward)
+        assert row["Label"] == "staking"
+        assert row["Received Amount"] == "0.01"
+        assert row["Received Currency"] == "ETH"
+        assert row["Sent Amount"] == ""
+        assert row["Sent Currency"] == ""
+        assert row["Description"] == "Staking_reward from Coinbase"
+
     def test_generate_csv_rows(self, sample_purchases):
         generator = KoinlyReportGenerator()
         purchase_dicts = [vars(p) for p in sample_purchases]
