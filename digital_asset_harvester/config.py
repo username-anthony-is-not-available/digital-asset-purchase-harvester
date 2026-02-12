@@ -53,6 +53,8 @@ class HarvesterSettings:
 
 	enable_imap: bool = False
 	enable_koinly_csv_export: bool = False
+	enable_ctc_csv_export: bool = False
+	enable_cra_csv_export: bool = False
 	enable_koinly_api: bool = False
 	
 	koinly_api_key: str = ""
