@@ -75,7 +75,7 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output-format",
-        choices=["csv", "koinly"],
+        choices=["csv", "koinly", "cryptotaxcalculator", "cra"],
         default="csv",
         help="The output format (default: csv)",
     )
