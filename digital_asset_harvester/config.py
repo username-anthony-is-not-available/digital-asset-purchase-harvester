@@ -34,6 +34,7 @@ class HarvesterSettings:
 	anthropic_model_name: str = "claude-3-sonnet-20240229"
 
 	enable_preprocessing: bool = True
+	enable_regex_extractors: bool = True
 	enable_validation: bool = True
 	min_confidence_threshold: float = 0.6
 
