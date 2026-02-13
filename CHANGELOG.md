@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Parallel Processing**: Support for parallel email processing in CLI using `ThreadPoolExecutor`.
+  - New `--parallel` flag to enable concurrency.
+  - New `--max-workers` argument to control parallelism.
+- **New Specialized Extractors**: Added regex-based extractors for Gemini, Crypto.com, and FTX.
+- **Improved Binance Extraction**: More robust transaction ID and fee extraction by searching full email content.
+- **Enhanced Email Filtering**: Added more non-purchase patterns (security alerts, logins, etc.) to reduce false positives.
+- **Detailed Processing Metrics**: Added tracking for regex vs LLM extractions, preprocessing skips, and failures.
 - **Koinly CSV Export**: Added support for exporting transactions in Koinly Universal CSV format
   - New `KoinlyReportGenerator` class for generating Koinly-compatible CSV files
   - `write_purchase_data_to_koinly_csv()` function for easy CSV export
@@ -23,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatic fallback to CSV export when API is not available
 
 ### Technical Details
+- Implemented `ThreadPoolExecutor` pattern for I/O-bound email processing tasks.
+- Added type normalization for extracted numeric fields (amount, total_spent, fee_amount).
+- Added `tests/__init__.py` and subdirectory init files to ensure correct test collection in CI.
 - Added new `integrations` module for external service integrations
 - Comprehensive test coverage (18 new tests for Koinly functionality)
 - Proper error handling and logging for Koinly operations

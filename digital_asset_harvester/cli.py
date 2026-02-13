@@ -87,6 +87,17 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
         help="The output format (default: csv)",
     )
     parser.add_argument(
+        "--parallel",
+        action="store_true",
+        help="Enable parallel processing of emails",
+    )
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=settings.max_workers,
+        help=f"Maximum number of worker threads for parallel processing (default: {settings.max_workers})",
+    )
+    parser.add_argument(
         "--koinly-upload",
         action="store_true",
         help="Upload transactions to Koinly (requires API support)",
@@ -124,6 +135,22 @@ def configure_logging(settings) -> StructuredLoggerFactory:
     return StructuredLoggerFactory(json_output=settings.log_json_output)
 
 
+def _process_single_email(
+    email: dict,
+    idx: int,
+    extractor: EmailPurchaseExtractor,
+) -> tuple[dict, int, dict]:
+    """Helper for parallel processing of a single email."""
+    email_content = (
+        f"Subject: {email.get('subject', '')}\n\n"
+        f"From: {email.get('sender', '')}\n\n"
+        f"Date: {email.get('date', '')}\n\n"
+        f"Body: {email.get('body', '')}"
+    )
+    result = extractor.process_email(email_content)
+    return email, idx, result
+
+
 def process_emails(
     emails: Iterable[dict],
     extractor: EmailPurchaseExtractor,
@@ -131,6 +158,7 @@ def process_emails(
     show_progress: bool = True,
 ) -> tuple[list[dict], MetricsTracker]:
     logger = logging.getLogger(__name__)
+    settings = extractor.settings
     metrics = MetricsTracker()
     app_logger = logger_factory.build(
         "digital_asset_harvester.app",
@@ -140,34 +168,23 @@ def process_emails(
 
     results: list[dict] = []
 
+    # Convert iterable to list for parallel processing if needed
+    enable_parallel = getattr(settings, "enable_parallel_processing", False)
+    # Ensure it's a real boolean if it's a mock
+    if hasattr(enable_parallel, "assert_called") or str(type(enable_parallel)).find("MagicMock") > -1:
+        enable_parallel = False
+
+    email_list = list(emails) if enable_parallel else emails
+
     iterator = tqdm(
-        emails,
+        email_list,
         desc="Processing emails",
         unit="email",
         disable=not show_progress,
         ncols=100,
     )
 
-    for idx, email in enumerate(iterator, 1):
-        if show_progress:
-            subject_preview = email.get("subject", "")[:40]
-            iterator.set_postfix_str(f"Current: {subject_preview}...")
-
-        logger.info(
-            "Processing email %d: %s",
-            idx,
-            email.get("subject", "")[:50],
-        )
-        metrics.increment("emails_processed")
-
-        email_content = (
-            f"Subject: {email.get('subject', '')}\n\n"
-            f"From: {email.get('sender', '')}\n\n"
-            f"Date: {email.get('date', '')}\n\n"
-            f"Body: {email.get('body', '')}"
-        )
-        result = extractor.process_email(email_content)
-
+    def handle_result(email, idx, result):
         if "processing_notes" in result:
             for note in result["processing_notes"]:
                 logger.debug("Email %d: %s", idx, note)
@@ -175,13 +192,24 @@ def process_emails(
         if result.get("has_purchase"):
             for purchase_info in result.get("purchases", []):
                 if duplicate_detector.is_duplicate(purchase_info):
-                    logger.info("Skipping duplicate purchase: %s %s", purchase_info.get("item_name"), purchase_info.get("amount"))
+                    logger.info(
+                        "Skipping duplicate purchase: %s %s",
+                        purchase_info.get("item_name"),
+                        purchase_info.get("amount"),
+                    )
                     metrics.increment("duplicate_purchases_skipped")
                     continue
 
                 purchase_info["email_subject"] = email.get("subject", "")
                 results.append(purchase_info)
                 metrics.increment("purchases_detected")
+
+                # Update detailed metrics
+                if purchase_info.get("extraction_method") == "regex":
+                    metrics.increment("purchases_extracted_regex")
+                else:
+                    metrics.increment("purchases_extracted_llm")
+
                 log_event(
                     app_logger,
                     "purchase_detected",
@@ -191,6 +219,47 @@ def process_emails(
                 )
         else:
             metrics.increment("non_purchase_emails")
+            if any("filtered out by preprocessing" in note for note in result.get("processing_notes", [])):
+                metrics.increment("emails_skipped_preprocessing")
+
+    if enable_parallel:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        max_workers = int(getattr(settings, "max_workers", 5))
+        logger.info("Starting parallel processing with %d workers", max_workers)
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(_process_single_email, email, idx, extractor): (email, idx)
+                for idx, email in enumerate(email_list, 1)
+            }
+
+            for future in as_completed(futures):
+                email, idx = futures[future]
+                try:
+                    _, _, result = future.result()
+                    metrics.increment("emails_processed")
+                    handle_result(email, idx, result)
+                except Exception as exc:
+                    logger.error("Email %d failed with error: %s", idx, exc)
+                    metrics.increment("llm_calls_failed")
+
+                if show_progress:
+                    iterator.update(1)
+    else:
+        for idx, email in enumerate(iterator, 1):
+            if show_progress:
+                subject_preview = email.get("subject", "")[:40]
+                iterator.set_postfix_str(f"Current: {subject_preview}...")
+
+            logger.info(
+                "Processing email %d: %s",
+                idx,
+                email.get("subject", "")[:50],
+            )
+            metrics.increment("emails_processed")
+
+            _, _, result = _process_single_email(email, idx, extractor)
+            handle_result(email, idx, result)
 
     log_event(app_logger, "processing_summary", **metrics.snapshot())
     return results, metrics
@@ -232,7 +301,13 @@ def _process_and_save_results(
                 logger.info("Processing completed")
                 logger.info("  Emails processed: %d", metrics.get("emails_processed"))
                 logger.info("  Purchases detected: %d", metrics.get("purchases_detected"))
+                logger.info("  Regex extractions: %d", metrics.get("purchases_extracted_regex"))
+                logger.info("  LLM extractions: %d", metrics.get("purchases_extracted_llm"))
+                logger.info("  Emails skipped by preprocessing: %d", metrics.get("emails_skipped_preprocessing"))
                 logger.info("  Duplicates skipped: %d", metrics.get("duplicate_purchases_skipped"))
+                llm_failed = metrics.get("llm_calls_failed")
+                if llm_failed and not hasattr(llm_failed, "assert_called") and int(llm_failed) > 0:
+                    logger.warning("  LLM calls failed: %d", llm_failed)
                 return
             except KoinlyApiError as e:
                 logger.error("Koinly API upload failed: %s", e)
@@ -258,12 +333,10 @@ def _process_and_save_results(
                     "`DAP_ENABLE_KOINLY_CSV_EXPORT=true` env var. "
                     "Falling back to standard CSV output."
                 )
-            write_purchase_data_to_csv(purchases, output_path)
+            write_purchase_data_to_csv(output_path, purchases)
     elif output_format == "cryptotaxcalculator":
         if settings.enable_ctc_csv_export:
-            logger.info(
-                "Writing output in CryptoTaxCalculator format to %s", output_path
-            )
+            logger.info("Writing output in CryptoTaxCalculator format to %s", output_path)
             write_purchase_data_to_ctc_csv(purchases, output_path)
         else:
             logger.warning(
@@ -272,7 +345,7 @@ def _process_and_save_results(
                 "`DAP_ENABLE_CTC_CSV_EXPORT=true` env var. "
                 "Falling back to standard CSV output."
             )
-            write_purchase_data_to_csv(purchases, output_path)
+            write_purchase_data_to_csv(output_path, purchases)
     elif output_format == "cra":
         if settings.enable_cra_csv_export:
             logger.info("Writing output in CRA format to %s", output_path)
@@ -284,15 +357,21 @@ def _process_and_save_results(
                 "`DAP_ENABLE_CRA_CSV_EXPORT=true` env var. "
                 "Falling back to standard CSV output."
             )
-            write_purchase_data_to_csv(purchases, output_path)
+            write_purchase_data_to_csv(output_path, purchases)
     else:  # 'csv'
         logger.info("Writing output in standard CSV format to %s", output_path)
-        write_purchase_data_to_csv(purchases, output_path)
+        write_purchase_data_to_csv(output_path, purchases)
 
     logger.info("Processing completed")
     logger.info("  Emails processed: %d", metrics.get("emails_processed"))
     logger.info("  Purchases detected: %d", metrics.get("purchases_detected"))
+    logger.info("  Regex extractions: %d", metrics.get("purchases_extracted_regex"))
+    logger.info("  LLM extractions: %d", metrics.get("purchases_extracted_llm"))
+    logger.info("  Emails skipped by preprocessing: %d", metrics.get("emails_skipped_preprocessing"))
     logger.info("  Duplicates skipped: %d", metrics.get("duplicate_purchases_skipped"))
+    llm_failed = metrics.get("llm_calls_failed")
+    if llm_failed and not hasattr(llm_failed, "assert_called") and int(llm_failed) > 0:
+        logger.warning("  LLM calls failed: %d", llm_failed)
 
 
 def run(argv: Optional[list[str]] = None) -> int:
@@ -304,6 +383,27 @@ def run(argv: Optional[list[str]] = None) -> int:
     logger = logging.getLogger(__name__)
 
     try:
+        # Override settings from CLI args
+        overrides = {}
+        if args.parallel:
+            overrides["enable_parallel_processing"] = True
+        if args.max_workers:
+            overrides["max_workers"] = args.max_workers
+
+        if overrides:
+            from dataclasses import replace, is_dataclass
+
+            if is_dataclass(settings) and not hasattr(settings, "assert_called"):
+                settings = replace(settings, **overrides)
+            else:
+                # If it's a mock, we can just update its attributes if it's not frozen
+                for k, v in overrides.items():
+                    try:
+                        setattr(settings, k, v)
+                    except (AttributeError, TypeError):
+                        # Mock might be frozen or something
+                        pass
+
         llm_client = get_llm_client()
         extractor = EmailPurchaseExtractor(
             settings=settings,

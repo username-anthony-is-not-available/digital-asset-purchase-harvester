@@ -3,6 +3,7 @@
 import os
 import time
 
+
 def ensure_directory_exists(filepath: str):
     """
     Ensures that the directory for the given filepath exists.
@@ -13,6 +14,7 @@ def ensure_directory_exists(filepath: str):
     directory = os.path.dirname(filepath)
     if directory:
         os.makedirs(directory, exist_ok=True)
+
 
 def get_unique_filename(directory: str, filename: str) -> str:
     """

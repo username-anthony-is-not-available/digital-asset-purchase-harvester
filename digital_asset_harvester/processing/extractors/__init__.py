@@ -8,6 +8,9 @@ from .base import BaseExtractor
 from .binance import BinanceExtractor
 from .coinbase import CoinbaseExtractor
 from .kraken import KrakenExtractor
+from .gemini import GeminiExtractor
+from .cryptocom import CryptocomExtractor
+from .ftx import FTXExtractor
 
 
 class ExtractorRegistry:
@@ -18,6 +21,9 @@ class ExtractorRegistry:
             CoinbaseExtractor(),
             BinanceExtractor(),
             KrakenExtractor(),
+            GeminiExtractor(),
+            CryptocomExtractor(),
+            FTXExtractor(),
         ]
 
     def extract(self, subject: str, sender: str, body: str) -> Optional[List[Dict[str, Any]]]:

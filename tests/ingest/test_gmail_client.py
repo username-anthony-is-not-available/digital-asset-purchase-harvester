@@ -33,12 +33,8 @@ def test_search_emails(mock_get_credentials, mock_gmail_service):
         "messages": [{"id": "1"}, {"id": "2"}]
     }
     mock_gmail_service.users().messages().get.return_value.execute.side_effect = [
-        {
-            "raw": "U3ViamVjdDogVGVzdCBFbWFpbCAxCkZyb206IHRlc3QxQGV4YW1wbGUuY29tCgpCb2R5IDE="
-        },
-        {
-            "raw": "U3ViamVjdDogVGVzdCBFbWFpbCAyCkZyb206IHRlc3QyQGV4YW1wbGUuY29tCgpCb2R5IDI="
-        },
+        {"raw": "U3ViamVjdDogVGVzdCBFbWFpbCAxCkZyb206IHRlc3QxQGV4YW1wbGUuY29tCgpCb2R5IDE="},
+        {"raw": "U3ViamVjdDogVGVzdCBFbWFpbCAyCkZyb206IHRlc3QyQGV4YW1wbGUuY29tCgpCb2R5IDI="},
     ]
 
     with patch("digital_asset_harvester.ingest.gmail_client.build") as mock_build:
@@ -56,9 +52,7 @@ def test_search_emails_multipart(mock_get_credentials, mock_gmail_service):
     """Tests that the search_emails method works correctly with multipart emails."""
     mock_get_credentials.return_value = MagicMock()
 
-    mock_gmail_service.users().messages().list.return_value.execute.return_value = {
-        "messages": [{"id": "1"}]
-    }
+    mock_gmail_service.users().messages().list.return_value.execute.return_value = {"messages": [{"id": "1"}]}
     mock_gmail_service.users().messages().get.return_value.execute.return_value = {
         "raw": "RnJvbTogdGVzdEBleGFtcGxlLmNvbQpUbzogcmVjaXBpZW50QGV4YW1wbGUuY29tClN1YmplY3Q6IE11bHRpcGFydCBFbWFpbApNSU1FLVZlcnNpb246IDEuMApDb250ZW50LVR5cGU6IG11bHRpcGFydC9hbHRlcm5hdGl2ZTsgYm91bmRhcnk9ImJvdW5kYXJ5X3N0cmluZyIKCi0tYm91bmRhcnlfc3RyaW5nCkNvbnRlbnQtVHlwZTogdGV4dC9wbGFpbjsgY2hhcnNldD1VVEYtOAoKVGhpcyBpcyB0aGUgcGxhaW4gdGV4dCBwYXJ0LgoKLS1ib3VuZGFyeV9zdHJpbmcKQ29udGVudC1UeXBlOiB0ZXh0L2h0bWw7IGNoYXJzZXQ9VVRGLTgKCjxwPlRoaXMgaXMgdGhlIDxiPmh0bWw8L2I+IHBhcnQuPC9wPgoKLS1ib3VuZGFyeV9zdHJpbmctLQ=="
     }

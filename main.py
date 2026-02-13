@@ -28,7 +28,6 @@ if SETTINGS.log_json_output:
 
     from digital_asset_harvester.cli import main
 
-
     if __name__ == "__main__":  # pragma: no cover - script entrypoint
         raise SystemExit(main())
     llm_client = OllamaLLMClient(settings=SETTINGS)

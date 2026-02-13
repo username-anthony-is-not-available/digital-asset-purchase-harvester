@@ -49,7 +49,7 @@ class CoinbaseExtractor(BaseExtractor):
                 price_match = re.search(r"for\s+([$€£¥])?([\d,.]+)\s*([A-Z]{3})?", body, re.IGNORECASE)
                 if price_match:
                     total_spent = price_match.group(2).replace(",", "")
-                    currency = price_match.group(5) or "USD" # Default to USD if symbol found but no code
+                    currency = price_match.group(5) or "USD"  # Default to USD if symbol found but no code
                     if not price_match.group(5) and price_match.group(1):
                         symbol_map = {"$": "USD", "€": "EUR", "£": "GBP", "¥": "JPY"}
                         currency = symbol_map.get(price_match.group(1), "USD")
@@ -74,7 +74,9 @@ class CoinbaseExtractor(BaseExtractor):
 
         return purchases
 
-    def _create_purchase_dict(self, amount: str, crypto: str, total_spent: str | None, currency: str, body: str) -> Dict[str, Any]:
+    def _create_purchase_dict(
+        self, amount: str, crypto: str, total_spent: str | None, currency: str, body: str
+    ) -> Dict[str, Any]:
         # Extract transaction ID
         txn_id = self._find_match(r"Transaction ID:\s*([A-Z0-9]+)", body)
 
