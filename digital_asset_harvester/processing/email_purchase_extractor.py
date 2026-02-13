@@ -254,6 +254,8 @@ class EmailPurchaseExtractor:
         "reward",
         "earned",
         "distribution",
+        "trade confirmation",
+        "order execution",
     }
 
     # Email patterns that indicate non-purchase content
@@ -423,7 +425,7 @@ class EmailPurchaseExtractor:
         email_content: str,
         max_retries: Optional[int] = None,
         default_timezone: str = "UTC",
-    ) -> Optional[Dict[str, Any]]:
+    ) -> List[Dict[str, Any]]:
         retries = (
             max_retries if max_retries is not None else self.settings.llm_max_retries
         )
@@ -442,109 +444,122 @@ class EmailPurchaseExtractor:
             logger.error(
                 "Failed to extract purchase info after %d attempts: %s", retries, exc
             )
-            return None
+            return []
 
-        purchase_data = result.data
+        payload = result.data
 
-        if purchase_data is None:
+        if not payload or "transactions" not in payload:
             logger.info("No purchase information found in the email")
-            return None
+            return []
 
-        # Validate required fields based on transaction type
-        is_deposit_withdrawal_or_reward = "deposit" in purchase_data.get("transaction_type", "").lower() or \
-                                          "withdrawal" in purchase_data.get("transaction_type", "").lower() or \
-                                          "staking_reward" in purchase_data.get("transaction_type", "").lower()
+        transactions = payload.get("transactions", [])
+        if not isinstance(transactions, list):
+            logger.warning("Expected transactions list, but got %s", type(transactions))
+            return []
 
-        if is_deposit_withdrawal_or_reward:
-            required_fields = {"amount", "item_name", "vendor"}
-        else:
-            required_fields = {"total_spent", "currency", "amount", "item_name", "vendor"}
-
-        missing_fields = {
-            field
-            for field in required_fields
-            if field not in purchase_data or purchase_data[field] is None
-        }
-
-        # Log extraction quality
-        confidence = purchase_data.get("confidence", 0.5)
-        notes = purchase_data.get("extraction_notes", "")
-        logger.info("Extraction confidence: %.2f - %s", confidence, notes)
-        log_event(
-            self.event_logger,
-            "extraction_completed",
-            confidence=confidence,
-            missing_fields=";".join(sorted(missing_fields)) if missing_fields else "",
-        )
-
-        if (
-            confidence < self.settings.min_confidence_threshold
-            and self.settings.strict_validation
-        ):
-            logger.warning(
-                "Extraction confidence %.2f below threshold %.2f",
-                confidence,
-                self.settings.min_confidence_threshold,
+        extracted_purchases = []
+        for purchase_data in transactions:
+            # Validate required fields based on transaction type
+            is_deposit_withdrawal_or_reward = (
+                "deposit" in purchase_data.get("transaction_type", "").lower()
+                or "withdrawal" in purchase_data.get("transaction_type", "").lower()
+                or "staking_reward" in purchase_data.get("transaction_type", "").lower()
             )
-            return None
 
-        if missing_fields:
-            logger.warning(
-                "Missing required field(s): %s", ", ".join(sorted(missing_fields))
+            if is_deposit_withdrawal_or_reward:
+                required_fields = {"amount", "item_name", "vendor"}
+            else:
+                required_fields = {
+                    "total_spent",
+                    "currency",
+                    "amount",
+                    "item_name",
+                    "vendor",
+                }
+
+            missing_fields = {
+                field
+                for field in required_fields
+                if field not in purchase_data or purchase_data[field] is None
+            }
+
+            # Log extraction quality
+            confidence = purchase_data.get("confidence", 0.5)
+            notes = purchase_data.get("extraction_notes", "")
+            logger.info("Extraction confidence: %.2f - %s", confidence, notes)
+            log_event(
+                self.event_logger,
+                "extraction_completed",
+                confidence=confidence,
+                missing_fields=";".join(sorted(missing_fields))
+                if missing_fields
+                else "",
             )
-            if self.settings.strict_validation:
-                return None
 
-        # Process the purchase date
-        if purchase_data.get("purchase_date"):
-            try:
-                # Parse the date and ensure it's in UTC
-                date_str = purchase_data["purchase_date"]
-                # Handle various date formats
-                if "T" in date_str:
-                    date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-                else:
-                    # Try to parse common date formats
-                    for fmt in [
-                        "%Y-%m-%d %H:%M:%S",
-                        "%Y-%m-%d",
-                        "%m/%d/%Y %H:%M:%S",
-                        "%m/%d/%Y",
-                    ]:
-                        try:
-                            date = datetime.strptime(date_str, fmt)
-                            break
-                        except ValueError:
-                            continue
+            if (
+                confidence < self.settings.min_confidence_threshold
+                and self.settings.strict_validation
+            ):
+                logger.warning(
+                    "Extraction confidence %.2f below threshold %.2f",
+                    confidence,
+                    self.settings.min_confidence_threshold,
+                )
+                continue
+
+            if missing_fields:
+                logger.warning(
+                    "Missing required field(s): %s", ", ".join(sorted(missing_fields))
+                )
+                if self.settings.strict_validation:
+                    continue
+
+            # Process the purchase date
+            if purchase_data.get("purchase_date"):
+                try:
+                    # Parse the date and ensure it's in UTC
+                    date_str = purchase_data["purchase_date"]
+                    # Handle various date formats
+                    if "T" in date_str:
+                        date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
                     else:
-                        raise ValueError(f"Unable to parse date: {date_str}")
+                        # Try to parse common date formats
+                        for fmt in [
+                            "%Y-%m-%d %H:%M:%S",
+                            "%Y-%m-%d",
+                            "%m/%d/%Y %H:%M:%S",
+                            "%m/%d/%Y",
+                        ]:
+                            try:
+                                date = datetime.strptime(date_str, fmt)
+                                break
+                            except ValueError:
+                                continue
+                        else:
+                            raise ValueError(f"Unable to parse date: {date_str}")
 
-                if date.tzinfo is None:
-                    date = date.replace(tzinfo=timezone.utc)
-                else:
-                    date = date.astimezone(timezone.utc)
-                purchase_data["purchase_date"] = date.strftime("%Y-%m-%d %H:%M:%S %Z")
-            except (ValueError, TypeError) as e:
-                logger.warning("Invalid date format (%s). Using current time.", e)
+                    if date.tzinfo is None:
+                        date = date.replace(tzinfo=timezone.utc)
+                    else:
+                        date = date.astimezone(timezone.utc)
+                    purchase_data["purchase_date"] = date.strftime(
+                        "%Y-%m-%d %H:%M:%S %Z"
+                    )
+                except (ValueError, TypeError) as e:
+                    logger.warning("Invalid date format (%s). Using current time.", e)
+                    purchase_data["purchase_date"] = datetime.now(timezone.utc).strftime(
+                        "%Y-%m-%d %H:%M:%S %Z"
+                    )
+            else:
+                logger.warning("No purchase date found, using current time")
                 purchase_data["purchase_date"] = datetime.now(timezone.utc).strftime(
                     "%Y-%m-%d %H:%M:%S %Z"
                 )
-        else:
-            logger.warning("No purchase date found, using current time")
-            purchase_data["purchase_date"] = datetime.now(timezone.utc).strftime(
-                "%Y-%m-%d %H:%M:%S %Z"
-            )
 
-        purchase_data["extraction_method"] = "llm"
+            purchase_data["extraction_method"] = "llm"
+            extracted_purchases.append(purchase_data)
 
-        # Clean up the response by removing extraction metadata
-        # cleaned_data = {
-        #     k: v
-        #     for k, v in purchase_data.items()
-        #     if k not in ["extraction_notes"]
-        # }
-
-        return purchase_data
+        return extracted_purchases
 
     def _validate_purchase_data(self, purchase_data: Dict[str, Any]) -> bool:
         """Validate extracted purchase data for basic sanity checks."""
@@ -583,42 +598,59 @@ class EmailPurchaseExtractor:
             logger.debug("Email classified as non-crypto-purchase")
             return {
                 "has_purchase": False,
+                "purchases": [],
                 "processing_notes": ["Email not classified as crypto purchase"],
             }
 
         # If classified as purchase, extract the details
-        purchase_info = self.extract_purchase_info(email_content)
+        extracted_purchases = self.extract_purchase_info(email_content)
 
-        if not purchase_info:
+        if not extracted_purchases:
             logger.warning(
                 "Failed to extract purchase information despite positive classification"
             )
             processing_notes.append("Classification positive but extraction failed")
             return {
                 "has_purchase": False,
+                "purchases": [],
                 "processing_notes": processing_notes,
             }
 
-        # Create a PurchaseRecord to pass to calculate_confidence
-        purchase_record = PurchaseRecord.from_raw(purchase_info)
+        validated_purchases = []
+        for purchase_info in extracted_purchases:
+            # Create a PurchaseRecord to pass to calculate_confidence
+            try:
+                purchase_record = PurchaseRecord.from_raw(purchase_info)
 
-        # Calculate and update the confidence score
-        purchase_info["confidence"] = calculate_confidence(purchase_record)
+                # Calculate and update the confidence score
+                purchase_info["confidence"] = calculate_confidence(purchase_record)
 
-        # Validate the extracted data
-        if not self._validate_purchase_data(purchase_info):
-            logger.warning("Extracted purchase data failed validation")
-            processing_notes.append("Extracted data failed validation checks")
+                # Validate the extracted data
+                if self._validate_purchase_data(purchase_info):
+                    validated_purchases.append(purchase_info)
+                else:
+                    logger.warning("Extracted purchase data failed validation")
+                    processing_notes.append(
+                        f"Extracted data for {purchase_info.get('item_name')} failed validation"
+                    )
+            except Exception as e:
+                logger.warning("Error processing extracted purchase: %s", e)
+                processing_notes.append(f"Error processing extracted purchase: {e}")
+
+        if not validated_purchases:
             return {
                 "has_purchase": False,
+                "purchases": [],
                 "processing_notes": processing_notes,
             }
 
         logger.info("Successfully processed crypto purchase email")
-        processing_notes.append("Successfully extracted and validated purchase data")
+        processing_notes.append(
+            f"Successfully extracted and validated {len(validated_purchases)} purchase(s)"
+        )
 
         return {
             "has_purchase": True,
-            "purchase_info": purchase_info,
+            "purchases": validated_purchases,
             "processing_notes": processing_notes,
         }
