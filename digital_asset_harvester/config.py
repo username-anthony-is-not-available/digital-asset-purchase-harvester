@@ -26,6 +26,9 @@ class HarvesterSettings:
 
 	enable_cloud_llm: bool = False
 	llm_provider: str = "ollama"
+	enable_ollama_fallback: bool = False
+	ollama_fallback_threshold_seconds: int = 10
+	fallback_cloud_provider: str = "openai"
 
 	openai_api_key: str = ""
 	openai_model_name: str = "gpt-4-turbo-preview"

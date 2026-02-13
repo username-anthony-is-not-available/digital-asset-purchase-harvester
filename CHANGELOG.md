@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Ollama Auto-Fallback**: Automatic fallback to Cloud LLM if local Ollama is too slow.
+  - New `FallbackLLMClient` to handle provider switching.
+  - Configuration options: `enable_ollama_fallback`, `ollama_fallback_threshold_seconds`, `fallback_cloud_provider`.
+  - Seamless integration with existing `get_llm_client` factory.
+
 - **Koinly CSV Export**: Added support for exporting transactions in Koinly Universal CSV format
   - New `KoinlyReportGenerator` class for generating Koinly-compatible CSV files
   - `write_purchase_data_to_koinly_csv()` function for easy CSV export

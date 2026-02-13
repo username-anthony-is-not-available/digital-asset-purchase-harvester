@@ -188,6 +188,16 @@ In addition to the default local LLM (Ollama), the harvester now supports cloud-
   - `DAP_OPENAI_API_KEY`
   - `DAP_ANTHROPIC_API_KEY`
 
+#### Ollama Auto-Fallback
+
+If you have a slow computer and local Ollama processing takes too long, you can enable automatic fallback to a cloud provider.
+
+- **Enable Fallback**: Set `DAP_ENABLE_OLLAMA_FALLBACK=true`.
+- **Threshold**: Set the timeout threshold in seconds using `DAP_OLLAMA_FALLBACK_THRESHOLD_SECONDS` (default: 10).
+- **Cloud Provider**: Specify the fallback cloud provider with `DAP_FALLBACK_CLOUD_PROVIDER` (default: `openai`).
+
+When enabled, if Ollama takes longer than the threshold, the harvester will automatically switch to the configured cloud provider for that email.
+
 Example configuration:
 
 ```sh
