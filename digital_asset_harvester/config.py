@@ -44,6 +44,7 @@ class HarvesterSettings:
 
 	batch_size: int = 10
 	enable_parallel_processing: bool = False
+	max_workers: int = 5
 
 	strict_validation: bool = True
 	allow_unknown_cryptos: bool = True

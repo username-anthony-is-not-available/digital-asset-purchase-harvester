@@ -458,6 +458,15 @@ class EmailPurchaseExtractor:
 
                 # Validate the extracted data
                 if self._validate_purchase_data(purchase_info):
+                    # Normalize types for consistency (especially for regex extractors)
+                    if purchase_record.amount is not None:
+                        purchase_info["amount"] = float(purchase_record.amount)
+                    if purchase_record.total_spent is not None:
+                        purchase_info["total_spent"] = float(purchase_record.total_spent)
+                    if purchase_record.fee_amount is not None:
+                        purchase_info["fee_amount"] = float(purchase_record.fee_amount)
+
+                    purchase_info["transaction_type"] = purchase_record.transaction_type
                     validated_purchases.append(purchase_info)
                 else:
                     logger.warning("Extracted purchase data failed validation")

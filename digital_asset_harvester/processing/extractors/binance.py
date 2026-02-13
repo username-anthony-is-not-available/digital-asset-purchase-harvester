@@ -61,7 +61,8 @@ class BinanceExtractor(BaseExtractor):
                             crypto.upper(),
                             total_spent.replace(",", "") if total_spent else None,
                             currency.upper() if currency else "USDT",
-                            block
+                            block,
+                            body
                         ))
 
         # Handle simple one-liner
@@ -74,6 +75,7 @@ class BinanceExtractor(BaseExtractor):
                     match.group(2).upper(),
                     match.group(3).replace(",", ""),
                     match.group(4).upper(),
+                    body,
                     body
                 ))
 
@@ -87,6 +89,7 @@ class BinanceExtractor(BaseExtractor):
                     match.group(2).upper(),
                     None,
                     "",
+                    body,
                     body
                 )
                 purchase["transaction_type"] = "staking_reward"
@@ -101,6 +104,7 @@ class BinanceExtractor(BaseExtractor):
                     match.group(2).upper(),
                     None,
                     "",
+                    body,
                     body
                 )
                 purchase["transaction_type"] = "deposit" if "deposited" in body.lower() else "withdrawal"
@@ -108,13 +112,19 @@ class BinanceExtractor(BaseExtractor):
 
         return purchases
 
-    def _create_purchase_dict(self, amount: str, crypto: str, total_spent: str | None, currency: str, body: str) -> Dict[str, Any]:
-        # Extract transaction ID or Reference
-        txn_id = self._find_match(r"(?:Transaction ID|Reference|Order #):\s*([A-Z0-9#\-]+)", body)
+    def _create_purchase_dict(self, amount: str, crypto: str, total_spent: str | None, currency: str, context: str, full_body: str = "") -> Dict[str, Any]:
+        # Extract transaction ID or Reference - try context first, then full body
+        txn_id = self._find_match(r"(?:Transaction ID|Reference|Order\s*#)\s*:?\s*([A-Z0-9#\-]+)", context)
+        if not txn_id and full_body:
+            txn_id = self._find_match(r"(?:Transaction ID|Reference|Order\s*#)\s*:?\s*([A-Z0-9#\-]+)", full_body)
 
-        # Extract fee
-        fee_amount = self._find_match(r"Fee:\s*([\d,.]+)", body)
-        fee_currency = self._find_match(r"Fee:\s*[\d,.]+\s*([A-Z0-9]+)", body)
+        # Extract fee from context, fall back to full body
+        fee_amount = self._find_match(r"Fee:\s*([\d,.]+)", context)
+        fee_currency = self._find_match(r"Fee:\s*[\d,.]+\s*([A-Z0-9]+)", context)
+
+        if not fee_amount and full_body:
+            fee_amount = self._find_match(r"Fee:\s*([\d,.]+)", full_body)
+            fee_currency = self._find_match(r"Fee:\s*[\d,.]+\s*([A-Z0-9]+)", full_body)
 
         return {
             "amount": amount,
