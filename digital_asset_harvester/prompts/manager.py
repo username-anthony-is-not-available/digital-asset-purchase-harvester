@@ -84,7 +84,7 @@ Extract the following information with high accuracy:
 
 COMMON EMAIL PATTERNS TO LOOK FOR:
 - Coinbase: "You bought X BTC for $Y USD", "Order #12345 completed"
-- Binance: "Buy order filled", "Transaction completed", "Deposit Successful", "Withdrawal Successful", "Distribution Confirmation"
+- Binance: "Buy order filled", "Transaction completed", "Deposit Successful", "Withdrawal Successful", "Distribution Confirmation", "Trade Confirmation", "Order Execution Notice"
 - Kraken: "Order executed", "Trade confirmation", "Staking Reward Received"
 - General: "Purchase confirmation", "Transaction receipt", "Order summary", "You just earned X staking rewards"
 
@@ -94,29 +94,37 @@ EXTRACTION EXAMPLES:
 - "Binance - Deposit Successful - You've received 0.1 BTC" → total_spent: null, currency: null, amount: 0.1, item_name: "BTC", transaction_type: "deposit"
 - "You just earned 0.0001 ETH in staking rewards" → total_spent: null, currency: null, amount: 0.0001, item_name: "ETH", transaction_type: "staking_reward"
 - "$100.00 USD → 0.0025 Bitcoin" → total_spent: 100.00, currency: "USD", amount: 0.0025, item_name: "Bitcoin", transaction_type: "buy"
+- "Trade Confirmation: BTC/USDT 0.01 @ 60000; ETH/USDT 0.5 @ 3000" → Extract TWO transactions: 1. BTC, 2. ETH.
 
 IMPORTANT RULES:
-- Extract EXACT numerical values, don't round or estimate
-- Use null for any field you cannot determine with confidence
-- For item_name, use the EXACT term from the email (BTC vs Bitcoin, ETH vs Ethereum)
-- For vendor, extract the actual company name, not generic terms
-- Extract transaction IDs, reference numbers, or order numbers into a "transaction_id" field if available
-- Parse dates carefully - look for transaction time, not email send time
-- If timezone missing, assume ${default_timezone}
+- Extract ALL transactions found in the email into the "transactions" array.
+- Extract EXACT numerical values, don't round or estimate.
+- Use null for any field you cannot determine with confidence.
+- For item_name, use the EXACT term from the email (BTC vs Bitcoin, ETH vs Ethereum).
+- For vendor, extract the actual company name (e.g., Binance, Coinbase).
+- Extract transaction IDs, reference numbers, or order numbers into a "transaction_id" field if available.
+- Parse dates carefully - look for transaction time, not email send time.
+- For Binance "Trade Confirmation" emails, look for "Executed" or "Amount" for the crypto quantity, and "Total" for the fiat/stablecoin cost.
+- If timezone missing, assume ${default_timezone}.
 
 Return JSON with this exact structure:
 {
-    "transaction_type": "buy" | "deposit" | "withdrawal" | "staking_reward",
-    "total_spent": float or null,
-    "currency": string or null,
-    "amount": float or null, 
-    "item_name": string or null,
-    "vendor": string or null,
-    "purchase_date": string or null,
-    "confidence": float (0.0 to 1.0),
-    "extraction_notes": "Any relevant notes about extraction quality or concerns"
+    "transactions": [
+        {
+            "transaction_type": "buy" | "deposit" | "withdrawal" | "staking_reward",
+            "total_spent": float or null,
+            "currency": string or null,
+            "amount": float or null,
+            "item_name": string or null,
+            "vendor": string or null,
+            "purchase_date": string or null,
+            "transaction_id": string or null,
+            "confidence": float (0.0 to 1.0),
+            "extraction_notes": "Any relevant notes about extraction quality or concerns"
+        }
+    ]
 }
 
-If no valid purchase information can be extracted, return null for the entire object.
+If no valid purchase information can be extracted, return an empty array for the "transactions" field.
 """,
 )

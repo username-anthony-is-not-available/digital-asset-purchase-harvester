@@ -28,11 +28,13 @@ def test_process_emails_collects_metrics(mocker):
     mock_extractor = MagicMock()
     mock_extractor.process_email.return_value = {
         "has_purchase": True,
-        "purchase_info": {
-            "vendor": "Coinbase",
-            "currency": "USD",
-            "amount": 0.1,
-        },
+        "purchases": [
+            {
+                "vendor": "Coinbase",
+                "currency": "USD",
+                "amount": 0.1,
+            }
+        ],
         "processing_notes": [],
     }
 

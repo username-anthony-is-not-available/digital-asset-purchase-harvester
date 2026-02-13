@@ -166,6 +166,42 @@ EMAIL_FIXTURES = {
     We've credited your account with 10.5 ADA in staking rewards.
     ID: KR-STAKE-2025-999
     """,
+    "binance_multi_asset": """
+    From: Binance <do-not-reply@binance.com>
+    Subject: Trade Confirmation
+    Date: Wed, 20 Mar 2024 14:00:00 +0000
+
+    Your trade order has been filled.
+
+    Order Details:
+    - Pair: BTC/USDT
+    - Side: Buy
+    - Amount: 0.002 BTC
+    - Price: 65,000.00 USDT
+    - Total: 130.00 USDT
+    - Fee: 0.000002 BTC
+
+    - Pair: ETH/USDT
+    - Side: Buy
+    - Amount: 0.1 ETH
+    - Price: 3,500.00 USDT
+    - Total: 350.00 USDT
+    - Fee: 0.0001 ETH
+    """,
+    "binance_order_execution": """
+    From: Binance <do-not-reply@binance.com>
+    Subject: Order Execution Notice
+    Date: Thu, 21 Mar 2024 09:15:00 +0000
+
+    Your order #987654321 has been executed.
+
+    Details:
+    Trading Pair: SOL/USDT
+    Amount: 5.0 SOL
+    Price: 180.00 USDT
+    Total Cost: 900.00 USDT
+    Fee: 0.005 SOL
+    """,
 }
 
 
@@ -201,6 +237,8 @@ def purchase_emails():
         "partial_data_purchase",
         "multi_currency_purchase",
         "encoded_subject_purchase",
+        "binance_multi_asset",
+        "binance_order_execution",
     }
     return {k: v for k, v in EMAIL_FIXTURES.items() if k in purchase_types}
 
