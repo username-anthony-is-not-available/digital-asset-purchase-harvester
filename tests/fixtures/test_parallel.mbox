@@ -1,0 +1,17 @@
+From dummy@example.com Tue Jan 1 00:00:00 2024
+From: Coinbase <no-reply@coinbase.com>
+Subject: Your Coinbase purchase of 0.001 BTC
+
+You successfully purchased 0.001 BTC for 00.00 USD.
+
+From dummy@example.com Tue Jan 1 00:00:01 2024
+From: Binance <do-not-reply@binance.com>
+Subject: Your order to buy 0.1 ETH has been filled
+
+Your order to buy 0.1 ETH for 200.00 USD has been filled.
+
+From dummy@example.com Tue Jan 1 00:00:02 2024
+From: Gemini <orders@gemini.com>
+Subject: Order Confirmation - Buy BTC
+
+Your order to purchase 0.005 BTC for 50.00 has been completed.
