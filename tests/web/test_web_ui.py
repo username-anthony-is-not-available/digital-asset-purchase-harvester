@@ -11,47 +11,26 @@ def mock_task_id():
     return "test-task-id"
 
 @pytest.fixture(scope="session", autouse=True)
-def mock_process_mbox(mock_task_id):
+def setup_mock_task(mock_task_id):
     tasks[mock_task_id] = {
         "status": "complete",
         "result": [
             {
-                "email_subject": "Test Subject",
-                "vendor": "Test Vendor",
+                "email_subject": "Your Coinbase purchase of 0.001 BTC",
+                "vendor": "Coinbase",
                 "currency": "USD",
                 "amount": "100.00",
-                "purchase_date": "2024-01-01",
-                "transaction_id": "12345",
+                "purchase_date": "2023-11-12",
+                "transaction_id": "N/A",
                 "crypto_currency": "BTC",
-                "crypto_amount": "0.002",
-                "confidence_score": "0.95"
+                "crypto_amount": "0.001",
+                "confidence_score": 0.95
             }
         ]
     }
-    with patch('digital_asset_harvester.web.api.process_mbox_file', new_callable=MagicMock) as mock:
-        yield mock
+    yield
 
-def test_upload_file_and_get_results(mock_process_mbox):
-    # Mock the background task
-    def mock_task(task_id, temp_path, logger_factory):
-        tasks[task_id] = {
-            "status": "complete",
-            "result": [
-                {
-                    "email_subject": "Test Subject",
-                    "vendor": "Test Vendor",
-                    "currency": "USD",
-                    "amount": "100.00",
-                    "purchase_date": "2024-01-01",
-                    "transaction_id": "12345",
-                    "crypto_currency": "BTC",
-                    "crypto_amount": "0.002",
-                    "confidence_score": "0.95"
-                }
-            ]
-        }
-    mock_process_mbox.side_effect = mock_task
-
+def test_upload_file_and_get_results():
     # 1. Upload a dummy file
     test_mbox_path = "tests/fixtures/test.mbox"
     with open(test_mbox_path, "w") as f:
@@ -69,33 +48,66 @@ def test_upload_file_and_get_results(mock_process_mbox):
 
     response_json = response.json()
     assert response_json["status"] == "complete"
-    assert response_json["result"][0]["email_subject"] == "Test Subject"
+    assert response_json["result"][0]["email_subject"] == "Your Coinbase purchase of 0.001 BTC"
 
 def test_export_csv(mock_task_id):
     response = client.get(f"/api/export/csv/{mock_task_id}")
     assert response.status_code == 200
     assert "text/csv" in response.headers["content-type"]
-    assert "Test Subject" in response.text
+    assert "Your Coinbase purchase of 0.001 BTC" in response.text
 
 def test_export_json(mock_task_id):
     response = client.get(f"/api/export/json/{mock_task_id}")
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/json"
-    assert "Test Subject" in response.text
+    assert "Your Coinbase purchase of 0.001 BTC" in response.text
 
 def test_update_record(mock_task_id):
     updated_data = {
         "vendor": "Updated Vendor",
         "amount": "200.00"
     }
+    # Ensure it's pending initially
+    tasks[mock_task_id]["result"][0]["review_status"] = "approved"
+
     response = client.put(f"/api/task/{mock_task_id}/records/0", json=updated_data)
     assert response.status_code == 200
     assert response.json()["status"] == "success"
     assert response.json()["updated_record"]["vendor"] == "Updated Vendor"
     assert response.json()["updated_record"]["amount"] == "200.00"
+    # Should be reset to pending
+    assert response.json()["updated_record"]["review_status"] == "pending"
 
     # Verify the update is reflected in the task store
     assert tasks[mock_task_id]["result"][0]["vendor"] == "Updated Vendor"
+
+
+def test_approve_record(mock_task_id):
+    tasks[mock_task_id]["result"][0]["review_status"] = "pending"
+    response = client.put(f"/api/task/{mock_task_id}/records/0/approve")
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    assert response.json()["record"]["review_status"] == "approved"
+    assert tasks[mock_task_id]["result"][0]["review_status"] == "approved"
+
+
+def test_approve_batch(mock_task_id):
+    # Add a second record
+    tasks[mock_task_id]["result"].append({
+        "vendor": "Test Vendor 2",
+        "review_status": "pending"
+    })
+
+    tasks[mock_task_id]["result"][0]["review_status"] = "pending"
+    tasks[mock_task_id]["result"][1]["review_status"] = "pending"
+
+    response = client.post(f"/api/task/{mock_task_id}/approve-batch", json=[0, 1])
+    assert response.status_code == 200
+    assert response.json()["status"] == "success"
+    assert 0 in response.json()["approved_indices"]
+    assert 1 in response.json()["approved_indices"]
+    assert tasks[mock_task_id]["result"][0]["review_status"] == "approved"
+    assert tasks[mock_task_id]["result"][1]["review_status"] == "approved"
 
 def test_update_record_not_found(mock_task_id):
     response = client.put(f"/api/task/non-existent/records/0", json={})

@@ -10,12 +10,59 @@
         }
         .filter-section {
             margin-bottom: 20px;
-            padding: 10px;
+            padding: 15px;
             background-color: #f2f2f2;
             border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
         }
+        .status-pending {
+            background-color: #fff3cd;
+        }
+        .status-approved {
+            background-color: #d4edda !important;
+        }
+        .low-confidence {
+            border-left: 5px solid #dc3545;
+        }
+        .progress-bar-container {
+            margin-bottom: 20px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            height: 25px;
+            position: relative;
+        }
+        .progress-bar-fill {
+            background-color: #28a745;
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            line-height: 25px;
+            font-weight: bold;
+            color: #333;
+        }
+        .batch-actions {
+            margin-bottom: 10px;
+        }
+        .confidence-badge {
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .confidence-high { background-color: #28a745; color: white; }
+        .confidence-medium { background-color: #ffc107; color: black; }
+        .confidence-low { background-color: #dc3545; color: white; }
     </style>
     <script>
+        let allPurchases = [];
+        const CONFIDENCE_THRESHOLD_LOW = 0.7;
+
         function sortTable(columnIndex) {
             var table, rows, switching, i, x, y, shouldSwitch;
             table = document.querySelector("table");
@@ -97,20 +144,108 @@
             if (response.ok) {
                 const data = await response.json();
                 const record = data.updated_record;
-                // Update view mode
-                row.querySelector('.view-vendor').textContent = record.vendor || '';
-                row.querySelector('.view-currency').textContent = record.currency || '';
-                row.querySelector('.view-amount').textContent = record.amount || '';
-                row.querySelector('.view-date').textContent = record.purchase_date || '';
-                row.querySelector('.view-tid').textContent = record.transaction_id || '';
-                row.querySelector('.view-cc').textContent = record.crypto_currency || '';
-                row.querySelector('.view-ca').textContent = record.crypto_amount || '';
-
+                allPurchases[index] = record;
+                updateRowUI(index, record);
                 cancelEdit(index);
+                updateProgress();
             } else {
                 alert('Failed to save changes');
             }
         }
+
+        async function approveRow(index, taskId) {
+            const response = await fetch(`/api/task/${taskId}/records/${index}/approve`, {
+                method: 'PUT'
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const record = data.record;
+                allPurchases[index] = record;
+                updateRowUI(index, record);
+                updateProgress();
+            } else {
+                alert('Failed to approve');
+            }
+        }
+
+        async function approveSelected(taskId) {
+            const selectedIndices = [];
+            document.querySelectorAll('.row-checkbox:checked').forEach(cb => {
+                selectedIndices.push(parseInt(cb.getAttribute('data-index')));
+            });
+
+            if (selectedIndices.length === 0) return;
+
+            const response = await fetch(`/api/task/${taskId}/approve-batch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(selectedIndices)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                data.approved_indices.forEach(index => {
+                    allPurchases[index].review_status = 'approved';
+                    updateRowUI(index, allPurchases[index]);
+                    document.querySelector(`.row-checkbox[data-index="${index}"]`).checked = false;
+                });
+                document.getElementById('select-all').checked = false;
+                updateProgress();
+            } else {
+                alert('Failed to approve batch');
+            }
+        }
+
+        function updateRowUI(index, record) {
+            const row = document.querySelector(`#row-${index}`);
+            row.className = record.review_status === 'approved' ? 'status-approved' : 'status-pending';
+            if ((record.confidence_score || 0) < CONFIDENCE_THRESHOLD_LOW) {
+                row.classList.add('low-confidence');
+            }
+
+            row.querySelector('.view-vendor').textContent = record.vendor || '';
+            row.querySelector('.view-currency').textContent = record.currency || '';
+            row.querySelector('.view-amount').textContent = record.amount || '';
+            row.querySelector('.view-date').textContent = record.purchase_date || '';
+            row.querySelector('.view-tid').textContent = record.transaction_id || '';
+            row.querySelector('.view-cc').textContent = record.crypto_currency || '';
+            row.querySelector('.view-ca').textContent = record.crypto_amount || '';
+            row.querySelector('.view-status').textContent = record.review_status || 'pending';
+
+            const approveBtn = row.querySelector('.approve-btn');
+            if (record.review_status === 'approved') {
+                approveBtn.style.display = 'none';
+            } else {
+                approveBtn.style.display = 'inline-block';
+            }
+        }
+
+        function updateProgress() {
+            const total = allPurchases.length;
+            const approved = allPurchases.filter(p => p.review_status === 'approved').length;
+            const percent = total > 0 ? (approved / total) * 100 : 0;
+
+            document.getElementById('progress-fill').style.width = `${percent}%`;
+            document.getElementById('progress-text').textContent = `${approved} / ${total} Approved`;
+        }
+
+        function toggleSelectAll() {
+            const checked = document.getElementById('select-all').checked;
+            document.querySelectorAll('.row-checkbox').forEach(cb => {
+                cb.checked = checked;
+            });
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+
+            if (e.key === 'a') {
+                const taskId = document.getElementById('task-id').textContent;
+                approveSelected(taskId);
+            }
+        });
     </script>
 </head>
 <body>
@@ -124,35 +259,43 @@
         <div id="results-section" style="display: none;">
             <h1>Extracted Purchases</h1>
 
-            <div class="filter-section">
-                <label for="confidence-threshold">Confidence Threshold: </label>
-                <input type="range" id="confidence-threshold" min="0" max="1" step="0.05" value="0" oninput="filterByConfidence()">
-                <span id="threshold-value">0.00</span>
+            <div class="progress-bar-container">
+                <div id="progress-fill" class="progress-bar-fill" style="width: 0%"></div>
+                <div id="progress-text" class="progress-text">0 / 0 Approved</div>
             </div>
 
-            <div class="export-buttons">
-                <a id="export-csv" href="#" download>
-                    <button>Export to CSV</button>
-                </a>
-                <a id="export-json" href="#" download>
-                    <button>Export to JSON</button>
-                </a>
-                <a href="/">
-                    <button>Process Another File</button>
-                </a>
+            <div class="filter-section">
+                <div>
+                    <label for="confidence-threshold">Confidence Threshold: </label>
+                    <input type="range" id="confidence-threshold" min="0" max="1" step="0.05" value="0" oninput="filterByConfidence()">
+                    <span id="threshold-value">0.00</span>
+                </div>
+
+                <div class="export-buttons" style="margin-bottom: 0;">
+                    <a id="export-csv" href="#" download><button>Export to CSV</button></a>
+                    <a id="export-json" href="#" download><button>Export to JSON</button></a>
+                    <a href="/"><button>Process Another File</button></a>
+                </div>
             </div>
+
+            <div class="batch-actions">
+                <button onclick="approveSelected(document.getElementById('task-id').textContent)">Approve Selected (a)</button>
+            </div>
+
             <table>
                 <thead>
                     <tr>
-                        <th onclick="sortTable(0)">Email Subject</th>
-                        <th onclick="sortTable(1)">Vendor</th>
-                        <th onclick="sortTable(2)">Currency</th>
-                        <th onclick="sortTable(3)">Amount</th>
-                        <th onclick="sortTable(4)">Purchase Date</th>
-                        <th onclick="sortTable(5)">Transaction ID</th>
+                        <th><input type="checkbox" id="select-all" onclick="toggleSelectAll()"></th>
+                        <th onclick="sortTable(1)">Email Subject</th>
+                        <th onclick="sortTable(2)">Vendor</th>
+                        <th onclick="sortTable(3)">Amount (Fiat)</th>
+                        <th onclick="sortTable(4)">Currency</th>
+                        <th onclick="sortTable(5)">Crypto Amount</th>
                         <th onclick="sortTable(6)">Crypto Currency</th>
-                        <th onclick="sortTable(7)">Crypto Amount</th>
-                        <th onclick="sortTable(8)">Confidence Score</th>
+                        <th onclick="sortTable(7)">Date</th>
+                        <th onclick="sortTable(8)">Transaction ID</th>
+                        <th onclick="sortTable(9)">Confidence</th>
+                        <th onclick="sortTable(10)">Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -183,57 +326,78 @@
                         exportCsv.href = `/api/export/csv/${taskId}`;
                         exportJson.href = `/api/export/json/${taskId}`;
 
-                        const purchases = data.result || [];
-                        if (purchases.length === 0) {
-                            resultsTbody.innerHTML = '<tr><td colspan="10">No purchases found.</td></tr>';
-                        } else {
-                            purchases.forEach((purchase, index) => {
-                                const row = document.createElement('tr');
-                                row.id = `row-${index}`;
-                                row.setAttribute('data-confidence', purchase.confidence_score || 0);
-                                row.innerHTML = `
-                                    <td>${purchase.email_subject || ''}</td>
-                                    <td>
-                                        <span class="view-mode view-vendor">${purchase.vendor || ''}</span>
-                                        <input type="text" class="edit-mode edit-vendor editable-input" value="${purchase.vendor || ''}" style="display:none">
-                                    </td>
-                                    <td>
-                                        <span class="view-mode view-currency">${purchase.currency || ''}</span>
-                                        <input type="text" class="edit-mode edit-currency editable-input" value="${purchase.currency || ''}" style="display:none">
-                                    </td>
-                                    <td>
-                                        <span class="view-mode view-amount">${purchase.amount || ''}</span>
-                                        <input type="text" class="edit-mode edit-amount editable-input" value="${purchase.amount || ''}" style="display:none">
-                                    </td>
-                                    <td>
-                                        <span class="view-mode view-date">${purchase.purchase_date || ''}</span>
-                                        <input type="text" class="edit-mode edit-date editable-input" value="${purchase.purchase_date || ''}" style="display:none">
-                                    </td>
-                                    <td>
-                                        <span class="view-mode view-tid">${purchase.transaction_id || ''}</span>
-                                        <input type="text" class="edit-mode edit-tid editable-input" value="${purchase.transaction_id || ''}" style="display:none">
-                                    </td>
-                                    <td>
-                                        <span class="view-mode view-cc">${purchase.crypto_currency || ''}</span>
-                                        <input type="text" class="edit-mode edit-cc editable-input" value="${purchase.crypto_currency || ''}" style="display:none">
-                                    </td>
-                                    <td>
-                                        <span class="view-mode view-ca">${purchase.crypto_amount || ''}</span>
-                                        <input type="text" class="edit-mode edit-ca editable-input" value="${purchase.crypto_amount || ''}" style="display:none">
-                                    </td>
-                                    <td>${purchase.confidence_score || ''}</td>
-                                    <td>
-                                        <button class="view-mode" onclick="editRow(${index})">Edit</button>
-                                        <button class="edit-mode" onclick="saveRow(${index}, '${taskId}')" style="display:none">Save</button>
-                                        <button class="edit-mode" onclick="cancelEdit(${index})" style="display:none">Cancel</button>
-                                    </td>
-                                `;
-                                resultsTbody.appendChild(row);
-                            });
-                        }
+                        allPurchases = data.result || [];
+                        renderTable();
+                        updateProgress();
                     }
                 });
         }, 2000);
+
+        function renderTable() {
+            resultsTbody.innerHTML = '';
+            if (allPurchases.length === 0) {
+                resultsTbody.innerHTML = '<tr><td colspan="11">No purchases found.</td></tr>';
+                return;
+            }
+
+            allPurchases.forEach((purchase, index) => {
+                const row = document.createElement('tr');
+                row.id = `row-${index}`;
+                row.setAttribute('data-confidence', purchase.confidence_score || 0);
+
+                const confidenceClass = purchase.confidence_score >= 0.9 ? 'confidence-high' :
+                                      purchase.confidence_score >= 0.7 ? 'confidence-medium' : 'confidence-low';
+
+                row.className = purchase.review_status === 'approved' ? 'status-approved' : 'status-pending';
+                if ((purchase.confidence_score || 0) < CONFIDENCE_THRESHOLD_LOW) {
+                    row.classList.add('low-confidence');
+                }
+
+                row.innerHTML = `
+                    <td><input type="checkbox" class="row-checkbox" data-index="${index}"></td>
+                    <td>${purchase.email_subject || ''}</td>
+                    <td>
+                        <span class="view-mode view-vendor">${purchase.vendor || ''}</span>
+                        <input type="text" class="edit-mode edit-vendor editable-input" value="${purchase.vendor || ''}" style="display:none">
+                    </td>
+                    <td>
+                        <span class="view-mode view-amount">${purchase.amount || ''}</span>
+                        <input type="text" class="edit-mode edit-amount editable-input" value="${purchase.amount || ''}" style="display:none">
+                    </td>
+                    <td>
+                        <span class="view-mode view-currency">${purchase.currency || ''}</span>
+                        <input type="text" class="edit-mode edit-currency editable-input" value="${purchase.currency || ''}" style="display:none">
+                    </td>
+                    <td>
+                        <span class="view-mode view-ca">${purchase.crypto_amount || ''}</span>
+                        <input type="text" class="edit-mode edit-ca editable-input" value="${purchase.crypto_amount || ''}" style="display:none">
+                    </td>
+                    <td>
+                        <span class="view-mode view-cc">${purchase.crypto_currency || ''}</span>
+                        <input type="text" class="edit-mode edit-cc editable-input" value="${purchase.crypto_currency || ''}" style="display:none">
+                    </td>
+                    <td>
+                        <span class="view-mode view-date">${purchase.purchase_date || ''}</span>
+                        <input type="text" class="edit-mode edit-date editable-input" value="${purchase.purchase_date || ''}" style="display:none">
+                    </td>
+                    <td>
+                        <span class="view-mode view-tid">${purchase.transaction_id || ''}</span>
+                        <input type="text" class="edit-mode edit-tid editable-input" value="${purchase.transaction_id || ''}" style="display:none">
+                    </td>
+                    <td>
+                        <span class="confidence-badge ${confidenceClass}">${(purchase.confidence_score || 0).toFixed(2)}</span>
+                    </td>
+                    <td><span class="view-status">${purchase.review_status || 'pending'}</span></td>
+                    <td>
+                        <button class="view-mode approve-btn" onclick="approveRow(${index}, '${taskId}')" style="${purchase.review_status === 'approved' ? 'display:none' : ''}">Approve</button>
+                        <button class="view-mode" onclick="editRow(${index})">Edit</button>
+                        <button class="edit-mode" onclick="saveRow(${index}, '${taskId}')" style="display:none">Save</button>
+                        <button class="edit-mode" onclick="cancelEdit(${index})" style="display:none">Cancel</button>
+                    </td>
+                `;
+                resultsTbody.appendChild(row);
+            });
+        }
     </script>
 </body>
 </html>
