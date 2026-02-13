@@ -40,6 +40,21 @@ def get_llm_client(provider: str | None = None) -> LLMProvider:
     if provider_name == "ollama":
         from .ollama_client import OllamaLLMClient
 
+        if settings.enable_ollama_fallback and not provider:
+            from digital_asset_harvester.config import get_settings_with_overrides
+            from .fallback_client import FallbackLLMClient
+
+            # Primary client with threshold as timeout
+            primary_settings = get_settings_with_overrides(
+                llm_timeout_seconds=settings.ollama_fallback_threshold_seconds,
+                llm_max_retries=1,  # Fast fallback
+            )
+            primary = OllamaLLMClient(settings=primary_settings)
+
+            # Secondary client using configured fallback provider
+            secondary = get_llm_client(provider=settings.fallback_cloud_provider)
+            return FallbackLLMClient(primary, secondary)
+
         return OllamaLLMClient(settings=settings)
     if provider_name == "openai":
         from .openai_client import OpenAILLMClient
