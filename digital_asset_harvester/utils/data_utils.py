@@ -33,6 +33,12 @@ def normalize_for_frontend(purchase: Dict[str, Any]) -> Dict[str, Any]:
         if "total_spent" in normalized:
             normalized["amount"] = normalized["total_spent"]
 
+    # Handle fees (already use backend names in frontend for these)
+    if "fee_amount" not in normalized:
+        normalized["fee_amount"] = None
+    if "fee_currency" not in normalized:
+        normalized["fee_currency"] = ""
+
     return normalized
 
 

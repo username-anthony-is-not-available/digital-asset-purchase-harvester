@@ -34,6 +34,7 @@ from digital_asset_harvester.exporters.cra import (
 )
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
+from digital_asset_harvester.utils.deduplication import DuplicateDetector
 
 KOINLY_AVAILABLE = True
 
@@ -135,6 +136,7 @@ def process_emails(
         "digital_asset_harvester.app",
         default_fields={"component": "cli"},
     )
+    duplicate_detector = DuplicateDetector()
 
     results: list[dict] = []
 
@@ -172,6 +174,11 @@ def process_emails(
 
         if result.get("has_purchase"):
             for purchase_info in result.get("purchases", []):
+                if duplicate_detector.is_duplicate(purchase_info):
+                    logger.info("Skipping duplicate purchase: %s %s", purchase_info.get("item_name"), purchase_info.get("amount"))
+                    metrics.increment("duplicate_purchases_skipped")
+                    continue
+
                 purchase_info["email_subject"] = email.get("subject", "")
                 results.append(purchase_info)
                 metrics.increment("purchases_detected")
@@ -225,6 +232,7 @@ def _process_and_save_results(
                 logger.info("Processing completed")
                 logger.info("  Emails processed: %d", metrics.get("emails_processed"))
                 logger.info("  Purchases detected: %d", metrics.get("purchases_detected"))
+                logger.info("  Duplicates skipped: %d", metrics.get("duplicate_purchases_skipped"))
                 return
             except KoinlyApiError as e:
                 logger.error("Koinly API upload failed: %s", e)
@@ -284,6 +292,7 @@ def _process_and_save_results(
     logger.info("Processing completed")
     logger.info("  Emails processed: %d", metrics.get("emails_processed"))
     logger.info("  Purchases detected: %d", metrics.get("purchases_detected"))
+    logger.info("  Duplicates skipped: %d", metrics.get("duplicate_purchases_skipped"))
 
 
 def run(argv: Optional[list[str]] = None) -> int:

@@ -8,11 +8,7 @@ from typing import Any, Dict, List
 
 
 class CryptoTaxCalculatorReportGenerator:
-    """Generator for CryptoTaxCalculator-compatible CSV reports.
-
-    Note: This implementation uses a 'Universal' format. Specific headers
-    and mapping logic need verification against the latest CTC documentation.
-    """
+    """Generator for CryptoTaxCalculator-compatible CSV reports."""
 
     def _format_date(self, date_str: str) -> str:
         """Format date string to CTC's required format."""
@@ -32,7 +28,7 @@ class CryptoTaxCalculatorReportGenerator:
         """Convert a single purchase record to a CTC CSV row."""
         tx_type = purchase.get("transaction_type", "buy")
 
-        # Placeholder mapping
+        # Mapping
         ctc_type = {
             "buy": "Buy",
             "deposit": "Deposit",
@@ -47,8 +43,8 @@ class CryptoTaxCalculatorReportGenerator:
             "Base Amount": str(purchase.get("amount", "")),
             "Quote Currency": purchase.get("currency", ""),
             "Quote Amount": str(purchase.get("total_spent", "")),
-            "Fee Currency": "",
-            "Fee Amount": "",
+            "Fee Currency": purchase.get("fee_currency", ""),
+            "Fee Amount": str(purchase.get("fee_amount", "")) if purchase.get("fee_amount") is not None else "",
             "From": purchase.get("vendor", ""),
             "To": "",
             "ID": purchase.get("transaction_id", ""),

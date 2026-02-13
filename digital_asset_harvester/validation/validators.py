@@ -54,8 +54,8 @@ class PurchaseValidator:
     def validate(self, record: PurchaseRecord) -> List[ValidationIssue]:
         issues: List[ValidationIssue] = []
 
-        if record.total_spent is not None and record.total_spent <= Decimal("0"):
-            issues.append(ValidationIssue("total_spent", "must be greater than zero"))
+        if record.total_spent is not None and record.total_spent < Decimal("0"):
+            issues.append(ValidationIssue("total_spent", "must be non-negative"))
 
         if record.amount is not None and record.amount <= Decimal("0"):
             issues.append(ValidationIssue("amount", "must be greater than zero"))
@@ -74,5 +74,13 @@ class PurchaseValidator:
 
         if not record.purchase_date.strip():
             issues.append(ValidationIssue("purchase_date", "is required"))
+
+        if record.fee_amount is not None and record.fee_amount < Decimal("0"):
+            issues.append(ValidationIssue("fee_amount", "must be non-negative"))
+
+        if record.fee_currency and not ISO_CURRENCY_PATTERN.match(record.fee_currency.upper()):
+            # Fee currency could be crypto, so let's check both patterns
+            if not CRYPTO_SYMBOL_PATTERN.match(record.fee_currency.upper()):
+                issues.append(ValidationIssue("fee_currency", "must be valid currency code or symbol"))
 
         return issues
