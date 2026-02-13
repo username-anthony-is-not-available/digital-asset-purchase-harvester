@@ -65,7 +65,9 @@ def test_extract_purchase_info_success(mocker):
         EmailPurchaseExtractor,
     )
 
-    settings = get_settings_with_overrides(enable_preprocessing=False)
+    settings = get_settings_with_overrides(
+        enable_preprocessing=False, enable_regex_extractors=False
+    )
     extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
     result = extractor.extract_purchase_info(email_content)
     assert len(result) == 1
@@ -102,13 +104,17 @@ def test_extract_purchase_info_missing_fields_strict(mocker):
         EmailPurchaseExtractor,
     )
 
-    settings = get_settings_with_overrides(enable_preprocessing=False, strict_validation=True)
+    settings = get_settings_with_overrides(
+        enable_preprocessing=False, strict_validation=True
+    )
     extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
     assert extractor.extract_purchase_info(email_content) == []
 
 
 def test_process_email_successful_path(mocker, monkeypatch):
-    email_content = "Subject: Coinbase\nFrom: no-reply@coinbase.com\nBody: You bought 0.05 BTC"
+    email_content = (
+        "Subject: Coinbase\nFrom: no-reply@coinbase.com\nBody: You bought 0.05 BTC"
+    )
     mock_llm_client = mocker.Mock()
     mock_llm_client.generate_json.side_effect = [
         mocker.Mock(
@@ -139,7 +145,8 @@ def test_process_email_successful_path(mocker, monkeypatch):
         EmailPurchaseExtractor,
     )
 
-    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    settings = get_settings_with_overrides(enable_regex_extractors=False)
+    extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
     monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
@@ -151,7 +158,9 @@ def test_process_email_successful_path(mocker, monkeypatch):
 
 
 def test_process_email_filtered_by_preprocessing(mocker):
-    email_content = "Subject: Dinner order\nFrom: restaurant@example.com\nBody: Your order has shipped"
+    email_content = (
+        "Subject: Dinner order\nFrom: restaurant@example.com\nBody: Your order has shipped"
+    )
     mocker.patch(
         "digital_asset_harvester.processing.email_purchase_extractor.get_llm_client"
     )
@@ -200,7 +209,8 @@ def test_process_email_with_coinbase_fixture(mocker, monkeypatch):
         EmailPurchaseExtractor,
     )
 
-    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    settings = get_settings_with_overrides(enable_regex_extractors=False)
+    extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
     monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
@@ -241,7 +251,8 @@ def test_process_email_with_binance_fixture(mocker, monkeypatch):
         EmailPurchaseExtractor,
     )
 
-    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    settings = get_settings_with_overrides(enable_regex_extractors=False)
+    extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
     monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
@@ -305,7 +316,8 @@ def test_process_email_with_binance_deposit_fixture(mocker, monkeypatch):
         EmailPurchaseExtractor,
     )
 
-    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    settings = get_settings_with_overrides(enable_regex_extractors=False)
+    extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
     monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
@@ -349,7 +361,8 @@ def test_process_email_with_binance_withdrawal_fixture(mocker, monkeypatch):
         EmailPurchaseExtractor,
     )
 
-    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    settings = get_settings_with_overrides(enable_regex_extractors=False)
+    extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
     monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
@@ -394,7 +407,8 @@ def test_process_email_with_coinbase_staking_reward(mocker, monkeypatch):
         EmailPurchaseExtractor,
     )
 
-    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    settings = get_settings_with_overrides(enable_regex_extractors=False)
+    extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
     monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
@@ -439,7 +453,8 @@ def test_process_email_with_binance_staking_reward(mocker, monkeypatch):
         EmailPurchaseExtractor,
     )
 
-    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    settings = get_settings_with_overrides(enable_regex_extractors=False)
+    extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
     monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
@@ -484,7 +499,8 @@ def test_process_email_with_kraken_staking_reward(mocker, monkeypatch):
         EmailPurchaseExtractor,
     )
 
-    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    settings = get_settings_with_overrides(enable_regex_extractors=False)
+    extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
     monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)

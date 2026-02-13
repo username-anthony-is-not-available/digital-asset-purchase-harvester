@@ -83,9 +83,7 @@ class TestKoinlyReportGenerator:
         assert deposit_row["Description"] == "Deposit from Binance"
 
         # Test "withdrawal" transaction
-        withdrawal_row = generator._convert_purchase_to_koinly_row(
-            vars(sample_purchases[2])
-        )
+        withdrawal_row = generator._convert_purchase_to_koinly_row(vars(sample_purchases[2]))
         assert withdrawal_row["Label"] == "withdrawal"
         assert withdrawal_row["Sent Amount"] == "2.0"
         assert withdrawal_row["Sent Currency"] == "SOL"

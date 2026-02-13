@@ -6,6 +6,7 @@ from digital_asset_harvester import get_settings_with_overrides
 from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 from tests.fixtures.emails import EMAIL_FIXTURES
 
+
 def test_extract_binance_multi_asset(mocker, monkeypatch):
     """Test that multiple assets are correctly extracted from a Binance trade confirmation."""
     email_content = EMAIL_FIXTURES["binance_multi_asset"]
@@ -16,33 +17,35 @@ def test_extract_binance_multi_asset(mocker, monkeypatch):
         # Classification
         mocker.Mock(data={"is_crypto_purchase": True, "confidence": 0.95, "reasoning": "Trade confirmation"}),
         # Extraction
-        mocker.Mock(data={
-            "transactions": [
-                {
-                    "transaction_type": "buy",
-                    "total_spent": 130.0,
-                    "currency": "USDT",
-                    "amount": 0.002,
-                    "item_name": "BTC",
-                    "vendor": "Binance",
-                    "purchase_date": "2024-03-20 14:00:00",
-                    "confidence": 0.95,
-                },
-                {
-                    "transaction_type": "buy",
-                    "total_spent": 350.0,
-                    "currency": "USDT",
-                    "amount": 0.1,
-                    "item_name": "ETH",
-                    "vendor": "Binance",
-                    "purchase_date": "2024-03-20 14:00:00",
-                    "confidence": 0.95,
-                }
-            ]
-        })
+        mocker.Mock(
+            data={
+                "transactions": [
+                    {
+                        "transaction_type": "buy",
+                        "total_spent": 130.0,
+                        "currency": "USDT",
+                        "amount": 0.002,
+                        "item_name": "BTC",
+                        "vendor": "Binance",
+                        "purchase_date": "2024-03-20 14:00:00",
+                        "confidence": 0.95,
+                    },
+                    {
+                        "transaction_type": "buy",
+                        "total_spent": 350.0,
+                        "currency": "USDT",
+                        "amount": 0.1,
+                        "item_name": "ETH",
+                        "vendor": "Binance",
+                        "purchase_date": "2024-03-20 14:00:00",
+                        "confidence": 0.95,
+                    },
+                ]
+            }
+        ),
     ]
 
-    settings = get_settings_with_overrides(enable_preprocessing=False)
+    settings = get_settings_with_overrides(enable_preprocessing=False, enable_regex_extractors=False)
     extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
 
     result = extractor.process_email(email_content)
@@ -60,6 +63,7 @@ def test_extract_binance_multi_asset(mocker, monkeypatch):
     assert result["purchases"][1]["amount"] == 0.1
     assert result["purchases"][1]["total_spent"] == 350.0
 
+
 def test_extract_binance_order_execution(mocker):
     """Test extraction from Binance Order Execution Notice."""
     email_content = EMAIL_FIXTURES["binance_order_execution"]
@@ -69,24 +73,26 @@ def test_extract_binance_order_execution(mocker):
         # Classification
         mocker.Mock(data={"is_crypto_purchase": True, "confidence": 0.95, "reasoning": "Order execution notice"}),
         # Extraction
-        mocker.Mock(data={
-            "transactions": [
-                {
-                    "transaction_type": "buy",
-                    "total_spent": 900.0,
-                    "currency": "USDT",
-                    "amount": 5.0,
-                    "item_name": "SOL",
-                    "vendor": "Binance",
-                    "purchase_date": "2024-03-21 09:15:00",
-                    "transaction_id": "987654321",
-                    "confidence": 0.95,
-                }
-            ]
-        })
+        mocker.Mock(
+            data={
+                "transactions": [
+                    {
+                        "transaction_type": "buy",
+                        "total_spent": 900.0,
+                        "currency": "USDT",
+                        "amount": 5.0,
+                        "item_name": "SOL",
+                        "vendor": "Binance",
+                        "purchase_date": "2024-03-21 09:15:00",
+                        "transaction_id": "987654321",
+                        "confidence": 0.95,
+                    }
+                ]
+            }
+        ),
     ]
 
-    settings = get_settings_with_overrides(enable_preprocessing=False)
+    settings = get_settings_with_overrides(enable_preprocessing=False, enable_regex_extractors=False)
     extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
 
     result = extractor.process_email(email_content)

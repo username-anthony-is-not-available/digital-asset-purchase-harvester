@@ -175,7 +175,11 @@ def process_emails(
         if result.get("has_purchase"):
             for purchase_info in result.get("purchases", []):
                 if duplicate_detector.is_duplicate(purchase_info):
-                    logger.info("Skipping duplicate purchase: %s %s", purchase_info.get("item_name"), purchase_info.get("amount"))
+                    logger.info(
+                        "Skipping duplicate purchase: %s %s",
+                        purchase_info.get("item_name"),
+                        purchase_info.get("amount"),
+                    )
                     metrics.increment("duplicate_purchases_skipped")
                     continue
 
@@ -261,9 +265,7 @@ def _process_and_save_results(
             write_purchase_data_to_csv(purchases, output_path)
     elif output_format == "cryptotaxcalculator":
         if settings.enable_ctc_csv_export:
-            logger.info(
-                "Writing output in CryptoTaxCalculator format to %s", output_path
-            )
+            logger.info("Writing output in CryptoTaxCalculator format to %s", output_path)
             write_purchase_data_to_ctc_csv(purchases, output_path)
         else:
             logger.warning(

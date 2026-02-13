@@ -36,6 +36,7 @@ def default_settings() -> HarvesterSettings:
         llm_model_name="llama3.2:3b",
         min_confidence_threshold=0.5,
         enable_preprocessing=True,
+        enable_regex_extractors=False,
         strict_validation=True,
     )
 
