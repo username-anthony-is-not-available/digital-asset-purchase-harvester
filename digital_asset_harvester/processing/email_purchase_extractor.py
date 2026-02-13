@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Set
 
 from digital_asset_harvester.config import HarvesterSettings, get_settings
 from digital_asset_harvester.confidence import calculate_confidence
+from digital_asset_harvester.utils.pii_scrubber import PIIScrubber
 from digital_asset_harvester.llm import get_llm_client
 from digital_asset_harvester.llm.ollama_client import LLMError
 from digital_asset_harvester.llm.provider import LLMProvider
@@ -46,6 +47,7 @@ class EmailPurchaseExtractor:
         default_factory=StructuredLoggerFactory
     )
     validator: PurchaseValidator = field(init=False)
+    pii_scrubber: PIIScrubber = field(init=False)
     event_logger: StructuredLoggerAdapter = field(init=False)
     prompts: PromptManager = field(default_factory=lambda: DEFAULT_PROMPTS)
     _metadata_cache: Dict[str, Dict[str, str]] = field(default_factory=dict, init=False)
@@ -54,6 +56,9 @@ class EmailPurchaseExtractor:
         self.validator = PurchaseValidator(
             allow_unknown_crypto=self.settings.allow_unknown_cryptos
         )
+        # Initialize PII scrubber with crypto terms to avoid over-scrubbing
+        skip_terms = set(CRYPTOCURRENCY_TERMS) | set(CRYPTO_EXCHANGES)
+        self.pii_scrubber = PIIScrubber(skip_terms=skip_terms)
         self.event_logger = self.logger_factory.build(
             __name__,
             default_fields={
@@ -142,6 +147,13 @@ class EmailPurchaseExtractor:
 
         return has_purchase_keywords and not has_non_purchase_patterns
 
+    def _scrub_pii_if_enabled(self, email_content: str) -> str:
+        """Apply PII scrubbing to email content if enabled in settings."""
+        if self.settings.enable_pii_scrubbing:
+            logger.debug("PII scrubbing enabled, processing email content")
+            return self.pii_scrubber.scrub(email_content)
+        return email_content
+
     def _should_skip_llm_analysis(self, email_content: str) -> bool:
         """Determine if email can be quickly filtered out without LLM analysis."""
         metadata = self._extract_email_metadata(email_content)
@@ -178,7 +190,9 @@ class EmailPurchaseExtractor:
                 logger.debug("Email doesn't meet basic crypto + purchase criteria")
                 return False
 
-        prompt = self.prompts.render("classification", email_content=email_content)
+        # Apply PII scrubbing before sending to LLM
+        scrubbed_content = self._scrub_pii_if_enabled(email_content)
+        prompt = self.prompts.render("classification", email_content=scrubbed_content)
 
         try:
             logger.info(
@@ -243,9 +257,12 @@ class EmailPurchaseExtractor:
         retries = (
             max_retries if max_retries is not None else self.settings.llm_max_retries
         )
+
+        # Apply PII scrubbing before sending to LLM
+        scrubbed_content = self._scrub_pii_if_enabled(email_content)
         prompt = self.prompts.render(
             "extraction",
-            email_content=email_content,
+            email_content=scrubbed_content,
             default_timezone=default_timezone,
         )
 
