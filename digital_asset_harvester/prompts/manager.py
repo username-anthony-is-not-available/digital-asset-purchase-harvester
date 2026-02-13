@@ -81,6 +81,8 @@ Extract the following information with high accuracy:
 4. ITEM_NAME: The full cryptocurrency name or symbol (Bitcoin, BTC, Ethereum, ETH, etc.)
 5. VENDOR: The exchange/platform name (Coinbase, Binance, Kraken, etc.)
 6. PURCHASE_DATE: Extract from email headers, transaction timestamps, or order dates
+7. FEE_AMOUNT: The exact amount of fees or commissions paid (look for "Fee", "Commission", "Trading Fee")
+8. FEE_CURRENCY: The currency code for the fee (e.g. USD, BTC, ETH)
 
 COMMON EMAIL PATTERNS TO LOOK FOR:
 - Coinbase: "You bought X BTC for $Y USD", "Order #12345 completed"
@@ -95,6 +97,7 @@ EXTRACTION EXAMPLES:
 - "You just earned 0.0001 ETH in staking rewards" → total_spent: null, currency: null, amount: 0.0001, item_name: "ETH", transaction_type: "staking_reward"
 - "$100.00 USD → 0.0025 Bitcoin" → total_spent: 100.00, currency: "USD", amount: 0.0025, item_name: "Bitcoin", transaction_type: "buy"
 - "Trade Confirmation: BTC/USDT 0.01 @ 60000; ETH/USDT 0.5 @ 3000" → Extract TWO transactions: 1. BTC, 2. ETH.
+- "You bought 0.1 BTC for $5,000.00 USD. Fee: $25.00 USD" → total_spent: 5000.0, currency: "USD", amount: 0.1, item_name: "BTC", fee_amount: 25.0, fee_currency: "USD"
 
 IMPORTANT RULES:
 - Extract ALL transactions found in the email into the "transactions" array.
@@ -119,6 +122,8 @@ Return JSON with this exact structure:
             "vendor": string or null,
             "purchase_date": string or null,
             "transaction_id": string or null,
+            "fee_amount": float or null,
+            "fee_currency": string or null,
             "confidence": float (0.0 to 1.0),
             "extraction_notes": "Any relevant notes about extraction quality or concerns"
         }

@@ -14,6 +14,10 @@ from .. import (
 )
 from ..telemetry import StructuredLoggerFactory
 from ..cli import process_emails, configure_logging
+from ..utils.data_utils import normalize_for_frontend, denormalize_from_frontend
+from ..exporters.koinly import KoinlyReportGenerator
+from ..exporters.cryptotaxcalculator import CryptoTaxCalculatorReportGenerator
+from ..exporters.cra import CRAReportGenerator
 
 router = APIRouter()
 
@@ -47,27 +51,110 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
 
     purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
 
-    # Initialize review status and map confidence scores
-    for purchase in purchases:
-        purchase["review_status"] = "pending"
-        if "confidence" in purchase and "confidence_score" not in purchase:
-            purchase["confidence_score"] = purchase["confidence"]
-
-        # Ensure item_name and amount are mapped for frontend if they came from LLM
-        if "item_name" in purchase and "crypto_currency" not in purchase:
-            purchase["crypto_currency"] = purchase["item_name"]
-        if "amount" in purchase and "crypto_amount" not in purchase:
-            # Note: The LLM 'amount' is actually the crypto amount.
-            # But in the existing UI, 'amount' was used for fiat.
-            # This is confusing, but let's try to make it consistent.
-            # LLM returns: total_spent (fiat), amount (crypto)
-            # Existing UI expects: amount (fiat), crypto_amount (crypto)
-            purchase["crypto_amount"] = purchase["amount"]
-            if "total_spent" in purchase:
-                purchase["amount"] = purchase["total_spent"]
+    # Initialize review status and map fields for frontend
+    normalized_purchases = [normalize_for_frontend(p) for p in purchases]
 
     tasks[task_id]["status"] = "complete"
-    tasks[task_id]["result"] = purchases
+    tasks[task_id]["result"] = normalized_purchases
+
+@router.get("/export/koinly/{task_id}")
+async def export_koinly(task_id: str):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    # Denormalize records for exporter
+    denormalized_results = [denormalize_from_frontend(p) for p in results]
+
+    generator = KoinlyReportGenerator()
+    rows = generator.generate_csv_rows(denormalized_results)
+
+    output = StringIO()
+    if rows:
+        writer = csv.DictWriter(output, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+    else:
+        # Standard Koinly headers if no data
+        headers = [
+            "Date", "Sent Amount", "Sent Currency", "Received Amount", "Received Currency",
+            "Fee Amount", "Fee Currency", "Net Worth Amount", "Net Worth Currency",
+            "Label", "Description", "TxHash"
+        ]
+        writer = csv.writer(output)
+        writer.writerow(headers)
+
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=koinly_{task_id}.csv"}
+    )
+
+@router.get("/export/ctc/{task_id}")
+async def export_ctc(task_id: str):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    denormalized_results = [denormalize_from_frontend(p) for p in results]
+
+    generator = CryptoTaxCalculatorReportGenerator()
+    rows = generator.generate_csv_rows(denormalized_results)
+
+    output = StringIO()
+    if rows:
+        writer = csv.DictWriter(output, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+    else:
+        headers = [
+            "Timestamp (UTC)", "Type", "Base Currency", "Base Amount", "Quote Currency",
+            "Quote Amount", "Fee Currency", "Fee Amount", "From", "To", "ID", "Description"
+        ]
+        writer = csv.writer(output)
+        writer.writerow(headers)
+
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=ctc_{task_id}.csv"}
+    )
+
+@router.get("/export/cra/{task_id}")
+async def export_cra(task_id: str):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    denormalized_results = [denormalize_from_frontend(p) for p in results]
+
+    generator = CRAReportGenerator()
+    rows = generator.generate_csv_rows(denormalized_results)
+
+    output = StringIO()
+    if rows:
+        writer = csv.DictWriter(output, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+    else:
+        headers = [
+            "Date", "Type", "Received Quantity", "Received Currency", "Sent Quantity",
+            "Sent Currency", "Fee Quantity", "Fee Currency", "Description"
+        ]
+        writer = csv.writer(output)
+        writer.writerow(headers)
+
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=cra_{task_id}.csv"}
+    )
 
 @router.post("/upload")
 async def upload_file(

@@ -274,6 +274,9 @@
                 <div class="export-buttons" style="margin-bottom: 0;">
                     <a id="export-csv" href="#" download><button>Export to CSV</button></a>
                     <a id="export-json" href="#" download><button>Export to JSON</button></a>
+                    <a id="export-koinly" href="#" download><button>Export to Koinly</button></a>
+                    <a id="export-ctc" href="#" download><button>Export to CTC</button></a>
+                    <a id="export-cra" href="#" download><button>Export to CRA</button></a>
                     <a href="/"><button>Process Another File</button></a>
                 </div>
             </div>
@@ -313,6 +316,9 @@
         const resultsTbody = document.getElementById('results-tbody');
         const exportCsv = document.getElementById('export-csv');
         const exportJson = document.getElementById('export-json');
+        const exportKoinly = document.getElementById('export-koinly');
+        const exportCtc = document.getElementById('export-ctc');
+        const exportCra = document.getElementById('export-cra');
 
         const interval = setInterval(() => {
             fetch(`/api/status/${taskId}`)
@@ -325,6 +331,9 @@
                         resultsSection.style.display = 'block';
                         exportCsv.href = `/api/export/csv/${taskId}`;
                         exportJson.href = `/api/export/json/${taskId}`;
+                        exportKoinly.href = `/api/export/koinly/${taskId}`;
+                        exportCtc.href = `/api/export/ctc/${taskId}`;
+                        exportCra.href = `/api/export/cra/${taskId}`;
 
                         allPurchases = data.result || [];
                         renderTable();
