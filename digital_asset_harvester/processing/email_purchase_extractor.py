@@ -47,6 +47,7 @@ class EmailPurchaseExtractor:
     validator: PurchaseValidator = field(init=False)
     event_logger: StructuredLoggerAdapter = field(init=False)
     prompts: PromptManager = field(default_factory=lambda: DEFAULT_PROMPTS)
+    _metadata_cache: Dict[str, Dict[str, str]] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
         self.validator = PurchaseValidator(
@@ -66,7 +67,10 @@ class EmailPurchaseExtractor:
         return any(keyword in text_lower for keyword in keywords)
 
     def _extract_email_metadata(self, email_content: str) -> Dict[str, str]:
-        """Extract subject, sender, and body from email content."""
+        """Extract subject, sender, and body from email content with caching."""
+        if email_content in self._metadata_cache:
+            return self._metadata_cache[email_content]
+
         metadata = {"subject": "", "sender": "", "body": ""}
         lines = email_content.split("\n")
 
@@ -109,6 +113,7 @@ class EmailPurchaseExtractor:
                     body_lines.append(line)
 
         metadata["body"] = "\n".join(body_lines).strip()
+        self._metadata_cache[email_content] = metadata
         return metadata
 
     def _is_likely_crypto_related(self, email_content: str) -> bool:
@@ -315,7 +320,7 @@ class EmailPurchaseExtractor:
             if purchase_data.get("purchase_date"):
                 try:
                     # Parse the date and ensure it's in UTC
-                    date_str = purchase_data["purchase_date"]
+                    date_str = str(purchase_data["purchase_date"])
                     # Handle various date formats
                     if "T" in date_str:
                         date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
@@ -323,9 +328,14 @@ class EmailPurchaseExtractor:
                         # Try to parse common date formats
                         for fmt in [
                             "%Y-%m-%d %H:%M:%S",
+                            "%Y-%m-%d %H:%M:%S %Z",
                             "%Y-%m-%d",
                             "%m/%d/%Y %H:%M:%S",
                             "%m/%d/%Y",
+                            "%d %b %Y %H:%M:%S",
+                            "%d %b %Y",
+                            "%b %d, %Y %H:%M:%S",
+                            "%b %d, %Y",
                         ]:
                             try:
                                 date = datetime.strptime(date_str, fmt)

@@ -20,7 +20,10 @@ def test_write_purchase_data_to_csv(tmp_path):
             vendor="Coinbase",
             purchase_date="2024-01-10 10:00:00 UTC",
             transaction_id="TX123",
-            transaction_type="buy"
+            transaction_type="buy",
+            fee_amount=Decimal("2.50"),
+            fee_currency="USD",
+            extraction_notes="Notes 1"
         ),
         PurchaseRecord(
             total_spent=Decimal("543.21"),
@@ -49,6 +52,9 @@ def test_write_purchase_data_to_csv(tmp_path):
             "purchase_date",
             "transaction_id",
             "transaction_type",
+            "fee_amount",
+            "fee_currency",
+            "extraction_notes",
         ]
         assert reader[1] == [
             "123.45",
@@ -59,6 +65,9 @@ def test_write_purchase_data_to_csv(tmp_path):
             "2024-01-10 10:00:00 UTC",
             "TX123",
             "buy",
+            "2.50",
+            "USD",
+            "Notes 1",
         ]
         assert reader[2] == [
             "543.21",
@@ -69,6 +78,9 @@ def test_write_purchase_data_to_csv(tmp_path):
             "2024-01-11 11:00:00 UTC",
             "TX456",
             "buy",
+            "",
+            "",
+            "",
         ]
 
 
@@ -99,6 +111,9 @@ def test_write_purchase_data_no_header(tmp_path):
             "2024-01-10 10:00:00 UTC",
             "",
             "buy",
+            "",
+            "",
+            "",
         ]
 
 

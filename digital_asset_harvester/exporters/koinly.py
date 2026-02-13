@@ -8,13 +8,7 @@ from typing import Any, Dict, List
 
 
 class KoinlyReportGenerator:
-    """Generator for Koinly-compatible CSV reports.
-
-    Note: This implementation does not currently populate the "Fee Amount",
-    "Fee Currency", "Net Worth Amount", or "Net Worth Currency" fields, as this
-    data is not available in the PurchaseRecord model. This could be a future
-    enhancement.
-    """
+    """Generator for Koinly-compatible CSV reports."""
 
     def _format_date(self, date_str: str) -> str:
         """Format date string to Koinly's required format."""
@@ -38,8 +32,8 @@ class KoinlyReportGenerator:
         tx_type = purchase.get("transaction_type", "buy")
         row = {
             "Date": self._format_date(purchase.get("purchase_date", "")),
-            "Fee Amount": "",
-            "Fee Currency": "",
+            "Fee Amount": str(purchase.get("fee_amount", "")) if purchase.get("fee_amount") is not None else "",
+            "Fee Currency": purchase.get("fee_currency", ""),
             "Net Worth Amount": "",
             "Net Worth Currency": "",
             "Description": f"{tx_type.capitalize()} from {purchase.get('vendor', 'Unknown')}",

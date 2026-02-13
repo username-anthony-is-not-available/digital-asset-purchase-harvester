@@ -8,17 +8,13 @@ from typing import Any, Dict, List
 
 
 class CRAReportGenerator:
-    """Generator for CRA-ready CSV reports (e.g., for Wealthsimple Tax).
-
-    Note: This implementation uses common headers for Canadian tax software.
-    Verification against specific software (e.g., TurboTax, Wealthsimple) is recommended.
-    """
+    """Generator for CRA-ready CSV reports (e.g., for Wealthsimple Tax)."""
 
     def _convert_purchase_to_cra_row(self, purchase: Dict[str, Any]) -> Dict[str, Any]:
         """Convert a single purchase record to a CRA-ready CSV row."""
         tx_type = purchase.get("transaction_type", "buy")
 
-        # Placeholder mapping
+        # Mapping
         cra_type = {
             "buy": "Buy",
             "deposit": "Deposit",
@@ -33,8 +29,8 @@ class CRAReportGenerator:
             "Received Currency": purchase.get("item_name", ""),
             "Sent Quantity": str(purchase.get("total_spent", "")),
             "Sent Currency": purchase.get("currency", ""),
-            "Fee Quantity": "",
-            "Fee Currency": "",
+            "Fee Quantity": str(purchase.get("fee_amount", "")) if purchase.get("fee_amount") is not None else "",
+            "Fee Currency": purchase.get("fee_currency", ""),
             "Description": f"Transaction at {purchase.get('vendor', 'Unknown')}",
         }
         return row
