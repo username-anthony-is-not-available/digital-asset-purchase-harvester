@@ -26,6 +26,12 @@ from digital_asset_harvester.integrations.koinly_api_client import (
 from digital_asset_harvester.exporters.koinly import (
     write_purchase_data_to_koinly_csv,
 )
+from digital_asset_harvester.exporters.cryptotaxcalculator import (
+    write_purchase_data_to_ctc_csv,
+)
+from digital_asset_harvester.exporters.cra import (
+    write_purchase_data_to_cra_csv,
+)
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
 
@@ -244,6 +250,32 @@ def _process_and_save_results(
                     "`DAP_ENABLE_KOINLY_CSV_EXPORT=true` env var. "
                     "Falling back to standard CSV output."
                 )
+            write_purchase_data_to_csv(purchases, output_path)
+    elif output_format == "cryptotaxcalculator":
+        if settings.enable_ctc_csv_export:
+            logger.info(
+                "Writing output in CryptoTaxCalculator format to %s", output_path
+            )
+            write_purchase_data_to_ctc_csv(purchases, output_path)
+        else:
+            logger.warning(
+                "CryptoTaxCalculator output format is not enabled. "
+                "Set `enable_ctc_csv_export = true` in your config or "
+                "`DAP_ENABLE_CTC_CSV_EXPORT=true` env var. "
+                "Falling back to standard CSV output."
+            )
+            write_purchase_data_to_csv(purchases, output_path)
+    elif output_format == "cra":
+        if settings.enable_cra_csv_export:
+            logger.info("Writing output in CRA format to %s", output_path)
+            write_purchase_data_to_cra_csv(purchases, output_path)
+        else:
+            logger.warning(
+                "CRA output format is not enabled. "
+                "Set `enable_cra_csv_export = true` in your config or "
+                "`DAP_ENABLE_CRA_CSV_EXPORT=true` env var. "
+                "Falling back to standard CSV output."
+            )
             write_purchase_data_to_csv(purchases, output_path)
     else:  # 'csv'
         logger.info("Writing output in standard CSV format to %s", output_path)

@@ -11,6 +11,12 @@ from digital_asset_harvester.llm import get_llm_client
 from digital_asset_harvester.llm.ollama_client import LLMError
 from digital_asset_harvester.llm.provider import LLMProvider
 from digital_asset_harvester.prompts import DEFAULT_PROMPTS, PromptManager
+from digital_asset_harvester.processing.constants import (
+    CRYPTO_EXCHANGES,
+    CRYPTOCURRENCY_TERMS,
+    NON_PURCHASE_PATTERNS,
+    PURCHASE_KEYWORDS,
+)
 from digital_asset_harvester.validation import PurchaseRecord, PurchaseValidator
 from digital_asset_harvester.telemetry import (
     StructuredLoggerAdapter,
@@ -54,236 +60,6 @@ class EmailPurchaseExtractor:
             },
         )
 
-    # Common cryptocurrency exchanges and platforms
-    CRYPTO_EXCHANGES = {
-        # Major global exchanges
-        "coinbase",
-        "binance",
-        "kraken",
-        "bitfinex",
-        "bitstamp",
-        "gemini",
-        "huobi",
-        "okx",
-        "kucoin",
-        "crypto.com",
-        "ftx",
-        "bybit",
-        "gate.io",
-        "bittrex",
-        "poloniex",
-        # Mid-tier exchanges
-        "coinex",
-        "bitmart",
-        "mexc",
-        "bitget",
-        "lbank",
-        "probit",
-        # Australian exchanges
-        "coinspot",
-        "independent reserve",
-        "btcmarkets",
-        "swyftx",
-        # Canadian exchanges
-        "coinsquare",
-        "bitbuy",
-        "newton",
-        "coinhub",
-        "ndax",
-        # P2P and decentralized
-        "localbitcoins",
-        "paxful",
-        "bisq",
-        # European exchanges
-        "bitvavo",
-        "luno",
-        "bitpanda",
-        "coinmama",
-        # Asian exchanges
-        "upbit",
-        "bithumb",
-        "korbit",
-        "zaif",
-        "bitflyer",
-        "liquid",
-        # Latin American
-        "mercado bitcoin",
-        "bitso",
-        "ripio",
-        # US-specific
-        "coinbase pro",
-        "coinbase exchange",
-        "robinhood crypto",
-        "cash app",
-        "paypal",
-        "venmo",
-        # Others
-        "cex.io",
-        "changelly",
-        "shapeshift",
-    }
-
-    # Cryptocurrency names and symbols
-    CRYPTOCURRENCY_TERMS = {
-        # Major cryptocurrencies
-        "bitcoin",
-        "btc",
-        "ethereum",
-        "eth",
-        "litecoin",
-        "ltc",
-        "bitcoin cash",
-        "bch",
-        "ripple",
-        "xrp",
-        "cardano",
-        "ada",
-        "polkadot",
-        "dot",
-        "chainlink",
-        "link",
-        "stellar",
-        "xlm",
-        "dogecoin",
-        "doge",
-        "polygon",
-        "matic",
-        "solana",
-        "sol",
-        "avalanche",
-        "avax",
-        "terra",
-        "luna",
-        "cosmos",
-        "atom",
-        "algorand",
-        "algo",
-        "tezos",
-        "xtz",
-        "monero",
-        "xmr",
-        "zcash",
-        "zec",
-        "dash",
-        "neo",
-        "eos",
-        "tron",
-        "trx",
-        "iota",
-        "miota",
-        "vechain",
-        "vet",
-        "qtum",
-        "ont",
-        "zil",
-        # Stablecoins
-        "tether",
-        "usdt",
-        "usd coin",
-        "usdc",
-        "binance usd",
-        "busd",
-        "dai",
-        "tusd",
-        "true usd",
-        "pax",
-        "paxos",
-        "usdd",
-        "frax",
-        # Popular DeFi tokens
-        "uniswap",
-        "uni",
-        "aave",
-        "compound",
-        "comp",
-        "maker",
-        "mkr",
-        "synthetix",
-        "snx",
-        "curve",
-        "crv",
-        # Layer 2 and scaling
-        "arbitrum",
-        "arb",
-        "optimism",
-        "op",
-        "immutable",
-        "imx",
-        # Memecoins
-        "shiba inu",
-        "shib",
-        "pepe",
-        "floki",
-        # General terms
-        "cryptocurrency",
-        "crypto",
-        "digital currency",
-        "digital asset",
-        "altcoin",
-        "token",
-        "coin",
-    }
-
-    # Purchase-related keywords
-    PURCHASE_KEYWORDS = {
-        "purchase",
-        "bought",
-        "buy",
-        "order",
-        "transaction",
-        "payment",
-        "receipt",
-        "confirmation",
-        "executed",
-        "filled",
-        "completed",
-        "successful",
-        "acquired",
-        "deposit",
-        "withdrawal",
-        "trade",
-        "exchange",
-        "convert",
-        "swap",
-        "market order",
-        "limit order",
-        "instant buy",
-        "recurring buy",
-        "auto-invest",
-        "staking",
-        "reward",
-        "earned",
-        "distribution",
-        "trade confirmation",
-        "order execution",
-    }
-
-    # Email patterns that indicate non-purchase content
-    NON_PURCHASE_PATTERNS = {
-        "newsletter",
-        "unsubscribe",
-        "marketing",
-        "promotion",
-        "survey",
-        "feedback",
-        "educational",
-        "news",
-        "update",
-        "announcement",
-        "blog",
-        "article",
-        "webinar",
-        "invite",
-        "referral program",
-        "contest",
-        "giveaway",
-        "airdrop notification",
-        "price alert",
-        "market analysis",
-        "weekly report",
-        "monthly summary",
-    }
-
     def _contains_keywords(self, text: str, keywords: Set[str]) -> bool:
         """Check if text contains any of the specified keywords (case-insensitive)."""
         text_lower = text.lower()
@@ -291,23 +67,46 @@ class EmailPurchaseExtractor:
 
     def _extract_email_metadata(self, email_content: str) -> Dict[str, str]:
         """Extract subject, sender, and body from email content."""
-        lines = email_content.split("\n")
         metadata = {"subject": "", "sender": "", "body": ""}
+        lines = email_content.split("\n")
 
         body_started = False
         body_lines = []
 
-        for line in lines:
+        for i, line in enumerate(lines):
             if body_started:
                 body_lines.append(line)
                 continue
 
-            if line.startswith("Subject: "):
-                metadata["subject"] = line[9:].strip()
-            elif line.startswith("From: "):
-                metadata["sender"] = line[6:].strip()
-            elif line.strip() == "" and "subject" in metadata and "sender" in metadata:
+            line_strip = line.strip()
+            line_lower = line_strip.lower()
+
+            if line_lower.startswith("subject: "):
+                metadata["subject"] = line_strip[9:].strip()
+            elif line_lower.startswith("from: "):
+                metadata["sender"] = line_strip[6:].strip()
+            elif line_lower.startswith("body: "):
+                # Support the "Body: " marker from our application's formatting
                 body_started = True
+                body_lines.append(line_strip[6:].strip())
+            elif not line_strip:
+                # Blank line separation (RFC 5322).
+                # We skip blank lines if more headers seem to follow (supporting non-standard formats).
+                if i + 1 < len(lines):
+                    next_line = lines[i + 1].strip()
+                    if ":" in next_line and next_line.split(":")[0].replace(
+                        "-", ""
+                    ).isalnum():
+                        continue
+
+                # Otherwise, a blank line signals the start of the body if we have some metadata.
+                if metadata["subject"] or metadata["sender"]:
+                    body_started = True
+            elif ":" not in line_strip:
+                # Non-header line signals start of body
+                if metadata["subject"] or metadata["sender"]:
+                    body_started = True
+                    body_lines.append(line)
 
         metadata["body"] = "\n".join(body_lines).strip()
         return metadata
@@ -319,9 +118,9 @@ class EmailPurchaseExtractor:
 
         # Check for crypto exchanges in sender or content
         has_crypto_exchange = self._contains_keywords(
-            metadata["sender"], self.CRYPTO_EXCHANGES
+            metadata["sender"], CRYPTO_EXCHANGES
         )
-        has_crypto_terms = self._contains_keywords(full_text, self.CRYPTOCURRENCY_TERMS)
+        has_crypto_terms = self._contains_keywords(full_text, CRYPTOCURRENCY_TERMS)
 
         return has_crypto_exchange or has_crypto_terms
 
@@ -330,11 +129,9 @@ class EmailPurchaseExtractor:
         metadata = self._extract_email_metadata(email_content)
         full_text = f"{metadata['subject']} {metadata['body']}"
 
-        has_purchase_keywords = self._contains_keywords(
-            full_text, self.PURCHASE_KEYWORDS
-        )
+        has_purchase_keywords = self._contains_keywords(full_text, PURCHASE_KEYWORDS)
         has_non_purchase_patterns = self._contains_keywords(
-            full_text, self.NON_PURCHASE_PATTERNS
+            full_text, NON_PURCHASE_PATTERNS
         )
 
         return has_purchase_keywords and not has_non_purchase_patterns
@@ -345,7 +142,7 @@ class EmailPurchaseExtractor:
         full_text = f"{metadata['subject']} {metadata['sender']} {metadata['body']}"
 
         # Skip if contains clear non-purchase patterns
-        if self._contains_keywords(full_text, self.NON_PURCHASE_PATTERNS):
+        if self._contains_keywords(full_text, NON_PURCHASE_PATTERNS):
             return True
 
         # Skip if doesn't contain any crypto-related terms

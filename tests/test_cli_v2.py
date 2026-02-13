@@ -316,3 +316,53 @@ def test_main(mocker):
     # THEN
     assert result == 0
     m_run.assert_called_once()
+
+
+def test_run_ctc_output_enabled(mocker):
+    # GIVEN
+    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
+    m_get_settings.return_value.enable_ctc_csv_export = True
+    mocker.patch("digital_asset_harvester.cli.configure_logging")
+    mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
+    mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
+    mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
+    mocker.patch(
+        "digital_asset_harvester.cli.process_emails",
+        return_value=([], mocker.MagicMock()),
+    )
+    m_write_ctc_csv = mocker.patch(
+        "digital_asset_harvester.cli.write_purchase_data_to_ctc_csv"
+    )
+    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
+
+    # WHEN
+    run(["--mbox-file", "test.mbox", "--output-format", "cryptotaxcalculator"])
+
+    # THEN
+    m_write_ctc_csv.assert_called_once()
+    m_write_csv.assert_not_called()
+
+
+def test_run_cra_output_enabled(mocker):
+    # GIVEN
+    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
+    m_get_settings.return_value.enable_cra_csv_export = True
+    mocker.patch("digital_asset_harvester.cli.configure_logging")
+    mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
+    mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
+    mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
+    mocker.patch(
+        "digital_asset_harvester.cli.process_emails",
+        return_value=([], mocker.MagicMock()),
+    )
+    m_write_cra_csv = mocker.patch(
+        "digital_asset_harvester.cli.write_purchase_data_to_cra_csv"
+    )
+    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
+
+    # WHEN
+    run(["--mbox-file", "test.mbox", "--output-format", "cra"])
+
+    # THEN
+    m_write_cra_csv.assert_called_once()
+    m_write_csv.assert_not_called()

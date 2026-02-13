@@ -19,6 +19,8 @@ def test_write_purchase_data_to_csv(tmp_path):
             item_name="BTC",
             vendor="Coinbase",
             purchase_date="2024-01-10 10:00:00 UTC",
+            transaction_id="TX123",
+            transaction_type="buy"
         ),
         PurchaseRecord(
             total_spent=Decimal("543.21"),
@@ -27,6 +29,8 @@ def test_write_purchase_data_to_csv(tmp_path):
             item_name="ETH",
             vendor="Binance",
             purchase_date="2024-01-11 11:00:00 UTC",
+            transaction_id="TX456",
+            transaction_type="buy"
         ),
     ]
 
@@ -43,6 +47,8 @@ def test_write_purchase_data_to_csv(tmp_path):
             "item_name",
             "vendor",
             "purchase_date",
+            "transaction_id",
+            "transaction_type",
         ]
         assert reader[1] == [
             "123.45",
@@ -51,6 +57,8 @@ def test_write_purchase_data_to_csv(tmp_path):
             "BTC",
             "Coinbase",
             "2024-01-10 10:00:00 UTC",
+            "TX123",
+            "buy",
         ]
         assert reader[2] == [
             "543.21",
@@ -59,6 +67,8 @@ def test_write_purchase_data_to_csv(tmp_path):
             "ETH",
             "Binance",
             "2024-01-11 11:00:00 UTC",
+            "TX456",
+            "buy",
         ]
 
 
@@ -87,6 +97,8 @@ def test_write_purchase_data_no_header(tmp_path):
             "BTC",
             "Coinbase",
             "2024-01-10 10:00:00 UTC",
+            "",
+            "buy",
         ]
 
 
