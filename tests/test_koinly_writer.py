@@ -1,4 +1,5 @@
 """Tests for Koinly CSV writer functionality."""
+
 import os
 import tempfile
 import csv
@@ -86,7 +87,7 @@ def test_koinly_report_generator_convert_withdrawal():
 def test_koinly_report_generator_generate_csv_rows():
     """Test generating multiple CSV rows."""
     generator = KoinlyReportGenerator()
-    
+
     purchases = [
         {
             "total_spent": 100,
@@ -105,9 +106,9 @@ def test_koinly_report_generator_generate_csv_rows():
             "purchase_date": "2024-01-16",
         },
     ]
-    
+
     rows = generator.generate_csv_rows(purchases)
-    
+
     assert len(rows) == 2
     assert rows[0]["Sent Currency"] == "USD"
     assert rows[1]["Sent Currency"] == "EUR"
@@ -126,19 +127,19 @@ def test_write_purchase_data_to_koinly_csv():
             "transaction_id": "tx123",
         }
     ]
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = os.path.join(tmpdir, "test_koinly.csv")
         write_purchase_data_to_koinly_csv(purchases, filepath)
-        
+
         # Verify file was created
         assert os.path.exists(filepath)
-        
+
         # Verify content
         with open(filepath, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
-            
+
             assert len(rows) == 1
             assert rows[0]["Sent Currency"] == "USD"
             assert rows[0]["Received Currency"] == "BTC"
@@ -148,23 +149,23 @@ def test_write_purchase_data_to_koinly_csv():
 def test_write_purchase_data_to_koinly_csv_empty():
     """Test that empty purchases don't create a file."""
     purchases = []
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = os.path.join(tmpdir, "test_empty_koinly.csv")
         write_purchase_data_to_koinly_csv(purchases, filepath)
-        
+
         # Verify file was not created
         assert not os.path.exists(filepath)
 
 
 def test_write_purchase_data_to_koinly_csv_with_objects():
     """Test writing purchase data from objects (not dicts)."""
-    
+
     class PurchaseObject:
         def __init__(self, **kwargs):
             for key, value in kwargs.items():
                 setattr(self, key, value)
-    
+
     purchases = [
         PurchaseObject(
             total_spent=200,
@@ -176,19 +177,19 @@ def test_write_purchase_data_to_koinly_csv_with_objects():
             transaction_id="tx456",
         )
     ]
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         filepath = os.path.join(tmpdir, "test_objects_koinly.csv")
         write_purchase_data_to_koinly_csv(purchases, filepath)
-        
+
         # Verify file was created
         assert os.path.exists(filepath)
-        
+
         # Verify content
         with open(filepath, "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             rows = list(reader)
-            
+
             assert len(rows) == 1
             assert rows[0]["Sent Currency"] == "GBP"
             assert rows[0]["Received Amount"] == "0.005"

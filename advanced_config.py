@@ -7,7 +7,7 @@ LLM_TIMEOUT_SECONDS = 30
 
 # Processing Configuration
 ENABLE_PREPROCESSING = True  # Enable keyword-based filtering before LLM
-ENABLE_VALIDATION = True     # Enable post-extraction validation
+ENABLE_VALIDATION = True  # Enable post-extraction validation
 MIN_CONFIDENCE_THRESHOLD = 0.6  # Minimum confidence score to accept results
 
 # Logging Configuration
@@ -25,4 +25,4 @@ REQUIRE_NUMERIC_VALIDATION = True  # Validate that amounts are reasonable number
 
 # Output Configuration
 INCLUDE_PROCESSING_METADATA = False  # Include processing notes in CSV output
-INCLUDE_CONFIDENCE_SCORES = False    # Include confidence scores in CSV output
+INCLUDE_CONFIDENCE_SCORES = False  # Include confidence scores in CSV output
