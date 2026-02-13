@@ -40,7 +40,7 @@ def mock_process_mbox_playwright():
                     "transaction_id": "N/A",
                     "crypto_currency": "BTC",
                     "crypto_amount": "0.001",
-                    "confidence_score": "0.95"
+                    "confidence_score": 0.95
                 },
                 {
                     "email_subject": "Your order to buy 0.1 ETH has been filled",
@@ -51,7 +51,7 @@ def mock_process_mbox_playwright():
                     "transaction_id": "N/A",
                     "crypto_currency": "ETH",
                     "crypto_amount": "0.1",
-                    "confidence_score": "0.95"
+                    "confidence_score": 0.95
                 }
             ]
         }

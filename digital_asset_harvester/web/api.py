@@ -47,6 +47,25 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
 
     purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
 
+    # Initialize review status and map confidence scores
+    for purchase in purchases:
+        purchase["review_status"] = "pending"
+        if "confidence" in purchase and "confidence_score" not in purchase:
+            purchase["confidence_score"] = purchase["confidence"]
+
+        # Ensure item_name and amount are mapped for frontend if they came from LLM
+        if "item_name" in purchase and "crypto_currency" not in purchase:
+            purchase["crypto_currency"] = purchase["item_name"]
+        if "amount" in purchase and "crypto_amount" not in purchase:
+            # Note: The LLM 'amount' is actually the crypto amount.
+            # But in the existing UI, 'amount' was used for fiat.
+            # This is confusing, but let's try to make it consistent.
+            # LLM returns: total_spent (fiat), amount (crypto)
+            # Existing UI expects: amount (fiat), crypto_amount (crypto)
+            purchase["crypto_amount"] = purchase["amount"]
+            if "total_spent" in purchase:
+                purchase["amount"] = purchase["total_spent"]
+
     tasks[task_id]["status"] = "complete"
     tasks[task_id]["result"] = purchases
 
@@ -115,4 +134,36 @@ async def update_record(task_id: str, index: int, updated_record: dict):
         raise HTTPException(status_code=404, detail="Record index out of bounds")
 
     results[index].update(updated_record)
+    # Reset review status on manual edit
+    results[index]["review_status"] = "pending"
     return {"status": "success", "updated_record": results[index]}
+
+
+@router.put("/task/{task_id}/records/{index}/approve")
+async def approve_record(task_id: str, index: int):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    if index < 0 or index >= len(results):
+        raise HTTPException(status_code=404, detail="Record index out of bounds")
+
+    results[index]["review_status"] = "approved"
+    return {"status": "success", "record": results[index]}
+
+
+@router.post("/task/{task_id}/approve-batch")
+async def approve_batch(task_id: str, indices: list[int]):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    updated_indices = []
+    for index in indices:
+        if 0 <= index < len(results):
+            results[index]["review_status"] = "approved"
+            updated_indices.append(index)
+
+    return {"status": "success", "approved_indices": updated_indices}

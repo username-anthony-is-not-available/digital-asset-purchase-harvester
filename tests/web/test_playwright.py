@@ -113,3 +113,46 @@ def test_manual_edit(page: Page, live_server_url):
     # Verify changes in view mode
     expect(coinbase_row.locator(".view-vendor")).to_have_text("Updated Coinbase")
     expect(coinbase_row.locator(".view-amount")).to_have_text("150.00")
+
+def test_approve_record(page: Page, live_server_url):
+    page.goto(live_server_url)
+
+    # Upload and get to results
+    test_mbox_path = "tests/fixtures/test_emails.mbox"
+    page.set_input_files("input[type='file']", test_mbox_path)
+    page.click("input[type='submit']")
+    page.wait_for_selector("#results-section")
+
+    # Click Approve on the first row
+    coinbase_row = page.locator("#row-0")
+    expect(coinbase_row.locator(".view-status")).to_have_text("pending")
+    coinbase_row.get_by_role("button", name="Approve").click()
+
+    # Verify status changed to approved and button disappeared
+    expect(coinbase_row.locator(".view-status")).to_have_text("approved")
+    expect(coinbase_row.get_by_role("button", name="Approve")).not_to_be_visible()
+
+    # Check progress bar
+    expect(page.locator("#progress-text")).to_contain_text("1 / 2 Approved")
+
+def test_batch_approve(page: Page, live_server_url):
+    page.goto(live_server_url)
+
+    # Upload and get to results
+    test_mbox_path = "tests/fixtures/test_emails.mbox"
+    page.set_input_files("input[type='file']", test_mbox_path)
+    page.click("input[type='submit']")
+    page.wait_for_selector("#results-section")
+
+    # Select both rows
+    page.locator("#select-all").click()
+
+    # Click Batch Approve
+    page.get_by_role("button", name="Approve Selected (a)").click()
+
+    # Verify both rows are approved
+    expect(page.locator("#row-0 .view-status")).to_have_text("approved")
+    expect(page.locator("#row-1 .view-status")).to_have_text("approved")
+
+    # Check progress bar
+    expect(page.locator("#progress-text")).to_contain_text("2 / 2 Approved")
