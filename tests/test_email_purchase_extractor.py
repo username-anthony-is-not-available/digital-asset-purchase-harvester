@@ -47,14 +47,18 @@ def test_extract_purchase_info_success(mocker):
     mock_llm_client = mocker.Mock()
     mock_llm_client.generate_json.return_value = mocker.Mock(
         data={
-            "total_spent": 500.0,
-            "currency": "USD",
-            "amount": 0.25,
-            "item_name": "ETH",
-            "vendor": "Binance",
-            "purchase_date": "2024-01-01 12:00:00",
-            "confidence": 0.9,
-            "extraction_notes": "",
+            "transactions": [
+                {
+                    "total_spent": 500.0,
+                    "currency": "USD",
+                    "amount": 0.25,
+                    "item_name": "ETH",
+                    "vendor": "Binance",
+                    "purchase_date": "2024-01-01 12:00:00",
+                    "confidence": 0.9,
+                    "extraction_notes": "",
+                }
+            ]
         }
     )
     from digital_asset_harvester.processing.email_purchase_extractor import (
@@ -64,7 +68,8 @@ def test_extract_purchase_info_success(mocker):
     settings = get_settings_with_overrides(enable_preprocessing=False)
     extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
     result = extractor.extract_purchase_info(email_content)
-    assert result == {
+    assert len(result) == 1
+    assert result[0] == {
         "total_spent": 500.0,
         "currency": "USD",
         "amount": 0.25,
@@ -82,20 +87,24 @@ def test_extract_purchase_info_missing_fields_strict(mocker):
     mock_llm_client = mocker.Mock()
     mock_llm_client.generate_json.return_value = mocker.Mock(
         data={
-            "total_spent": 500.0,
-            "currency": "USD",
-            "amount": 0.25,
-            "confidence": 0.9,
-            "extraction_notes": "",
+            "transactions": [
+                {
+                    "total_spent": 500.0,
+                    "currency": "USD",
+                    "amount": 0.25,
+                    "confidence": 0.9,
+                    "extraction_notes": "",
+                }
+            ]
         }
     )
     from digital_asset_harvester.processing.email_purchase_extractor import (
         EmailPurchaseExtractor,
     )
 
-    settings = get_settings_with_overrides(enable_preprocessing=False)
+    settings = get_settings_with_overrides(enable_preprocessing=False, strict_validation=True)
     extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
-    assert extractor.extract_purchase_info(email_content) is None
+    assert extractor.extract_purchase_info(email_content) == []
 
 
 def test_process_email_successful_path(mocker, monkeypatch):
@@ -111,14 +120,18 @@ def test_process_email_successful_path(mocker, monkeypatch):
         ),
         mocker.Mock(
             data={
-                "total_spent": 1000.0,
-                "currency": "USD",
-                "amount": 0.05,
-                "item_name": "BTC",
-                "vendor": "Coinbase",
-                "purchase_date": "2024-02-02 10:10:10",
-                "confidence": 0.9,
-                "extraction_notes": "",
+                "transactions": [
+                    {
+                        "total_spent": 1000.0,
+                        "currency": "USD",
+                        "amount": 0.05,
+                        "item_name": "BTC",
+                        "vendor": "Coinbase",
+                        "purchase_date": "2024-02-02 10:10:10",
+                        "confidence": 0.9,
+                        "extraction_notes": "",
+                    }
+                ]
             }
         ),
     ]
@@ -132,15 +145,14 @@ def test_process_email_successful_path(mocker, monkeypatch):
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
     result = extractor.process_email(email_content)
     assert result["has_purchase"] is True
-    assert result["purchase_info"]["vendor"] == "Coinbase"
+    assert len(result["purchases"]) == 1
+    assert result["purchases"][0]["vendor"] == "Coinbase"
     assert "Successfully extracted" in result["processing_notes"][0]
 
 
 def test_process_email_filtered_by_preprocessing(mocker):
     email_content = "Subject: Dinner order\nFrom: restaurant@example.com\nBody: Your order has shipped"
-    mocker.patch(
-        "digital_asset_harvester.processing.email_purchase_extractor.get_llm_client"
-    )
+    mocker.patch("digital_asset_harvester.processing.email_purchase_extractor.get_llm_client")
     from digital_asset_harvester.processing.email_purchase_extractor import (
         EmailPurchaseExtractor,
     )
@@ -149,6 +161,7 @@ def test_process_email_filtered_by_preprocessing(mocker):
     result = extractor.process_email(email_content)
     assert result == {
         "has_purchase": False,
+        "purchases": [],
         "processing_notes": ["Email not classified as crypto purchase"],
     }
 
@@ -166,14 +179,18 @@ def test_process_email_with_coinbase_fixture(mocker, monkeypatch):
         ),
         mocker.Mock(
             data={
-                "total_spent": 100.0,
-                "currency": "USD",
-                "amount": 0.001,
-                "item_name": "BTC",
-                "vendor": "Coinbase",
-                "purchase_date": "2024-01-01 12:00:00",
-                "confidence": 0.9,
-                "extraction_notes": "",
+                "transactions": [
+                    {
+                        "total_spent": 100.0,
+                        "currency": "USD",
+                        "amount": 0.001,
+                        "item_name": "BTC",
+                        "vendor": "Coinbase",
+                        "purchase_date": "2024-01-01 12:00:00",
+                        "confidence": 0.9,
+                        "extraction_notes": "",
+                    }
+                ]
             }
         ),
     ]
@@ -187,7 +204,7 @@ def test_process_email_with_coinbase_fixture(mocker, monkeypatch):
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
     result = extractor.process_email(email_content)
     assert result["has_purchase"] is True
-    assert result["purchase_info"]["vendor"] == "Coinbase"
+    assert result["purchases"][0]["vendor"] == "Coinbase"
 
 
 def test_process_email_with_binance_fixture(mocker, monkeypatch):
@@ -203,14 +220,18 @@ def test_process_email_with_binance_fixture(mocker, monkeypatch):
         ),
         mocker.Mock(
             data={
-                "total_spent": 200.0,
-                "currency": "USD",
-                "amount": 0.1,
-                "item_name": "ETH",
-                "vendor": "Binance",
-                "purchase_date": "2024-01-02 12:00:00",
-                "confidence": 0.9,
-                "extraction_notes": "",
+                "transactions": [
+                    {
+                        "total_spent": 200.0,
+                        "currency": "USD",
+                        "amount": 0.1,
+                        "item_name": "ETH",
+                        "vendor": "Binance",
+                        "purchase_date": "2024-01-02 12:00:00",
+                        "confidence": 0.9,
+                        "extraction_notes": "",
+                    }
+                ]
             }
         ),
     ]
@@ -224,7 +245,7 @@ def test_process_email_with_binance_fixture(mocker, monkeypatch):
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
     result = extractor.process_email(email_content)
     assert result["has_purchase"] is True
-    assert result["purchase_info"]["vendor"] == "Binance"
+    assert result["purchases"][0]["vendor"] == "Binance"
 
 
 def test_process_email_with_non_purchase_fixture(mocker, monkeypatch):
@@ -262,15 +283,19 @@ def test_process_email_with_binance_deposit_fixture(mocker, monkeypatch):
         ),
         mocker.Mock(
             data={
-                "transaction_type": "deposit",
-                "total_spent": None,
-                "currency": None,
-                "amount": 0.1,
-                "item_name": "BTC",
-                "vendor": "Binance",
-                "purchase_date": "2024-01-02 12:00:00",
-                "confidence": 0.9,
-                "extraction_notes": "",
+                "transactions": [
+                    {
+                        "transaction_type": "deposit",
+                        "total_spent": None,
+                        "currency": None,
+                        "amount": 0.1,
+                        "item_name": "BTC",
+                        "vendor": "Binance",
+                        "purchase_date": "2024-01-02 12:00:00",
+                        "confidence": 0.9,
+                        "extraction_notes": "",
+                    }
+                ]
             }
         ),
     ]
@@ -284,9 +309,9 @@ def test_process_email_with_binance_deposit_fixture(mocker, monkeypatch):
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
     result = extractor.process_email(email_content)
     assert result["has_purchase"] is True
-    assert result["purchase_info"]["vendor"] == "Binance"
-    assert result["purchase_info"]["amount"] == 0.1
-    assert result["purchase_info"]["item_name"] == "BTC"
+    assert result["purchases"][0]["vendor"] == "Binance"
+    assert result["purchases"][0]["amount"] == 0.1
+    assert result["purchases"][0]["item_name"] == "BTC"
 
 
 def test_process_email_with_binance_withdrawal_fixture(mocker, monkeypatch):
@@ -302,15 +327,19 @@ def test_process_email_with_binance_withdrawal_fixture(mocker, monkeypatch):
         ),
         mocker.Mock(
             data={
-                "transaction_type": "withdrawal",
-                "total_spent": None,
-                "currency": None,
-                "amount": 0.5,
-                "item_name": "ETH",
-                "vendor": "Binance",
-                "purchase_date": "2024-01-02 12:00:00",
-                "confidence": 0.9,
-                "extraction_notes": "",
+                "transactions": [
+                    {
+                        "transaction_type": "withdrawal",
+                        "total_spent": None,
+                        "currency": None,
+                        "amount": 0.5,
+                        "item_name": "ETH",
+                        "vendor": "Binance",
+                        "purchase_date": "2024-01-02 12:00:00",
+                        "confidence": 0.9,
+                        "extraction_notes": "",
+                    }
+                ]
             }
         ),
     ]
@@ -324,9 +353,9 @@ def test_process_email_with_binance_withdrawal_fixture(mocker, monkeypatch):
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
     result = extractor.process_email(email_content)
     assert result["has_purchase"] is True
-    assert result["purchase_info"]["vendor"] == "Binance"
-    assert result["purchase_info"]["amount"] == 0.5
-    assert result["purchase_info"]["item_name"] == "ETH"
+    assert result["purchases"][0]["vendor"] == "Binance"
+    assert result["purchases"][0]["amount"] == 0.5
+    assert result["purchases"][0]["item_name"] == "ETH"
 
 
 def test_process_email_with_coinbase_staking_reward(mocker, monkeypatch):
@@ -342,16 +371,20 @@ def test_process_email_with_coinbase_staking_reward(mocker, monkeypatch):
         ),
         mocker.Mock(
             data={
-                "transaction_type": "staking_reward",
-                "total_spent": None,
-                "currency": None,
-                "amount": 0.00001234,
-                "item_name": "ETH",
-                "vendor": "Coinbase",
-                "purchase_date": "2025-01-01 12:00:00",
-                "transaction_id": "CB-STAKE-2025-ABC",
-                "confidence": 0.9,
-                "extraction_notes": "",
+                "transactions": [
+                    {
+                        "transaction_type": "staking_reward",
+                        "total_spent": None,
+                        "currency": None,
+                        "amount": 0.00001234,
+                        "item_name": "ETH",
+                        "vendor": "Coinbase",
+                        "purchase_date": "2025-01-01 12:00:00",
+                        "transaction_id": "CB-STAKE-2025-ABC",
+                        "confidence": 0.9,
+                        "extraction_notes": "",
+                    }
+                ]
             }
         ),
     ]
@@ -365,9 +398,9 @@ def test_process_email_with_coinbase_staking_reward(mocker, monkeypatch):
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
     result = extractor.process_email(email_content)
     assert result["has_purchase"] is True
-    assert result["purchase_info"]["transaction_type"] == "staking_reward"
-    assert result["purchase_info"]["amount"] == 0.00001234
-    assert result["purchase_info"]["transaction_id"] == "CB-STAKE-2025-ABC"
+    assert result["purchases"][0]["transaction_type"] == "staking_reward"
+    assert result["purchases"][0]["amount"] == 0.00001234
+    assert result["purchases"][0]["transaction_id"] == "CB-STAKE-2025-ABC"
 
 
 def test_process_email_with_binance_staking_reward(mocker, monkeypatch):
@@ -383,16 +416,20 @@ def test_process_email_with_binance_staking_reward(mocker, monkeypatch):
         ),
         mocker.Mock(
             data={
-                "transaction_type": "staking_reward",
-                "total_spent": None,
-                "currency": None,
-                "amount": 0.5,
-                "item_name": "SOL",
-                "vendor": "Binance",
-                "purchase_date": "2025-01-01 12:00:00",
-                "transaction_id": "BIN-STAKE-2025-XYZ",
-                "confidence": 0.9,
-                "extraction_notes": "",
+                "transactions": [
+                    {
+                        "transaction_type": "staking_reward",
+                        "total_spent": None,
+                        "currency": None,
+                        "amount": 0.5,
+                        "item_name": "SOL",
+                        "vendor": "Binance",
+                        "purchase_date": "2025-01-01 12:00:00",
+                        "transaction_id": "BIN-STAKE-2025-XYZ",
+                        "confidence": 0.9,
+                        "extraction_notes": "",
+                    }
+                ]
             }
         ),
     ]
@@ -406,9 +443,9 @@ def test_process_email_with_binance_staking_reward(mocker, monkeypatch):
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
     result = extractor.process_email(email_content)
     assert result["has_purchase"] is True
-    assert result["purchase_info"]["transaction_type"] == "staking_reward"
-    assert result["purchase_info"]["amount"] == 0.5
-    assert result["purchase_info"]["transaction_id"] == "BIN-STAKE-2025-XYZ"
+    assert result["purchases"][0]["transaction_type"] == "staking_reward"
+    assert result["purchases"][0]["amount"] == 0.5
+    assert result["purchases"][0]["transaction_id"] == "BIN-STAKE-2025-XYZ"
 
 
 def test_process_email_with_kraken_staking_reward(mocker, monkeypatch):
@@ -424,16 +461,20 @@ def test_process_email_with_kraken_staking_reward(mocker, monkeypatch):
         ),
         mocker.Mock(
             data={
-                "transaction_type": "staking_reward",
-                "total_spent": None,
-                "currency": None,
-                "amount": 10.5,
-                "item_name": "ADA",
-                "vendor": "Kraken",
-                "purchase_date": "2025-01-01 12:00:00",
-                "transaction_id": "KR-STAKE-2025-999",
-                "confidence": 0.9,
-                "extraction_notes": "",
+                "transactions": [
+                    {
+                        "transaction_type": "staking_reward",
+                        "total_spent": None,
+                        "currency": None,
+                        "amount": 10.5,
+                        "item_name": "ADA",
+                        "vendor": "Kraken",
+                        "purchase_date": "2025-01-01 12:00:00",
+                        "transaction_id": "KR-STAKE-2025-999",
+                        "confidence": 0.9,
+                        "extraction_notes": "",
+                    }
+                ]
             }
         ),
     ]
@@ -447,6 +488,6 @@ def test_process_email_with_kraken_staking_reward(mocker, monkeypatch):
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
     result = extractor.process_email(email_content)
     assert result["has_purchase"] is True
-    assert result["purchase_info"]["transaction_type"] == "staking_reward"
-    assert result["purchase_info"]["amount"] == 10.5
-    assert result["purchase_info"]["transaction_id"] == "KR-STAKE-2025-999"
+    assert result["purchases"][0]["transaction_type"] == "staking_reward"
+    assert result["purchases"][0]["amount"] == 10.5
+    assert result["purchases"][0]["transaction_id"] == "KR-STAKE-2025-999"

@@ -12,7 +12,7 @@ from .schemas import PurchaseRecord
 
 logger = logging.getLogger(__name__)
 
-ISO_CURRENCY_PATTERN = re.compile(r"^[A-Z]{3}$")
+ISO_CURRENCY_PATTERN = re.compile(r"^[A-Z]{3,5}$")
 CRYPTO_SYMBOL_PATTERN = re.compile(r"^[A-Z0-9]{2,10}$")
 
 KNOWN_CRYPTO_NAMES = {

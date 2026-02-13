@@ -8,36 +8,40 @@ def test_extract_purchase_info_coinbase(extractor_factory):
     email_content = EMAIL_FIXTURES["coinbase_purchase"]
     llm_responses = [
         {
-            "total_spent": 100.0,
-            "currency": "USD",
-            "amount": 0.001,
-            "item_name": "BTC",
-            "vendor": "Coinbase",
-            "purchase_date": "2024-01-01 12:00:00",
-            "confidence": 0.9,
+            "transactions": [
+                {
+                    "total_spent": 100.0,
+                    "currency": "USD",
+                    "amount": 0.001,
+                    "item_name": "BTC",
+                    "vendor": "Coinbase",
+                    "purchase_date": "2024-01-01 12:00:00",
+                    "confidence": 0.9,
+                }
+            ]
         }
     ]
     extractor = extractor_factory(llm_responses)
     result = extractor.extract_purchase_info(email_content)
 
-    assert result
-    assert result["total_spent"] == 100.0
-    assert result["currency"] == "USD"
-    assert result["amount"] == 0.001
-    assert result["item_name"] == "BTC"
-    assert result["vendor"] == "Coinbase"
-    assert result["purchase_date"] == "2024-01-01 12:00:00 UTC"
+    assert len(result) == 1
+    assert result[0]["total_spent"] == 100.0
+    assert result[0]["currency"] == "USD"
+    assert result[0]["amount"] == 0.001
+    assert result[0]["item_name"] == "BTC"
+    assert result[0]["vendor"] == "Coinbase"
+    assert result[0]["purchase_date"] == "2024-01-01 12:00:00 UTC"
 
 
 def test_extract_purchase_info_extraction_fails(extractor_factory):
     """
-    Tests that extract_purchase_info returns None when extraction fails.
+    Tests that extract_purchase_info returns empty list when extraction fails.
     """
     email_content = EMAIL_FIXTURES["binance_purchase"]
     llm_responses = [{"error": "extraction failed"}]
     extractor = extractor_factory(llm_responses)
     result = extractor.extract_purchase_info(email_content)
-    assert result is None
+    assert result == []
 
 
 def test_extract_purchase_info_binance(extractor_factory):
@@ -47,22 +51,26 @@ def test_extract_purchase_info_binance(extractor_factory):
     email_content = EMAIL_FIXTURES["binance_purchase"]
     llm_responses = [
         {
-            "total_spent": 200.0,
-            "currency": "USD",
-            "amount": 0.1,
-            "item_name": "ETH",
-            "vendor": "Binance",
-            "purchase_date": "2024-01-01 12:00:00",
+            "transactions": [
+                {
+                    "total_spent": 200.0,
+                    "currency": "USD",
+                    "amount": 0.1,
+                    "item_name": "ETH",
+                    "vendor": "Binance",
+                    "purchase_date": "2024-01-01 12:00:00",
+                }
+            ]
         }
     ]
     extractor = extractor_factory(llm_responses)
     result = extractor.extract_purchase_info(email_content)
 
-    assert result
-    assert result["total_spent"] == 200.0
-    assert result["amount"] == 0.1
-    assert result["item_name"] == "ETH"
-    assert result["vendor"] == "Binance"
+    assert len(result) == 1
+    assert result[0]["total_spent"] == 200.0
+    assert result[0]["amount"] == 0.1
+    assert result[0]["item_name"] == "ETH"
+    assert result[0]["vendor"] == "Binance"
 
 
 def test_extract_purchase_info_kraken(extractor_factory):
@@ -72,21 +80,25 @@ def test_extract_purchase_info_kraken(extractor_factory):
     email_content = EMAIL_FIXTURES["kraken_purchase"]
     llm_responses = [
         {
-            "total_spent": 50.0,
-            "currency": "EUR",
-            "amount": 0.5,
-            "item_name": "XMR",
-            "vendor": "Kraken",
-            "purchase_date": "2024-01-01 12:00:00",
+            "transactions": [
+                {
+                    "total_spent": 50.0,
+                    "currency": "EUR",
+                    "amount": 0.5,
+                    "item_name": "XMR",
+                    "vendor": "Kraken",
+                    "purchase_date": "2024-01-01 12:00:00",
+                }
+            ]
         }
     ]
     extractor = extractor_factory(llm_responses)
     result = extractor.extract_purchase_info(email_content)
 
-    assert result
-    assert result["currency"] == "EUR"
-    assert result["item_name"] == "XMR"
-    assert result["vendor"] == "Kraken"
+    assert len(result) == 1
+    assert result[0]["currency"] == "EUR"
+    assert result[0]["item_name"] == "XMR"
+    assert result[0]["vendor"] == "Kraken"
 
 
 def test_extract_purchase_info_gemini(extractor_factory):
@@ -96,22 +108,26 @@ def test_extract_purchase_info_gemini(extractor_factory):
     email_content = EMAIL_FIXTURES["gemini_purchase"]
     llm_responses = [
         {
-            "total_spent": 150.0,
-            "currency": "USD",
-            "amount": 0.005,
-            "item_name": "BTC",
-            "vendor": "Gemini",
-            "purchase_date": "2024-01-15",
-            "transaction_id": "GEM-2024-001",
+            "transactions": [
+                {
+                    "total_spent": 150.0,
+                    "currency": "USD",
+                    "amount": 0.005,
+                    "item_name": "BTC",
+                    "vendor": "Gemini",
+                    "purchase_date": "2024-01-15",
+                    "transaction_id": "GEM-2024-001",
+                }
+            ]
         }
     ]
     extractor = extractor_factory(llm_responses)
     result = extractor.extract_purchase_info(email_content)
 
-    assert result
-    assert result["vendor"] == "Gemini"
-    assert "transaction_id" in result
-    assert result["transaction_id"] == "GEM-2024-001"
+    assert len(result) == 1
+    assert result[0]["vendor"] == "Gemini"
+    assert "transaction_id" in result[0]
+    assert result[0]["transaction_id"] == "GEM-2024-001"
 
 
 def test_extract_purchase_info_ftx(extractor_factory):
@@ -121,21 +137,25 @@ def test_extract_purchase_info_ftx(extractor_factory):
     email_content = EMAIL_FIXTURES["ftx_purchase"]
     llm_responses = [
         {
-            "total_spent": 8.50,
-            "currency": "USD",
-            "amount": 10,
-            "item_name": "MATIC",
-            "vendor": "FTX",
-            "purchase_date": "2024-01-01",
+            "transactions": [
+                {
+                    "total_spent": 8.50,
+                    "currency": "USD",
+                    "amount": 10,
+                    "item_name": "MATIC",
+                    "vendor": "FTX",
+                    "purchase_date": "2024-01-01",
+                }
+            ]
         }
     ]
     extractor = extractor_factory(llm_responses)
     result = extractor.extract_purchase_info(email_content)
 
-    assert result
-    assert result["amount"] == 10
-    assert result["item_name"] == "MATIC"
-    assert result["total_spent"] == 8.50
+    assert len(result) == 1
+    assert result[0]["amount"] == 10
+    assert result[0]["item_name"] == "MATIC"
+    assert result[0]["total_spent"] == 8.50
 
 
 def test_extract_purchase_info_partial_data(extractor_factory):
@@ -145,15 +165,18 @@ def test_extract_purchase_info_partial_data(extractor_factory):
     email_content = EMAIL_FIXTURES["partial_data_purchase"]
     llm_responses = [
         {
-            "amount": 1.5,
-            "item_name": "LTC",
-            "vendor": "Unknown Exchange",
+            "transactions": [
+                {
+                    "amount": 1.5,
+                    "item_name": "LTC",
+                    "vendor": "Unknown Exchange",
+                }
+            ]
         }
     ]
     extractor = extractor_factory(llm_responses)
     result = extractor.extract_purchase_info(email_content)
 
     # With strict validation disabled or handling missing fields
-    # Result might be None or contain partial data
-    assert result is None or isinstance(result, dict)
-
+    # Result might be empty or contain partial data
+    assert isinstance(result, list)

@@ -165,17 +165,17 @@ def process_emails(
                 logger.debug("Email %d: %s", idx, note)
 
         if result.get("has_purchase"):
-            purchase_info = result["purchase_info"]
-            purchase_info["email_subject"] = email.get("subject", "")
-            results.append(purchase_info)
-            metrics.increment("purchases_detected")
-            log_event(
-                app_logger,
-                "purchase_detected",
-                vendor=purchase_info.get("vendor", "unknown"),
-                currency=purchase_info.get("currency", ""),
-                amount=purchase_info.get("amount", 0),
-            )
+            for purchase_info in result.get("purchases", []):
+                purchase_info["email_subject"] = email.get("subject", "")
+                results.append(purchase_info)
+                metrics.increment("purchases_detected")
+                log_event(
+                    app_logger,
+                    "purchase_detected",
+                    vendor=purchase_info.get("vendor", "unknown"),
+                    currency=purchase_info.get("currency", ""),
+                    amount=purchase_info.get("amount", 0),
+                )
         else:
             metrics.increment("non_purchase_emails")
 
