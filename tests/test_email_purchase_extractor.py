@@ -139,7 +139,8 @@ def test_process_email_successful_path(mocker, monkeypatch):
         EmailPurchaseExtractor,
     )
 
-    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    settings = get_settings_with_overrides(enable_regex_extractors=False)
+    extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
     monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
@@ -200,7 +201,8 @@ def test_process_email_with_coinbase_fixture(mocker, monkeypatch):
         EmailPurchaseExtractor,
     )
 
-    extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
+    settings = get_settings_with_overrides(enable_regex_extractors=False)
+    extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
     monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
     monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)

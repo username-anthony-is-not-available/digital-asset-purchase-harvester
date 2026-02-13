@@ -11,6 +11,7 @@ from digital_asset_harvester.llm import get_llm_client
 from digital_asset_harvester.llm.ollama_client import LLMError
 from digital_asset_harvester.llm.provider import LLMProvider
 from digital_asset_harvester.prompts import DEFAULT_PROMPTS, PromptManager
+from digital_asset_harvester.processing.extractors import registry
 from digital_asset_harvester.processing.constants import (
     CRYPTO_EXCHANGES,
     CRYPTOCURRENCY_TERMS,
@@ -228,6 +229,17 @@ class EmailPurchaseExtractor:
         max_retries: Optional[int] = None,
         default_timezone: str = "UTC",
     ) -> List[Dict[str, Any]]:
+        # 1. Try specialized regex extractors first if enabled
+        if self.settings.enable_regex_extractors:
+            metadata = self._extract_email_metadata(email_content)
+            regex_results = registry.extract(
+                metadata["subject"], metadata["sender"], metadata["body"]
+            )
+            if regex_results:
+                logger.info("Successfully extracted purchase info using regex extractor")
+                return self._process_extracted_transactions(regex_results, method="regex")
+
+        # 2. Fallback to LLM extraction
         retries = (
             max_retries if max_retries is not None else self.settings.llm_max_retries
         )
@@ -259,64 +271,11 @@ class EmailPurchaseExtractor:
             logger.warning("Expected transactions list, but got %s", type(transactions))
             return []
 
-        extracted_purchases = []
+        return self._process_extracted_transactions(transactions)
+
+    def _process_extracted_dates(self, transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Common date processing for extracted transactions."""
         for purchase_data in transactions:
-            # Validate required fields based on transaction type
-            is_deposit_withdrawal_or_reward = (
-                "deposit" in purchase_data.get("transaction_type", "").lower()
-                or "withdrawal" in purchase_data.get("transaction_type", "").lower()
-                or "staking_reward" in purchase_data.get("transaction_type", "").lower()
-            )
-
-            if is_deposit_withdrawal_or_reward:
-                required_fields = {"amount", "item_name", "vendor"}
-            else:
-                required_fields = {
-                    "total_spent",
-                    "currency",
-                    "amount",
-                    "item_name",
-                    "vendor",
-                }
-
-            missing_fields = {
-                field
-                for field in required_fields
-                if field not in purchase_data or purchase_data[field] is None
-            }
-
-            # Log extraction quality
-            confidence = purchase_data.get("confidence", 0.5)
-            notes = purchase_data.get("extraction_notes", "")
-            logger.info("Extraction confidence: %.2f - %s", confidence, notes)
-            log_event(
-                self.event_logger,
-                "extraction_completed",
-                confidence=confidence,
-                missing_fields=";".join(sorted(missing_fields))
-                if missing_fields
-                else "",
-            )
-
-            if (
-                confidence < self.settings.min_confidence_threshold
-                and self.settings.strict_validation
-            ):
-                logger.warning(
-                    "Extraction confidence %.2f below threshold %.2f",
-                    confidence,
-                    self.settings.min_confidence_threshold,
-                )
-                continue
-
-            if missing_fields:
-                logger.warning(
-                    "Missing required field(s): %s", ", ".join(sorted(missing_fields))
-                )
-                if self.settings.strict_validation:
-                    continue
-
-            # Process the purchase date
             if purchase_data.get("purchase_date"):
                 try:
                     # Parse the date and ensure it's in UTC
@@ -362,11 +321,76 @@ class EmailPurchaseExtractor:
                 purchase_data["purchase_date"] = datetime.now(timezone.utc).strftime(
                     "%Y-%m-%d %H:%M:%S %Z"
                 )
+        return transactions
 
-            purchase_data["extraction_method"] = "llm"
+    def _process_extracted_transactions(self, transactions: List[Dict[str, Any]], method: str = "llm") -> List[Dict[str, Any]]:
+        """Common processing for transactions (validation, dates, etc.)."""
+        extracted_purchases = []
+        for purchase_data in transactions:
+            # Set extraction method if not already set
+            if "extraction_method" not in purchase_data:
+                purchase_data["extraction_method"] = method
+
+            # Validate required fields based on transaction type
+            is_deposit_withdrawal_or_reward = (
+                "deposit" in purchase_data.get("transaction_type", "").lower()
+                or "withdrawal" in purchase_data.get("transaction_type", "").lower()
+                or "staking_reward" in purchase_data.get("transaction_type", "").lower()
+            )
+
+            if is_deposit_withdrawal_or_reward:
+                required_fields = {"amount", "item_name", "vendor"}
+            else:
+                required_fields = {
+                    "total_spent",
+                    "currency",
+                    "amount",
+                    "item_name",
+                    "vendor",
+                }
+
+            missing_fields = {
+                field
+                for field in required_fields
+                if field not in purchase_data or purchase_data[field] is None
+            }
+
+            # Log extraction quality
+            confidence = purchase_data.get("confidence", 0.5)
+            notes = purchase_data.get("extraction_notes", "")
+            logger.info("Extraction confidence: %.2f - %s", confidence, notes)
+            log_event(
+                self.event_logger,
+                "extraction_completed",
+                confidence=confidence,
+                missing_fields=";".join(sorted(missing_fields))
+                if missing_fields
+                else "",
+            )
+
+            if (
+                confidence < self.settings.min_confidence_threshold
+                and self.settings.strict_validation
+                and purchase_data.get("extraction_method") != "regex"  # Regex usually high confidence
+            ):
+                logger.warning(
+                    "Extraction confidence %.2f below threshold %.2f",
+                    confidence,
+                    self.settings.min_confidence_threshold,
+                )
+                continue
+
+            if missing_fields:
+                logger.warning(
+                    "Missing required field(s): %s", ", ".join(sorted(missing_fields))
+                )
+                if self.settings.strict_validation:
+                    continue
+
             extracted_purchases.append(purchase_data)
 
-        return extracted_purchases
+        # Use our existing date processing
+        return self._process_extracted_dates(extracted_purchases)
 
     def _validate_purchase_data(self, purchase_data: Dict[str, Any]) -> bool:
         """Validate extracted purchase data for basic sanity checks."""
