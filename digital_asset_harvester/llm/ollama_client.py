@@ -37,7 +37,10 @@ class OllamaLLMClient(LLMProvider):
     ) -> None:
         self.settings = settings or get_settings()
         timeout = float(self.settings.llm_timeout_seconds)
-        self._client = client or Client(timeout=timeout)
+        self._client = client or Client(
+            host=self.settings.ollama_base_url,
+            timeout=timeout,
+        )
         self.default_retries = default_retries or self.settings.llm_max_retries
 
     def generate_json(

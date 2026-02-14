@@ -23,7 +23,9 @@ class HarvesterSettings:
     llm_model_name: str = "llama3.2:3b"
     llm_max_retries: int = 3
     llm_timeout_seconds: int = 30
+    ollama_base_url: str = "http://localhost:11434"
 
+    enable_privacy_mode: bool = False
     enable_cloud_llm: bool = False
     llm_provider: str = "ollama"
     enable_ollama_fallback: bool = False

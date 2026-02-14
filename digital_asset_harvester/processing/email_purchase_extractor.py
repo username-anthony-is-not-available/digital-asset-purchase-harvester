@@ -149,8 +149,8 @@ class EmailPurchaseExtractor:
         return has_purchase_keywords and not has_non_purchase_patterns
 
     def _scrub_pii_if_enabled(self, email_content: str) -> str:
-        """Apply PII scrubbing to email content if enabled in settings."""
-        if self.settings.enable_pii_scrubbing:
+        """Apply PII scrubbing to email content if enabled in settings or privacy mode."""
+        if self.settings.enable_pii_scrubbing or self.settings.enable_privacy_mode:
             logger.debug("PII scrubbing enabled, processing email content")
             return self.pii_scrubber.scrub(email_content)
         return email_content
