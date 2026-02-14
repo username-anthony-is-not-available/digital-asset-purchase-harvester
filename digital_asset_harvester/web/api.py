@@ -1,3 +1,4 @@
+import os
 import shutil
 import uuid
 import csv
@@ -17,7 +18,7 @@ from ..cli import process_emails, configure_logging
 from ..utils.data_utils import normalize_for_frontend, denormalize_from_frontend
 from ..exporters.koinly import KoinlyReportGenerator
 from ..exporters.cryptotaxcalculator import CryptoTaxCalculatorReportGenerator
-from ..exporters.cra import CRAReportGenerator
+from ..exporters.cra import CRAReportGenerator, write_purchase_data_to_cra_pdf
 
 router = APIRouter()
 
@@ -25,14 +26,22 @@ router = APIRouter()
 tasks = {}
 
 DEFAULT_CSV_HEADERS = [
-    "email_subject", "vendor", "currency", "amount", "purchase_date",
-    "transaction_id", "crypto_currency", "crypto_amount", "confidence_score"
+    "email_subject",
+    "vendor",
+    "currency",
+    "amount",
+    "purchase_date",
+    "transaction_id",
+    "crypto_currency",
+    "crypto_amount",
+    "confidence_score",
 ]
 
 
 def get_logger_factory():
     settings = get_settings()
     return configure_logging(settings)
+
 
 def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLoggerFactory):
     """Processes the mbox file and stores the result."""
@@ -57,6 +66,7 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
     tasks[task_id]["status"] = "complete"
     tasks[task_id]["result"] = normalized_purchases
 
+
 @router.get("/export/koinly/{task_id}")
 async def export_koinly(task_id: str):
     task = tasks.get(task_id)
@@ -78,19 +88,27 @@ async def export_koinly(task_id: str):
     else:
         # Standard Koinly headers if no data
         headers = [
-            "Date", "Sent Amount", "Sent Currency", "Received Amount", "Received Currency",
-            "Fee Amount", "Fee Currency", "Net Worth Amount", "Net Worth Currency",
-            "Label", "Description", "TxHash"
+            "Date",
+            "Sent Amount",
+            "Sent Currency",
+            "Received Amount",
+            "Received Currency",
+            "Fee Amount",
+            "Fee Currency",
+            "Net Worth Amount",
+            "Net Worth Currency",
+            "Label",
+            "Description",
+            "TxHash",
         ]
         writer = csv.writer(output)
         writer.writerow(headers)
 
     output.seek(0)
     return StreamingResponse(
-        output,
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=koinly_{task_id}.csv"}
+        output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=koinly_{task_id}.csv"}
     )
+
 
 @router.get("/export/ctc/{task_id}")
 async def export_ctc(task_id: str):
@@ -111,18 +129,27 @@ async def export_ctc(task_id: str):
         writer.writerows(rows)
     else:
         headers = [
-            "Timestamp (UTC)", "Type", "Base Currency", "Base Amount", "Quote Currency",
-            "Quote Amount", "Fee Currency", "Fee Amount", "From", "To", "ID", "Description"
+            "Timestamp (UTC)",
+            "Type",
+            "Base Currency",
+            "Base Amount",
+            "Quote Currency",
+            "Quote Amount",
+            "Fee Currency",
+            "Fee Amount",
+            "From",
+            "To",
+            "ID",
+            "Description",
         ]
         writer = csv.writer(output)
         writer.writerow(headers)
 
     output.seek(0)
     return StreamingResponse(
-        output,
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=ctc_{task_id}.csv"}
+        output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=ctc_{task_id}.csv"}
     )
+
 
 @router.get("/export/cra/{task_id}")
 async def export_cra(task_id: str):
@@ -143,24 +170,55 @@ async def export_cra(task_id: str):
         writer.writerows(rows)
     else:
         headers = [
-            "Date", "Type", "Received Quantity", "Received Currency", "Sent Quantity",
-            "Sent Currency", "Fee Quantity", "Fee Currency", "Description"
+            "Date",
+            "Type",
+            "Received Quantity",
+            "Received Currency",
+            "Sent Quantity",
+            "Sent Currency",
+            "Fee Quantity",
+            "Fee Currency",
+            "Description",
         ]
         writer = csv.writer(output)
         writer.writerow(headers)
 
     output.seek(0)
     return StreamingResponse(
-        output,
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=cra_{task_id}.csv"}
+        output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=cra_{task_id}.csv"}
     )
+
+
+@router.get("/export/cra-pdf/{task_id}")
+async def export_cra_pdf(task_id: str):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    denormalized_results = [denormalize_from_frontend(p) for p in results]
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        write_purchase_data_to_cra_pdf(denormalized_results, tmp.name)
+        tmp_path = tmp.name
+
+    def iterfile():
+        with open(tmp_path, mode="rb") as f:
+            yield from f
+        os.remove(tmp_path)
+
+    return StreamingResponse(
+        iterfile(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=cra_report_{task_id}.pdf"},
+    )
+
 
 @router.post("/upload")
 async def upload_file(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    logger_factory: StructuredLoggerFactory = Depends(get_logger_factory)
+    logger_factory: StructuredLoggerFactory = Depends(get_logger_factory),
 ):
     task_id = str(uuid.uuid4())
 
@@ -172,9 +230,11 @@ async def upload_file(
 
     return RedirectResponse(url=f"/status/{task_id}", status_code=303)
 
+
 @router.get("/status/{task_id}")
 async def get_status(task_id: str):
     return tasks.get(task_id, {"status": "not_found"})
+
 
 @router.get("/export/csv/{task_id}")
 async def export_csv(task_id: str):
@@ -195,7 +255,10 @@ async def export_csv(task_id: str):
 
     output.seek(0)
 
-    return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=purchases_{task_id}.csv"})
+    return StreamingResponse(
+        output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=purchases_{task_id}.csv"}
+    )
+
 
 @router.get("/export/json/{task_id}")
 async def export_json(task_id: str):
@@ -209,6 +272,7 @@ async def export_json(task_id: str):
         media_type="application/json",
         headers={"Content-Disposition": f"attachment; filename=purchases_{task_id}.json"},
     )
+
 
 @router.put("/task/{task_id}/records/{index}")
 async def update_record(task_id: str, index: int, updated_record: dict):
