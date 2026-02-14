@@ -96,7 +96,12 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
     parser.add_argument(
         "--parallel",
         action="store_true",
-        help="Enable parallel processing of emails",
+        help="Enable parallel processing of emails (defaults to threading)",
+    )
+    parser.add_argument(
+        "--multiprocessing",
+        action="store_true",
+        help="Use multiprocessing for parallel processing (more efficient for CPU-bound tasks like local LLMs)",
     )
     parser.add_argument(
         "--max-workers",
@@ -158,6 +163,58 @@ def _process_single_email(
     return email, idx, result
 
 
+def _process_email_worker(
+    task_data: dict | str | bytes,
+    idx: int,
+    settings: HarvesterSettings,
+) -> tuple[dict, int, dict]:
+    """Worker function for multiprocessing."""
+    from email import message_from_bytes, message_from_string
+    from digital_asset_harvester import EmailPurchaseExtractor, get_llm_client
+    from digital_asset_harvester.ingest.email_parser import message_to_dict
+    from digital_asset_harvester.telemetry import StructuredLoggerFactory
+
+    # Re-initialize extractor in the worker process
+    logger_factory = StructuredLoggerFactory(json_output=settings.log_json_output)
+    llm_client = get_llm_client(settings=settings)
+    extractor = EmailPurchaseExtractor(
+        settings=settings,
+        llm_client=llm_client,
+        logger_factory=logger_factory,
+    )
+
+    # Determine if we have a raw email or a pre-parsed dict
+    if isinstance(task_data, (str, bytes)):
+        if isinstance(task_data, bytes):
+            msg = message_from_bytes(task_data)
+        else:
+            msg = message_from_string(task_data)
+        email_dict = message_to_dict(msg)
+    elif isinstance(task_data, dict) and "raw" in task_data:
+        raw_content = task_data["raw"]
+        if isinstance(raw_content, bytes):
+            msg = message_from_bytes(raw_content)
+        else:
+            msg = message_from_string(raw_content)
+        email_dict = message_to_dict(msg)
+        # Preserve extra metadata like UID
+        for k, v in task_data.items():
+            if k != "raw":
+                email_dict[k] = v
+    else:
+        email_dict = task_data
+
+    # Use the same logic as _process_single_email
+    email_content = (
+        f"Subject: {email_dict.get('subject', '')}\n\n"
+        f"From: {email_dict.get('sender', '')}\n\n"
+        f"Date: {email_dict.get('date', '')}\n\n"
+        f"Body: {email_dict.get('body', '')}"
+    )
+    result = extractor.process_email(email_content)
+    return email_dict, idx, result
+
+
 def process_emails(
     emails: Iterable[dict],
     extractor: EmailPurchaseExtractor,
@@ -177,11 +234,16 @@ def process_emails(
 
     # Convert iterable to list for parallel processing if needed
     enable_parallel = getattr(settings, "enable_parallel_processing", False)
+    enable_multiprocessing = getattr(settings, "enable_multiprocessing", False)
+
     # Ensure it's a real boolean if it's a mock
     if hasattr(enable_parallel, "assert_called") or str(type(enable_parallel)).find("MagicMock") > -1:
         enable_parallel = False
+    if hasattr(enable_multiprocessing, "assert_called") or str(type(enable_multiprocessing)).find("MagicMock") > -1:
+        enable_multiprocessing = False
 
-    email_list = list(emails) if enable_parallel else emails
+    is_parallel = enable_parallel or enable_multiprocessing
+    email_list = list(emails) if is_parallel else emails
 
     iterator = tqdm(
         email_list,
@@ -225,23 +287,33 @@ def process_emails(
             if any("filtered out by preprocessing" in note for note in result.get("processing_notes", [])):
                 metrics.increment("emails_skipped_preprocessing")
 
-    if enable_parallel:
-        from concurrent.futures import ThreadPoolExecutor, as_completed
+    if is_parallel:
+        from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 
         max_workers = int(getattr(settings, "max_workers", 5))
-        logger.info("Starting parallel processing with %d workers", max_workers)
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+
+        if enable_multiprocessing:
+            logger.info("Starting multiprocessing with %d workers", max_workers)
+            executor_class = ProcessPoolExecutor
+            # In multiprocessing, we pass the worker function and settings
+            submit_fn = lambda exc, email, idx: exc.submit(_process_email_worker, email, idx, settings)
+        else:
+            logger.info("Starting parallel processing with %d workers", max_workers)
+            executor_class = ThreadPoolExecutor
+            submit_fn = lambda exc, email, idx: exc.submit(_process_single_email, email, idx, extractor)
+
+        with executor_class(max_workers=max_workers) as executor:
             futures = {
-                executor.submit(_process_single_email, email, idx, extractor): (email, idx)
+                submit_fn(executor, email, idx): (email, idx)
                 for idx, email in enumerate(email_list, 1)
             }
 
             for future in as_completed(futures):
                 email, idx = futures[future]
                 try:
-                    _, _, result = future.result()
+                    email_dict, _, result = future.result()
                     metrics.increment("emails_processed")
-                    handle_result(email, idx, result)
+                    handle_result(email_dict, idx, result)
                 except Exception as exc:
                     logger.error("Email %d failed with error: %s", idx, exc)
                     metrics.increment("llm_calls_failed")
@@ -404,6 +476,8 @@ def run(argv: Optional[list[str]] = None) -> int:
         overrides = {}
         if args.parallel:
             overrides["enable_parallel_processing"] = True
+        if args.multiprocessing:
+            overrides["enable_multiprocessing"] = True
         if args.max_workers:
             overrides["max_workers"] = args.max_workers
 
@@ -430,7 +504,9 @@ def run(argv: Optional[list[str]] = None) -> int:
         if args.gmail:
             logger.info("Fetching emails from Gmail...")
             gmail_client = GmailClient()
-            emails = gmail_client.search_emails(args.gmail_query)
+            emails = gmail_client.search_emails(
+                args.gmail_query, raw=settings.enable_multiprocessing
+            )
             _process_and_save_results(
                 emails,
                 extractor,
@@ -498,7 +574,11 @@ def run(argv: Optional[list[str]] = None) -> int:
                         return 0
 
                     logger.info("Found %d new emails.", len(uids))
-                    emails = list(imap_client.fetch_emails_by_uids(uids, imap_folder))
+                    emails = list(
+                        imap_client.fetch_emails_by_uids(
+                            uids, imap_folder, raw=settings.enable_multiprocessing
+                        )
+                    )
 
                     _process_and_save_results(
                         emails,
@@ -517,7 +597,9 @@ def run(argv: Optional[list[str]] = None) -> int:
                         sync_state.set_last_uid(imap_server, imap_user, imap_folder, max_uid)
                         logger.info("Updated sync state: last UID = %d", max_uid)
                 else:
-                    emails = imap_client.search_emails(imap_query, imap_folder)
+                    emails = imap_client.search_emails(
+                        imap_query, imap_folder, raw=settings.enable_multiprocessing
+                    )
                     _process_and_save_results(
                         emails,
                         extractor,
@@ -531,7 +613,7 @@ def run(argv: Optional[list[str]] = None) -> int:
         else:
             logger.info(f"Loading emails from {args.mbox_file}...")
             mbox_reader = MboxDataExtractor(args.mbox_file)
-            emails = mbox_reader.extract_emails()
+            emails = mbox_reader.extract_emails(raw=settings.enable_multiprocessing)
             _process_and_save_results(
                 emails,
                 extractor,

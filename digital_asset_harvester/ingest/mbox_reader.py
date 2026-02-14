@@ -9,11 +9,14 @@ class MboxDataExtractor:
     def __init__(self, mbox_file: str):
         self.mbox_file = mbox_file
 
-    def extract_emails(self) -> Generator[Dict[str, Any], None, None]:
+    def extract_emails(self, raw: bool = False) -> Generator[Any, None, None]:
         try:
             mbox = mailbox.mbox(self.mbox_file)
         except (FileNotFoundError, mailbox.Error):
             return
 
         for message in mbox:
-            yield message_to_dict(message)
+            if raw:
+                yield message.as_string()
+            else:
+                yield message_to_dict(message)

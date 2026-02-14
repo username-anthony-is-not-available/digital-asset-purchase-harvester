@@ -84,7 +84,7 @@ def test_run_mbox_calls_dependencies(mocker):
 
     # THEN
     assert result == 0
-    m_get_settings.assert_called_once()
+    m_get_settings.assert_called()
     m_configure_logging.assert_called_once()
     m_mbox_extractor.assert_called_once_with("test.mbox")
     m_llm_client.assert_called_once()
@@ -195,10 +195,12 @@ def test_run_gmail_calls_dependencies(mocker):
 
     # THEN
     assert result == 0
-    m_get_settings.assert_called_once()
+    m_get_settings.assert_called()
     m_configure_logging.assert_called_once()
     m_gmail_client.assert_called_once()
-    m_gmail_client.return_value.search_emails.assert_called_once_with("test query")
+    m_gmail_client.return_value.search_emails.assert_called_once_with(
+        "test query", raw=m_get_settings.return_value.enable_multiprocessing
+    )
     m_llm_client.assert_called_once()
     m_extractor.assert_called_once()
     m_process_emails.assert_called_once()

@@ -68,7 +68,9 @@ class ImapClient:
             return []
         return [uid.decode() for uid in message_ids[0].split()]
 
-    def fetch_emails_by_uids(self, uids: list[str], folder: str = "INBOX") -> Iterator[Dict[str, Any]]:
+    def fetch_emails_by_uids(
+        self, uids: list[str], folder: str = "INBOX", raw: bool = False
+    ) -> Iterator[Any]:
         """
         Fetches emails for the given UIDs.
         """
@@ -77,17 +79,32 @@ class ImapClient:
             status, message_data = self.client.uid("FETCH", uid, "(RFC822)")
             if status != "OK":
                 continue
+
+            if raw:
+                # Find the raw message bytes in the response
+                raw_content = None
+                for response_part in message_data:
+                    if isinstance(response_part, tuple):
+                        raw_content = response_part[1]
+                        break
+
+                if raw_content:
+                    yield {"raw": raw_content, "uid": uid}
+                continue
+
             email_msg = self._parse_message(message_data)
             email_dict = message_to_dict(email_msg)
             email_dict["uid"] = uid
             yield email_dict
 
-    def search_emails(self, query: str, folder: str = "INBOX") -> Iterator[Dict[str, Any]]:
+    def search_emails(
+        self, query: str, folder: str = "INBOX", raw: bool = False
+    ) -> Iterator[Any]:
         """
         Searches for emails matching the given query.
         """
         uids = self.uid_search(query, folder)
-        yield from self.fetch_emails_by_uids(uids, folder)
+        yield from self.fetch_emails_by_uids(uids, folder, raw=raw)
 
     def _parse_message(self, message_data: list) -> email.message.Message:
         """

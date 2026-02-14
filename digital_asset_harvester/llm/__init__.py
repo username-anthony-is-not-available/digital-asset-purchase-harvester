@@ -14,7 +14,9 @@ if TYPE_CHECKING:
     from .provider import LLMProvider
 
 
-def get_llm_client(provider: str | None = None) -> LLMProvider:
+def get_llm_client(
+    provider: str | None = None, settings: HarvesterSettings | None = None
+) -> LLMProvider:
     """Get the configured LLM client.
 
     This factory function is the single point of entry for creating LLM clients.
@@ -24,11 +26,13 @@ def get_llm_client(provider: str | None = None) -> LLMProvider:
     Args:
         provider: The name of the LLM provider to use. If not specified,
             the value from the application settings will be used.
+        settings: Optional settings object to use. If not specified, the
+            global settings will be used.
 
     Returns:
         An instance of the configured LLM provider client.
     """
-    settings = get_settings()
+    settings = settings or get_settings()
     provider_name = (provider or settings.llm_provider).lower()
 
     if not settings.enable_cloud_llm and provider_name != "ollama":
@@ -52,7 +56,9 @@ def get_llm_client(provider: str | None = None) -> LLMProvider:
             primary = OllamaLLMClient(settings=primary_settings)
 
             # Secondary client using configured fallback provider
-            secondary = get_llm_client(provider=settings.fallback_cloud_provider)
+            secondary = get_llm_client(
+                provider=settings.fallback_cloud_provider, settings=settings
+            )
             return FallbackLLMClient(primary, secondary)
 
         return OllamaLLMClient(settings=settings)
