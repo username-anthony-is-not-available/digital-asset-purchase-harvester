@@ -27,3 +27,4 @@ jinja2
 openai
 anthropic
 fpdf2>=2.8.0
+rapidfuzz

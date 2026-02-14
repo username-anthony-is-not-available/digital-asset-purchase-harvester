@@ -39,6 +39,9 @@ def normalize_for_frontend(purchase: Dict[str, Any]) -> Dict[str, Any]:
     if "fee_currency" not in normalized:
         normalized["fee_currency"] = ""
 
+    if "asset_id" not in normalized:
+        normalized["asset_id"] = None
+
     return normalized
 
 
@@ -68,5 +71,10 @@ def denormalize_from_frontend(purchase: Dict[str, Any]) -> Dict[str, Any]:
     # Restore confidence
     if "confidence_score" in denormalized:
         denormalized["confidence"] = denormalized["confidence_score"]
+
+    # Ensure asset_id is preserved
+    if "asset_id" in denormalized:
+        # already has the right key
+        pass
 
     return denormalized

@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Set
 from digital_asset_harvester.config import HarvesterSettings, get_settings
 from digital_asset_harvester.confidence import calculate_confidence
 from digital_asset_harvester.utils.pii_scrubber import PIIScrubber
+from digital_asset_harvester.utils.asset_mapping import mapper as asset_mapper
 from digital_asset_harvester.llm import get_llm_client
 from digital_asset_harvester.llm.ollama_client import LLMError
 from digital_asset_harvester.llm.provider import LLMProvider
@@ -484,6 +485,11 @@ class EmailPurchaseExtractor:
                         purchase_info["fee_amount"] = float(purchase_record.fee_amount)
 
                     purchase_info["transaction_type"] = purchase_record.transaction_type
+
+                    # Populate asset_id if not already present
+                    if not purchase_info.get("asset_id") and purchase_info.get("item_name"):
+                        purchase_info["asset_id"] = asset_mapper.get_asset_id(purchase_info["item_name"])
+
                     validated_purchases.append(purchase_info)
                 else:
                     logger.warning("Extracted purchase data failed validation")

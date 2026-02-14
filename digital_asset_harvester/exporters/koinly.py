@@ -36,7 +36,7 @@ class KoinlyReportGenerator:
             "Fee Currency": purchase.get("fee_currency", ""),
             "Net Worth Amount": "",
             "Net Worth Currency": "",
-            "Description": f"{tx_type.capitalize()} from {purchase.get('vendor', 'Unknown')}",
+            "Description": f"{tx_type.capitalize()} from {purchase.get('vendor', 'Unknown')}" + (f" (Asset ID: {purchase.get('asset_id')})" if purchase.get('asset_id') else ""),
             "TxHash": purchase.get("transaction_id", ""),
         }
 
