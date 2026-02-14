@@ -28,6 +28,9 @@ class KrakenExtractor(BaseExtractor):
             r"trade confirmation",
             r"kraken order",
             r"staking reward received",
+            r"staking rewards? are here",
+            r"staking payout summary",
+            r"reward summary",
         ]
         return any(re.search(p, subject_lower) for p in patterns) or "kraken" in sender_lower
 
@@ -37,36 +40,52 @@ class KrakenExtractor(BaseExtractor):
 
         # Standard Kraken pattern: "You bought 0.75 XBT (BTC) for $35,000.00 USD."
         # Or simple: "You have successfully bought 0.5 XMR for 50.00 EUR."
-        pattern = r"(?:bought|buy)\s+([\d,.]+)\s+([A-Z0-9]+)(?:\s+\([A-Z0-9]+\))?\s+for\s+([$€£¥])?([\d,.]+)\s*([A-Z]{3})?"
-        match = re.search(pattern, body, re.IGNORECASE)
+        buy_pattern = r"(?:bought|buy)\s+([\d,.]+)\s+([A-Z0-9]+)(?:\s+\([A-Z0-9]+\))?\s+for\s+([$€£¥])?([\d,.]+)\s*([A-Z]{3})?"
+        buy_match = re.search(buy_pattern, body, re.IGNORECASE)
 
-        if match:
-            amount = match.group(1).replace(",", "")
-            crypto_raw = match.group(2).upper()
+        if buy_match:
+            amount = buy_match.group(1).replace(",", "")
+            crypto_raw = buy_match.group(2).upper()
             crypto = self.TICKER_MAP.get(crypto_raw, crypto_raw)
-            total_spent = match.group(4).replace(",", "")
+            total_spent = buy_match.group(4).replace(",", "")
 
-            currency = match.group(5)
-            if not currency and match.group(3):
+            currency = buy_match.group(5)
+            if not currency and buy_match.group(3):
                 symbol_map = {"$": "USD", "€": "EUR", "£": "GBP", "¥": "JPY"}
-                currency = symbol_map.get(match.group(3), "USD")
+                currency = symbol_map.get(buy_match.group(3), "USD")
             if not currency:
                 currency = "USD"
 
             purchases.append(self._create_purchase_dict(amount, crypto, total_spent, currency, body))
 
-        # Handle Staking Rewards
-        # "We've credited your account with 10.5 ADA in staking rewards."
-        if not purchases and "staking rewards" in body.lower():
-            match = re.search(r"credited your account with\s+([\d,.]+)\s+([A-Z0-9]+)", body, re.IGNORECASE)
-            if match:
-                amount = match.group(1).replace(",", "")
-                crypto_raw = match.group(2).upper()
-                crypto = self.TICKER_MAP.get(crypto_raw, crypto_raw)
+        # Handle Staking Rewards (Individual or Summary)
+        if not purchases and ("staking" in body.lower() or "staking" in subject.lower()):
+            # Pattern 1: Individual reward "credited your account with 10.5 ADA"
+            # Pattern 2: Flexible "staking reward of 0.05 DOT"
+            # Pattern 3: Summary list "* 0.00123 ETH" or "- 0.5 SOL"
+            staking_patterns = [
+                r"credited your account with\s+([\d,.]+)\s+([A-Z0-9]+)",
+                r"staking reward of\s+([\d,.]+)\s+([A-Z0-9]+)",
+                r"[*•-]\s+([\d,.]+)\s+([A-Z0-9]+)(?:\s|$)"
+            ]
 
-                purchase = self._create_purchase_dict(amount, crypto, None, "", body)
-                purchase["transaction_type"] = "staking_reward"
-                purchases.append(purchase)
+            seen_rewards = set()
+            for pattern in staking_patterns:
+                for match in re.finditer(pattern, body, re.IGNORECASE):
+                    amount = match.group(1).replace(",", "")
+                    crypto_raw = match.group(2).upper()
+
+                    # Avoid duplicates if multiple patterns match the same text
+                    reward_key = (amount, crypto_raw)
+                    if reward_key in seen_rewards:
+                        continue
+                    seen_rewards.add(reward_key)
+
+                    crypto = self.TICKER_MAP.get(crypto_raw, crypto_raw)
+
+                    purchase = self._create_purchase_dict(amount, crypto, None, "", body)
+                    purchase["transaction_type"] = "staking_reward"
+                    purchases.append(purchase)
 
         return purchases
 
