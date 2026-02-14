@@ -3,6 +3,7 @@
 import pytest
 from digital_asset_harvester.processing.extractors.kraken import KrakenExtractor
 
+
 def test_kraken_staking_summary_extraction():
     extractor = KrakenExtractor()
     subject = "Your weekly staking rewards are here!"
@@ -39,6 +40,7 @@ def test_kraken_staking_summary_extraction():
     assert sol_res["amount"] == "0.50000000"
     assert sol_res["transaction_type"] == "staking_reward"
 
+
 def test_kraken_staking_payout_summary_subject():
     extractor = KrakenExtractor()
     subject = "Staking Payout Summary"
@@ -51,6 +53,7 @@ def test_kraken_staking_payout_summary_subject():
     assert results[0]["amount"] == "10.5"
     assert results[0]["item_name"] == "ADA"
     assert results[0]["transaction_type"] == "staking_reward"
+
 
 def test_kraken_flexible_staking_patterns():
     extractor = KrakenExtractor()

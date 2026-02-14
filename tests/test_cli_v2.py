@@ -8,6 +8,7 @@ from digital_asset_harvester.telemetry import StructuredLoggerFactory
 
 import pytest
 
+
 def test_build_parser_defaults():
     settings = HarvesterSettings()
     parser = build_parser(settings)
@@ -49,9 +50,7 @@ def test_process_emails_collects_metrics(mocker):
     factory = StructuredLoggerFactory(json_output=False)
 
     # WHEN
-    purchases, metrics = process_emails(
-        emails, mock_extractor, factory, show_progress=False
-    )
+    purchases, metrics = process_emails(emails, mock_extractor, factory, show_progress=False)
 
     # THEN
     assert len(purchases) == 1
@@ -68,9 +67,7 @@ def test_run_mbox_calls_dependencies(mocker):
     m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
     m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
     m_mbox_extractor = mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
-    m_llm_client = mocker.patch(
-        "digital_asset_harvester.llm.ollama_client.OllamaLLMClient"
-    )
+    m_llm_client = mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
     m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
     m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
     m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
@@ -100,9 +97,7 @@ def test_run_imap_gmail_oauth2(mocker):
     m_get_settings.return_value.enable_imap = True
     m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
     m_imap_client = mocker.patch("digital_asset_harvester.cli.ImapClient")
-    m_llm_client = mocker.patch(
-        "digital_asset_harvester.llm.ollama_client.OllamaLLMClient"
-    )
+    m_llm_client = mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
     m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
     m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
     m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
@@ -125,9 +120,7 @@ def test_run_imap_gmail_oauth2(mocker):
 
     # THEN
     assert result == 0
-    m_imap_client.assert_called_once_with(
-        "imap.gmail.com", "user", None, "gmail_oauth2", None, None
-    )
+    m_imap_client.assert_called_once_with("imap.gmail.com", "user", None, "gmail_oauth2", None, None)
 
 
 def test_run_imap_outlook_oauth2(mocker):
@@ -136,9 +129,7 @@ def test_run_imap_outlook_oauth2(mocker):
     m_get_settings.return_value.enable_imap = True
     m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
     m_imap_client = mocker.patch("digital_asset_harvester.cli.ImapClient")
-    m_llm_client = mocker.patch(
-        "digital_asset_harvester.llm.ollama_client.OllamaLLMClient"
-    )
+    m_llm_client = mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
     m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
     m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
     m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
@@ -174,14 +165,13 @@ def test_run_imap_outlook_oauth2(mocker):
         "authority",
     )
 
+
 def test_run_gmail_calls_dependencies(mocker):
     # GIVEN
     m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
     m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
     m_gmail_client = mocker.patch("digital_asset_harvester.cli.GmailClient")
-    m_llm_client = mocker.patch(
-        "digital_asset_harvester.llm.ollama_client.OllamaLLMClient"
-    )
+    m_llm_client = mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
     m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
     m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
     m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
@@ -207,6 +197,7 @@ def test_run_gmail_calls_dependencies(mocker):
     m_ensure_dir.assert_called_once_with("output/purchase_data.csv")
     m_write_csv.assert_called_once()
 
+
 def test_run_file_not_found(mocker, caplog):
     # GIVEN
     mocker.patch("digital_asset_harvester.cli.get_settings")
@@ -227,9 +218,7 @@ def test_run_imap_calls_dependencies(mocker):
     m_get_settings.return_value.enable_imap = True
     m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
     m_imap_client = mocker.patch("digital_asset_harvester.cli.ImapClient")
-    m_llm_client = mocker.patch(
-        "digital_asset_harvester.llm.ollama_client.OllamaLLMClient"
-    )
+    m_llm_client = mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
     m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
     m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
     m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
@@ -254,9 +243,7 @@ def test_run_imap_calls_dependencies(mocker):
     assert result == 0
     m_get_settings.assert_called_once()
     m_configure_logging.assert_called_once()
-    m_imap_client.assert_called_once_with(
-        "imap.example.com", "user", "pass", "password", None, None
-    )
+    m_imap_client.assert_called_once_with("imap.example.com", "user", "pass", "password", None, None)
     m_llm_client.assert_called_once()
     m_extractor.assert_called_once()
     m_process_emails.assert_called_once()
@@ -270,8 +257,7 @@ def test_run_koinly_output_enabled(mocker):
     m_get_settings.return_value.enable_koinly_csv_export = True
     mocker.patch("digital_asset_harvester.cli.configure_logging")
     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
-    mocker.patch(        "digital_asset_harvester.llm.ollama_client.OllamaLLMClient"
-    )
+    mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
     mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
     mocker.patch("digital_asset_harvester.cli.process_emails", return_value=([], mocker.MagicMock()))
     m_write_koinly_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_koinly_csv")
@@ -291,8 +277,7 @@ def test_run_koinly_output_disabled(mocker, caplog):
     m_get_settings.return_value.enable_koinly_csv_export = False
     mocker.patch("digital_asset_harvester.cli.configure_logging")
     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
-    mocker.patch(        "digital_asset_harvester.llm.ollama_client.OllamaLLMClient"
-    )
+    mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
     mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
     mocker.patch("digital_asset_harvester.cli.process_emails", return_value=([], mocker.MagicMock()))
     m_write_koinly_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_koinly_csv")
@@ -313,6 +298,7 @@ def test_main(mocker):
 
     # WHEN
     from digital_asset_harvester.cli import main
+
     result = main()
 
     # THEN
@@ -332,9 +318,7 @@ def test_run_ctc_output_enabled(mocker):
         "digital_asset_harvester.cli.process_emails",
         return_value=([], mocker.MagicMock()),
     )
-    m_write_ctc_csv = mocker.patch(
-        "digital_asset_harvester.cli.write_purchase_data_to_ctc_csv"
-    )
+    m_write_ctc_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_ctc_csv")
     m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
 
     # WHEN
@@ -357,9 +341,7 @@ def test_run_cra_output_enabled(mocker):
         "digital_asset_harvester.cli.process_emails",
         return_value=([], mocker.MagicMock()),
     )
-    m_write_cra_csv = mocker.patch(
-        "digital_asset_harvester.cli.write_purchase_data_to_cra_csv"
-    )
+    m_write_cra_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_cra_csv")
     m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
 
     # WHEN

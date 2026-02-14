@@ -7,6 +7,7 @@ from digital_asset_harvester.llm.ollama_client import (
 )
 import pytest
 
+
 @pytest.fixture
 def mock_settings(mocker):
     mock = mocker.patch("digital_asset_harvester.llm.ollama_client.get_settings")
@@ -14,6 +15,7 @@ def mock_settings(mocker):
     mock.return_value.llm_max_retries = 1
     mock.return_value.llm_timeout_seconds = 30.0
     return mock
+
 
 def test_ollama_llm_client_generate_json_with_temperature(mock_settings):
     mock_client = MagicMock()
@@ -30,12 +32,14 @@ def test_ollama_llm_client_generate_json_with_temperature(mock_settings):
         options={"temperature": 0.5},
     )
 
+
 def test_ollama_llm_client_generate_json_with_raw_text_none(mock_settings):
     mock_client = MagicMock()
     mock_client.generate.return_value = {"response": None}
     client = OllamaLLMClient(client=mock_client)
     with pytest.raises(LLMError):
         client.generate_json("test prompt")
+
 
 def test_ollama_llm_client_generate_json_with_invalid_json(mock_settings):
     mock_client = MagicMock()
@@ -44,12 +48,14 @@ def test_ollama_llm_client_generate_json_with_invalid_json(mock_settings):
     with pytest.raises(LLMResponseFormatError):
         client.generate_json("test prompt")
 
+
 def test_ollama_llm_client_generate_json_with_non_dict_json(mock_settings):
     mock_client = MagicMock()
     mock_client.generate.return_value = {"response": "[]"}
     client = OllamaLLMClient(client=mock_client)
     with pytest.raises(LLMResponseFormatError):
         client.generate_json("test prompt")
+
 
 def test_ollama_llm_client_generate_json_with_unknown_error(mock_settings):
     mock_client = MagicMock()
