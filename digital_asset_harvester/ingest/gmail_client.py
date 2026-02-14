@@ -22,11 +22,12 @@ class GmailClient:
         self.creds = get_gmail_credentials()
         self.service = build("gmail", "v1", credentials=self.creds)
 
-    def search_emails(self, query: str) -> Iterator[Dict[str, Any]]:
+    def search_emails(self, query: str, raw: bool = False) -> Iterator[Any]:
         """
         Searches for emails matching the given query.
 
         :param query: The query to search for.
+        :param raw: Whether to return raw message bytes.
         :return: An iterator of email messages.
         """
         try:
@@ -47,8 +48,15 @@ class GmailClient:
                         .get(userId="me", id=message["id"], format="raw")
                         .execute()
                     )
-                    msg_str = base64.urlsafe_b64decode(raw_message["raw"].encode("ASCII"))
-                    email_msg = message_from_bytes(msg_str)
+                    msg_bytes = base64.urlsafe_b64decode(
+                        raw_message["raw"].encode("ASCII")
+                    )
+
+                    if raw:
+                        yield {"raw": msg_bytes, "id": message["id"]}
+                        continue
+
+                    email_msg = message_from_bytes(msg_bytes)
                     yield message_to_dict(email_msg)
 
                 next_page_token = response.get("nextPageToken")
