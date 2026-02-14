@@ -35,6 +35,17 @@ def get_llm_client(
     settings = settings or get_settings()
     provider_name = (provider or settings.llm_provider).lower()
 
+    if settings.enable_privacy_mode:
+        if provider_name != "ollama":
+            raise ValueError(
+                f"Privacy mode is enabled. LLM provider '{provider_name}' is not allowed. "
+                "Only local Ollama is permitted in privacy mode."
+            )
+        if settings.enable_ollama_fallback:
+            raise ValueError(
+                "Privacy mode is enabled. Ollama fallback to cloud LLM is not allowed."
+            )
+
     if not settings.enable_cloud_llm and provider_name != "ollama":
         raise ValueError(
             "Cloud LLM providers are not enabled. "
