@@ -7,11 +7,23 @@
 <body>
     <div class="container">
         <h1>Digital Asset Purchase Harvester</h1>
-        <p>Upload your mbox file to extract cryptocurrency purchase information.</p>
-        <form action="/api/upload" method="post" enctype="multipart/form-data" class="upload-form">
-            <input type="file" name="file">
-            <input type="submit" value="Upload and Process">
-        </form>
+        <p>Upload your mbox file or sync directly from your email inbox.</p>
+
+        <div class="card">
+            <h2>Mbox Upload</h2>
+            <form action="/api/upload" method="post" enctype="multipart/form-data" class="upload-form">
+                <input type="file" name="file">
+                <input type="submit" value="Upload and Process">
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Direct IMAP Sync</h2>
+            <p>Fetch new emails directly from your configured IMAP server.</p>
+            <form action="/api/sync/imap" method="post">
+                <input type="submit" value="Sync from IMAP">
+            </form>
+        </div>
     </div>
 </body>
 </html>

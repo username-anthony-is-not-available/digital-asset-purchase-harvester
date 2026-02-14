@@ -58,6 +58,15 @@ class HarvesterSettings:
     include_confidence_scores: bool = False
 
     enable_imap: bool = False
+    imap_server: str = ""
+    imap_user: str = ""
+    imap_password: str = ""
+    imap_auth_type: str = "password"
+    imap_folder: str = "INBOX"
+    imap_query: str = "ALL"
+    imap_client_id: str = ""
+    imap_authority: str = ""
+
     enable_koinly_csv_export: bool = False
     enable_ctc_csv_export: bool = False
     enable_cra_csv_export: bool = False
