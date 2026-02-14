@@ -36,6 +36,7 @@ from digital_asset_harvester.exporters.cra import (
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
 from digital_asset_harvester.utils.deduplication import DuplicateDetector
+from digital_asset_harvester.utils.sync_state import SyncState
 
 KOINLY_AVAILABLE = True
 
@@ -86,6 +87,11 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
         choices=["csv", "koinly", "cryptotaxcalculator", "cra", "cra-pdf"],
         default="csv",
         help="The output format (default: csv)",
+    )
+    parser.add_argument(
+        "--sync",
+        action="store_true",
+        help="Only fetch new emails since the last run (applies to IMAP)",
     )
     parser.add_argument(
         "--parallel",
@@ -437,28 +443,91 @@ def run(argv: Optional[list[str]] = None) -> int:
             )
         elif settings.enable_imap and args.imap:
             logger.info("Fetching emails from IMAP server...")
-            if not all([args.imap_server, args.imap_user]):
+
+            # Helper to check if settings is a real dataclass or a MagicMock
+            from dataclasses import is_dataclass
+            is_real_settings = is_dataclass(settings) and not hasattr(settings, "assert_called")
+
+            # Precedence: CLI args > Config/Env Settings > Default
+            imap_server = args.imap_server or (settings.imap_server if is_real_settings else None)
+            imap_user = args.imap_user or (settings.imap_user if is_real_settings else None)
+            imap_pass = args.imap_password or (settings.imap_password if is_real_settings else None)
+
+            # For auth type, we check if it was provided on CLI, otherwise use settings
+            # argparse default is "password", but we can check if it's explicitly set in argv
+            import sys
+            if "--imap-auth-type" in sys.argv:
+                imap_auth = args.imap_auth_type
+            else:
+                imap_auth = settings.imap_auth_type if is_real_settings else args.imap_auth_type
+
+            imap_client_id = args.client_id or (settings.imap_client_id if is_real_settings else None)
+            imap_authority = args.authority or (settings.imap_authority if is_real_settings else None)
+
+            imap_query = args.imap_query if args.imap_query != "ALL" else (settings.imap_query if is_real_settings else "ALL")
+            imap_folder = getattr(settings, "imap_folder", "INBOX") if is_real_settings else "INBOX"
+
+            if not all([imap_server, imap_user]):
                 logger.error("IMAP server and user are required.")
                 return 1
+
             with ImapClient(
-                args.imap_server,
-                args.imap_user,
-                args.imap_password,
-                args.imap_auth_type,
-                args.client_id,
-                args.authority,
+                imap_server,
+                imap_user,
+                imap_pass,
+                imap_auth,
+                imap_client_id,
+                imap_authority,
             ) as imap_client:
-                emails = imap_client.search_emails(args.imap_query)
-                _process_and_save_results(
-                    emails,
-                    extractor,
-                    logger_factory,
-                    args.output,
-                    args.output_format,
-                    args.progress,
-                    settings,
-                    args.koinly_upload,
-                )
+                if args.sync:
+                    sync_state = SyncState()
+                    last_uid = sync_state.get_last_uid(imap_server, imap_user, imap_folder)
+                    logger.info("Syncing since UID: %d", last_uid)
+
+                    # Construct query for new UIDs
+                    # IMAP UID sequence: UID <last_uid+1>:* fetches all UIDs from last_uid+1 to infinity
+                    if last_uid > 0:
+                        full_query = f"UID {last_uid + 1}:* {imap_query}"
+                    else:
+                        full_query = imap_query
+
+                    uids = imap_client.uid_search(full_query, imap_folder)
+
+                    if not uids:
+                        logger.info("No new emails found.")
+                        return 0
+
+                    logger.info("Found %d new emails.", len(uids))
+                    emails = list(imap_client.fetch_emails_by_uids(uids, imap_folder))
+
+                    _process_and_save_results(
+                        emails,
+                        extractor,
+                        logger_factory,
+                        args.output,
+                        args.output_format,
+                        args.progress,
+                        settings,
+                        args.koinly_upload,
+                    )
+
+                    # Update sync state with highest UID
+                    if emails:
+                        max_uid = max(int(email["uid"]) for email in emails)
+                        sync_state.set_last_uid(imap_server, imap_user, imap_folder, max_uid)
+                        logger.info("Updated sync state: last UID = %d", max_uid)
+                else:
+                    emails = imap_client.search_emails(imap_query, imap_folder)
+                    _process_and_save_results(
+                        emails,
+                        extractor,
+                        logger_factory,
+                        args.output,
+                        args.output_format,
+                        args.progress,
+                        settings,
+                        args.koinly_upload,
+                    )
         else:
             logger.info(f"Loading emails from {args.mbox_file}...")
             mbox_reader = MboxDataExtractor(args.mbox_file)

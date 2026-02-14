@@ -62,13 +62,13 @@ def test_imap_client_outlook_oauth2(mock_get_outlook_credentials, mock_imaplib):
 
 @patch("imaplib.IMAP4_SSL")
 def test_imap_client_search_emails(mock_imaplib):
-    """Tests that the IMAP client searches for and parses emails."""
+    """Tests that the IMAP client searches for and parses emails using UIDs."""
     mock_imap_client = MagicMock()
     mock_imaplib.return_value = mock_imap_client
-    mock_imap_client.search.return_value = ("OK", [b"1 2"])
-    mock_imap_client.fetch.side_effect = [
-        ("OK", [(b"1 (RFC822)", b"From: a@b.c\r\n\r\nBody1")]),
-        ("OK", [(b"2 (RFC822)", b"From: d@e.f\r\n\r\nBody2")]),
+    mock_imap_client.uid.side_effect = [
+        ("OK", [b"101 102"]),  # SEARCH
+        ("OK", [(b"101 (RFC822)", b"From: a@b.c\r\n\r\nBody1")]),  # FETCH 101
+        ("OK", [(b"102 (RFC822)", b"From: d@e.f\r\n\r\nBody2")]),  # FETCH 102
     ]
 
     with ImapClient("imap.example.com", "user", "pass") as client:
@@ -76,4 +76,9 @@ def test_imap_client_search_emails(mock_imaplib):
 
     assert len(emails) == 2
     assert emails[0]["sender"] == "a@b.c"
+    assert emails[0]["uid"] == "101"
     assert emails[1]["sender"] == "d@e.f"
+    assert emails[1]["uid"] == "102"
+
+    # Verify UID calls
+    assert mock_imap_client.uid.call_count == 3

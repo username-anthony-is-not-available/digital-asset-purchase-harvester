@@ -58,17 +58,36 @@ class ImapClient:
         else:
             raise ValueError(f"Unsupported auth type: {self.auth_type}")
 
-    def search_emails(self, query: str) -> Iterator[Dict[str, Any]]:
+    def uid_search(self, query: str, folder: str = "INBOX") -> list[str]:
+        """
+        Searches for emails matching the given query and returns their UIDs.
+        """
+        self.client.select(folder)
+        status, message_ids = self.client.uid("SEARCH", None, query)
+        if status != "OK":
+            return []
+        return [uid.decode() for uid in message_ids[0].split()]
+
+    def fetch_emails_by_uids(self, uids: list[str], folder: str = "INBOX") -> Iterator[Dict[str, Any]]:
+        """
+        Fetches emails for the given UIDs.
+        """
+        self.client.select(folder)
+        for uid in uids:
+            status, message_data = self.client.uid("FETCH", uid, "(RFC822)")
+            if status != "OK":
+                continue
+            email_msg = self._parse_message(message_data)
+            email_dict = message_to_dict(email_msg)
+            email_dict["uid"] = uid
+            yield email_dict
+
+    def search_emails(self, query: str, folder: str = "INBOX") -> Iterator[Dict[str, Any]]:
         """
         Searches for emails matching the given query.
         """
-        self.client.select("inbox")
-        _, message_ids = self.client.search(None, query)
-
-        for message_id in message_ids[0].split():
-            _, message_data = self.client.fetch(message_id, "(RFC822)")
-            email_msg = self._parse_message(message_data)
-            yield message_to_dict(email_msg)
+        uids = self.uid_search(query, folder)
+        yield from self.fetch_emails_by_uids(uids, folder)
 
     def _parse_message(self, message_data: list) -> email.message.Message:
         """

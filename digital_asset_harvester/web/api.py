@@ -13,6 +13,8 @@ from .. import (
     get_llm_client,
     get_settings,
 )
+from ..ingest.imap_client import ImapClient
+from ..utils.sync_state import SyncState
 from ..telemetry import StructuredLoggerFactory
 from ..cli import process_emails, configure_logging
 from ..utils.data_utils import normalize_for_frontend, denormalize_from_frontend
@@ -57,6 +59,59 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
 
     tasks[task_id]["status"] = "complete"
     tasks[task_id]["result"] = normalized_purchases
+
+def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
+    """Synchronizes emails from IMAP and stores the result."""
+    tasks[task_id] = {"status": "processing", "result": None}
+    settings = get_settings()
+
+    if not settings.enable_imap:
+        tasks[task_id] = {"status": "error", "error": "IMAP is not enabled in settings"}
+        return
+
+    llm_client = get_llm_client()
+    extractor = EmailPurchaseExtractor(
+        settings=settings,
+        llm_client=llm_client,
+        logger_factory=logger_factory,
+    )
+
+    try:
+        with ImapClient(
+            settings.imap_server,
+            settings.imap_user,
+            settings.imap_password,
+            settings.imap_auth_type,
+            settings.imap_client_id,
+            settings.imap_authority,
+        ) as imap_client:
+            sync_state = SyncState()
+            last_uid = sync_state.get_last_uid(settings.imap_server, settings.imap_user, settings.imap_folder)
+
+            if last_uid > 0:
+                full_query = f"UID {last_uid + 1}:* {settings.imap_query}"
+            else:
+                full_query = settings.imap_query
+
+            uids = imap_client.uid_search(full_query, settings.imap_folder)
+
+            if not uids:
+                tasks[task_id] = {"status": "complete", "result": []}
+                return
+
+            emails = list(imap_client.fetch_emails_by_uids(uids, settings.imap_folder))
+            purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
+
+            if emails:
+                max_uid = max(int(email["uid"]) for email in emails)
+                sync_state.set_last_uid(settings.imap_server, settings.imap_user, settings.imap_folder, max_uid)
+
+            normalized_purchases = [normalize_for_frontend(p) for p in purchases]
+            tasks[task_id]["status"] = "complete"
+            tasks[task_id]["result"] = normalized_purchases
+
+    except Exception as e:
+        tasks[task_id] = {"status": "error", "error": str(e)}
 
 @router.get("/export/koinly/{task_id}")
 async def export_koinly(task_id: str):
@@ -195,6 +250,20 @@ async def upload_file(
         temp_path = temp_file.name
 
     background_tasks.add_task(process_mbox_file, task_id, temp_path, logger_factory)
+
+    return RedirectResponse(url=f"/status/{task_id}", status_code=303)
+
+@router.post("/sync/imap")
+async def sync_imap(
+    background_tasks: BackgroundTasks,
+    logger_factory: StructuredLoggerFactory = Depends(get_logger_factory)
+):
+    settings = get_settings()
+    if not settings.enable_imap:
+        raise HTTPException(status_code=400, detail="IMAP is not enabled in settings")
+
+    task_id = str(uuid.uuid4())
+    background_tasks.add_task(process_imap_sync, task_id, logger_factory)
 
     return RedirectResponse(url=f"/status/{task_id}", status_code=303)
 
