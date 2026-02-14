@@ -8,8 +8,8 @@ import pytest
 from digital_asset_harvester.config import (
     DEFAULT_CONFIG_FILE,
     HarvesterSettings,
+    get_settings,
     get_settings_with_overrides,
-    load_config_from_file,
     reload_settings,
     setup_logging,
 )
@@ -38,13 +38,12 @@ def test_load_config_from_file(tmp_path):
     llm_model_name = "file-model"
     min_confidence_threshold = 0.8
     """
-    config_file = os.path.join(tmp_path, "config.toml")
+    config_file = str(tmp_path / "config.toml")
     with open(config_file, "w") as f:
         f.write(config_content)
 
     with patch.dict(os.environ, {"HARVESTER_CONFIG_FILE": config_file}):
-        reload_settings()
-        settings = load_config_from_file()
+        settings = reload_settings()
         assert settings.llm_model_name == "file-model"
         assert settings.min_confidence_threshold == 0.8
 
@@ -55,7 +54,7 @@ def test_environment_variable_overrides(tmp_path):
     [harvester]
     llm_model_name = "file-model"
     """
-    config_file = os.path.join(tmp_path, "config.toml")
+    config_file = str(tmp_path / "config.toml")
     with open(config_file, "w") as f:
         f.write(config_content)
 
@@ -64,8 +63,7 @@ def test_environment_variable_overrides(tmp_path):
         "DAP_LLM_MODEL_NAME": "env-model",
     }
     with patch.dict(os.environ, env_vars):
-        reload_settings()
-        settings = load_config_from_file()
+        settings = reload_settings()
         assert settings.llm_model_name == "env-model"
 
 

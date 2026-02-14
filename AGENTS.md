@@ -112,7 +112,7 @@ To set up the development environment, follow these steps:
     ```
 -   **Run the web UI**:
     ```bash
-    python run_web.py
+    python -m digital_asset_harvester.web.run
     ```
 -   **Run the CLI**:
     ```bash
