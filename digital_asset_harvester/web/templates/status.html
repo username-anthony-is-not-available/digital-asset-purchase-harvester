@@ -283,6 +283,7 @@
                     <a id="export-koinly" href="#" download><button>Export to Koinly</button></a>
                     <a id="export-ctc" href="#" download><button>Export to CTC</button></a>
                     <a id="export-cra" href="#" download><button>Export to CRA</button></a>
+                    <a id="export-cra-pdf" href="#" download><button>Export to CRA PDF</button></a>
                     <a href="/"><button>Process Another File</button></a>
                 </div>
             </div>
@@ -327,6 +328,7 @@
         const exportKoinly = document.getElementById('export-koinly');
         const exportCtc = document.getElementById('export-ctc');
         const exportCra = document.getElementById('export-cra');
+        const exportCraPdf = document.getElementById('export-cra-pdf');
 
         const interval = setInterval(() => {
             fetch(`/api/status/${taskId}`)
@@ -342,6 +344,7 @@
                         exportKoinly.href = `/api/export/koinly/${taskId}`;
                         exportCtc.href = `/api/export/ctc/${taskId}`;
                         exportCra.href = `/api/export/cra/${taskId}`;
+                        exportCraPdf.href = `/api/export/cra-pdf/${taskId}`;
 
                         allPurchases = data.result || [];
                         renderTable();

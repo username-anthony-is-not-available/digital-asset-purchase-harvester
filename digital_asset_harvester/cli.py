@@ -31,6 +31,7 @@ from digital_asset_harvester.exporters.cryptotaxcalculator import (
 )
 from digital_asset_harvester.exporters.cra import (
     write_purchase_data_to_cra_csv,
+    write_purchase_data_to_cra_pdf,
 )
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
@@ -82,7 +83,7 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output-format",
-        choices=["csv", "koinly", "cryptotaxcalculator", "cra"],
+        choices=["csv", "koinly", "cryptotaxcalculator", "cra", "cra-pdf"],
         default="csv",
         help="The output format (default: csv)",
     )
@@ -341,6 +342,18 @@ def _process_and_save_results(
                 "CryptoTaxCalculator output format is not enabled. "
                 "Set `enable_ctc_csv_export = true` in your config or "
                 "`DAP_ENABLE_CTC_CSV_EXPORT=true` env var. "
+                "Falling back to standard CSV output."
+            )
+            write_purchase_data_to_csv(output_path, purchases)
+    elif output_format == "cra-pdf":
+        if settings.enable_cra_pdf_export:
+            logger.info("Writing output in CRA PDF format to %s", output_path)
+            write_purchase_data_to_cra_pdf(purchases, output_path)
+        else:
+            logger.warning(
+                "CRA PDF output format is not enabled. "
+                "Set `enable_cra_pdf_export = true` in your config or "
+                "`DAP_ENABLE_CRA_PDF_EXPORT=true` env var. "
                 "Falling back to standard CSV output."
             )
             write_purchase_data_to_csv(output_path, purchases)
