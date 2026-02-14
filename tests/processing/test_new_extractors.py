@@ -1,8 +1,10 @@
 import pytest
-from digital_asset_harvester.processing.extractors.gemini import GeminiExtractor
+
 from digital_asset_harvester.processing.extractors.cryptocom import CryptocomExtractor
 from digital_asset_harvester.processing.extractors.ftx import FTXExtractor
+from digital_asset_harvester.processing.extractors.gemini import GeminiExtractor
 from tests.fixtures.emails import EMAIL_FIXTURES
+
 
 def test_gemini_extractor():
     extractor = GeminiExtractor()
@@ -21,6 +23,7 @@ def test_gemini_extractor():
     assert results[0]["vendor"] == "Gemini"
     assert results[0]["transaction_id"] == "GEM-2024-001"
 
+
 def test_cryptocom_extractor():
     extractor = CryptocomExtractor()
     email = EMAIL_FIXTURES["complex_purchase"]
@@ -37,6 +40,7 @@ def test_cryptocom_extractor():
     assert results[0]["currency"] == "USD"
     assert results[0]["vendor"] == "Crypto.com"
     assert results[0]["transaction_id"] == "12345"
+
 
 def test_ftx_extractor():
     extractor = FTXExtractor()

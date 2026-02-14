@@ -8,9 +8,9 @@ from typing import Any, Dict, List
 import pytest
 
 from digital_asset_harvester import (
-    StructuredLoggerFactory,
     EmailPurchaseExtractor,
     HarvesterSettings,
+    StructuredLoggerFactory,
     get_settings_with_overrides,
 )
 from digital_asset_harvester.llm.provider import LLMResult

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import logging
+from typing import Optional, Set
+
 import regex as re
-from typing import Set, Optional
 
 logger = logging.getLogger(__name__)
+
 
 class PIIScrubber:
     """Detects and masks PII in text using regular expressions."""
@@ -22,40 +24,29 @@ class PIIScrubber:
         self.skip_terms = {term.lower() for term in (skip_terms or set())}
 
         # Email addresses
-        self.email_re = re.compile(
-            r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
-            re.IGNORECASE
-        )
+        self.email_re = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", re.IGNORECASE)
 
         # Phone numbers (broad pattern)
-        self.phone_re = re.compile(
-            r'(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4,6}',
-            re.IGNORECASE
-        )
+        self.phone_re = re.compile(r"(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4,6}", re.IGNORECASE)
 
         # IP Addresses (IPv4)
-        self.ip_re = re.compile(
-            r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b'
-        )
+        self.ip_re = re.compile(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b")
 
         # Credit Card Numbers
-        self.cc_re = re.compile(
-            r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b'
-        )
+        self.cc_re = re.compile(r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b")
 
         # Physical Addresses (Heuristic)
         # Matches: Number + Street Name + Suffix (St, Ave, etc.)
         self.address_re = re.compile(
-            r'\b\d{1,5}\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+'
-            r'(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Circle|Cir|Way)',
-            re.IGNORECASE
+            r"\b\d{1,5}\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+"
+            r"(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Circle|Cir|Way)",
+            re.IGNORECASE,
         )
 
         # Name patterns (Heuristic)
         # Matches: Hi/Dear/Hello followed by 1-3 capitalized words
         self.name_greeting_re = re.compile(
-            r'\b(Hi|Dear|Hello|Greetings)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})',
-            re.MULTILINE
+            r"\b(Hi|Dear|Hello|Greetings)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})", re.MULTILINE
         )
 
     def _should_mask(self, match_text: str) -> bool:
@@ -76,16 +67,10 @@ class PIIScrubber:
             return text
 
         # Scrub emails
-        text = self.email_re.sub(
-            lambda m: "[EMAIL]" if self._should_mask(m.group(0)) else m.group(0),
-            text
-        )
+        text = self.email_re.sub(lambda m: "[EMAIL]" if self._should_mask(m.group(0)) else m.group(0), text)
 
         # Scrub phone numbers
-        text = self.phone_re.sub(
-            lambda m: "[PHONE]" if self._should_mask(m.group(0)) else m.group(0),
-            text
-        )
+        text = self.phone_re.sub(lambda m: "[PHONE]" if self._should_mask(m.group(0)) else m.group(0), text)
 
         # Scrub IP addresses
         text = self.ip_re.sub("[IP_ADDRESS]", text)
@@ -94,10 +79,7 @@ class PIIScrubber:
         text = self.cc_re.sub("[CREDIT_CARD]", text)
 
         # Scrub addresses
-        text = self.address_re.sub(
-            lambda m: "[ADDRESS]" if self._should_mask(m.group(0)) else m.group(0),
-            text
-        )
+        text = self.address_re.sub(lambda m: "[ADDRESS]" if self._should_mask(m.group(0)) else m.group(0), text)
 
         # Scrub names in greetings
         def mask_name(match):

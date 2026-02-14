@@ -1,10 +1,12 @@
 """Tests for specialized regex extractors."""
 
 import pytest
-from digital_asset_harvester.processing.extractors.coinbase import CoinbaseExtractor
+
 from digital_asset_harvester.processing.extractors.binance import BinanceExtractor
+from digital_asset_harvester.processing.extractors.coinbase import CoinbaseExtractor
 from digital_asset_harvester.processing.extractors.kraken import KrakenExtractor
 from tests.fixtures.emails import EMAIL_FIXTURES
+
 
 def test_coinbase_extractor():
     extractor = CoinbaseExtractor()
@@ -21,6 +23,7 @@ def test_coinbase_extractor():
     assert results[0]["currency"] == "USD"
     assert results[0]["vendor"] == "Coinbase"
 
+
 def test_binance_extractor_single():
     extractor = BinanceExtractor()
     subject = "Your order to buy 0.1 ETH has been filled"
@@ -34,6 +37,7 @@ def test_binance_extractor_single():
     assert results[0]["item_name"] == "ETH"
     assert results[0]["total_spent"] == "200.00"
     assert results[0]["currency"] == "USD"
+
 
 def test_binance_extractor_multi():
     extractor = BinanceExtractor()
@@ -60,6 +64,7 @@ def test_binance_extractor_multi():
     assert eth_res["total_spent"] == "350.00"
     assert eth_res["currency"] == "USDT"
 
+
 def test_kraken_extractor():
     extractor = KrakenExtractor()
     subject = "Trade Confirmation: Buy 0.5 XMR"
@@ -73,6 +78,7 @@ def test_kraken_extractor():
     assert results[0]["item_name"] == "XMR"
     assert results[0]["total_spent"] == "50.00"
     assert results[0]["currency"] == "EUR"
+
 
 def test_kraken_extractor_with_xbt():
     extractor = KrakenExtractor()
@@ -88,6 +94,7 @@ def test_kraken_extractor_with_xbt():
     assert results[0]["total_spent"] == "35,000.00".replace(",", "")
     assert results[0]["currency"] == "USD"
     assert results[0]["fee_amount"] == "105.00"
+
 
 def test_staking_rewards_regex():
     # Coinbase Staking

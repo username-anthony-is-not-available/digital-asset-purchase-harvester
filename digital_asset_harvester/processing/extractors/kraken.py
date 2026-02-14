@@ -37,7 +37,9 @@ class KrakenExtractor(BaseExtractor):
 
         # Standard Kraken pattern: "You bought 0.75 XBT (BTC) for $35,000.00 USD."
         # Or simple: "You have successfully bought 0.5 XMR for 50.00 EUR."
-        pattern = r"(?:bought|buy)\s+([\d,.]+)\s+([A-Z0-9]+)(?:\s+\([A-Z0-9]+\))?\s+for\s+([$€£¥])?([\d,.]+)\s*([A-Z]{3})?"
+        pattern = (
+            r"(?:bought|buy)\s+([\d,.]+)\s+([A-Z0-9]+)(?:\s+\([A-Z0-9]+\))?\s+for\s+([$€£¥])?([\d,.]+)\s*([A-Z]{3})?"
+        )
         match = re.search(pattern, body, re.IGNORECASE)
 
         if match:
@@ -70,7 +72,9 @@ class KrakenExtractor(BaseExtractor):
 
         return purchases
 
-    def _create_purchase_dict(self, amount: str, crypto: str, total_spent: str | None, currency: str, body: str) -> Dict[str, Any]:
+    def _create_purchase_dict(
+        self, amount: str, crypto: str, total_spent: str | None, currency: str, body: str
+    ) -> Dict[str, Any]:
         # Extract order reference or ID
         txn_id = self._find_match(r"(?:ID|Reference|Order Reference):\s*([A-Z0-9\-]+)", body)
 

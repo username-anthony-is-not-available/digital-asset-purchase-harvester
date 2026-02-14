@@ -33,8 +33,7 @@ def get_llm_client(provider: str | None = None) -> LLMProvider:
 
     if not settings.enable_cloud_llm and provider_name != "ollama":
         raise ValueError(
-            "Cloud LLM providers are not enabled. "
-            "Set `enable_cloud_llm` to True in settings to use them."
+            "Cloud LLM providers are not enabled. " "Set `enable_cloud_llm` to True in settings to use them."
         )
 
     if provider_name == "ollama":
@@ -42,6 +41,7 @@ def get_llm_client(provider: str | None = None) -> LLMProvider:
 
         if settings.enable_ollama_fallback and not provider:
             from digital_asset_harvester.config import get_settings_with_overrides
+
             from .fallback_client import FallbackLLMClient
 
             # Primary client with threshold as timeout

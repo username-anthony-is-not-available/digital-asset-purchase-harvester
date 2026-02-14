@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from digital_asset_harvester.utils.data_utils import normalize_for_frontend, denormalize_from_frontend
+
+from digital_asset_harvester.utils.data_utils import denormalize_from_frontend, normalize_for_frontend
 
 
 def test_normalize_for_frontend_basic():
@@ -14,7 +15,7 @@ def test_normalize_for_frontend_basic():
         "item_name": "BTC",
         "vendor": "Coinbase",
         "purchase_date": "2023-01-01",
-        "confidence": 0.95
+        "confidence": 0.95,
     }
 
     normalized = normalize_for_frontend(purchase)
@@ -25,7 +26,7 @@ def test_normalize_for_frontend_basic():
     assert normalized["confidence_score"] == 0.95
     assert normalized["review_status"] == "pending"
     assert normalized["item_name"] == "BTC"  # Original should still be there
-    assert normalized["total_spent"] == 100.0 # Original should still be there
+    assert normalized["total_spent"] == 100.0  # Original should still be there
 
 
 def test_normalize_for_frontend_already_normalized():
@@ -34,7 +35,7 @@ def test_normalize_for_frontend_already_normalized():
         "crypto_amount": 0.01,
         "crypto_currency": "BTC",
         "review_status": "approved",
-        "confidence_score": 0.95
+        "confidence_score": 0.95,
     }
 
     normalized = normalize_for_frontend(purchase)
@@ -54,7 +55,7 @@ def test_denormalize_from_frontend_basic():
         "vendor": "Coinbase",
         "purchase_date": "2023-01-01",
         "confidence_score": 0.95,
-        "review_status": "pending"
+        "review_status": "pending",
     }
 
     denormalized = denormalize_from_frontend(purchase)
@@ -66,15 +67,12 @@ def test_denormalize_from_frontend_basic():
 
 
 def test_denormalize_from_frontend_missing_fields():
-    purchase = {
-        "amount": 100.0,
-        "currency": "USD"
-    }
+    purchase = {"amount": 100.0, "currency": "USD"}
 
     denormalized = denormalize_from_frontend(purchase)
 
-    assert denormalized["amount"] == 100.0 # Stays as amount if no crypto_amount
-    assert "total_spent" not in denormalized # Wait, should it?
+    assert denormalized["amount"] == 100.0  # Stays as amount if no crypto_amount
+    assert "total_spent" not in denormalized  # Wait, should it?
     # In my implementation:
     # if "crypto_amount" in denormalized:
     #    if "amount" in denormalized:
@@ -93,7 +91,7 @@ def test_roundtrip():
         "item_name": "BTC",
         "vendor": "Coinbase",
         "purchase_date": "2023-01-01",
-        "confidence": 0.95
+        "confidence": 0.95,
     }
 
     normalized = normalize_for_frontend(original)

@@ -1,8 +1,10 @@
 """Integration tests for PII scrubbing in EmailPurchaseExtractor."""
 
 import pytest
-from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
+
 from digital_asset_harvester.config import get_settings_with_overrides
+from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
+
 
 def test_pii_scrubbing_integration(mocker):
     # Setup
@@ -18,14 +20,28 @@ def test_pii_scrubbing_integration(mocker):
     # Mock return values for both classification and extraction
     mock_llm_client.generate_json.side_effect = [
         mocker.Mock(data={"is_crypto_purchase": True, "confidence": 0.9, "reasoning": "Test"}),
-        mocker.Mock(data={"transactions": [{"item_name": "BTC", "amount": 0.1, "vendor": "Coinbase", "total_spent": 100, "currency": "USD", "purchase_date": "2024-01-01", "confidence": 0.9}]})
+        mocker.Mock(
+            data={
+                "transactions": [
+                    {
+                        "item_name": "BTC",
+                        "amount": 0.1,
+                        "vendor": "Coinbase",
+                        "total_spent": 100,
+                        "currency": "USD",
+                        "purchase_date": "2024-01-01",
+                        "confidence": 0.9,
+                    }
+                ]
+            }
+        ),
     ]
 
     # Enable PII scrubbing
     settings = get_settings_with_overrides(
         enable_pii_scrubbing=True,
         enable_preprocessing=False,  # Skip preprocessing to focus on LLM call
-        enable_regex_extractors=False # Force LLM fallback
+        enable_regex_extractors=False,  # Force LLM fallback
     )
 
     extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
@@ -55,6 +71,7 @@ def test_pii_scrubbing_integration(mocker):
         assert "0.1" in prompt
         assert "BTC" in prompt
         assert "Coinbase" in prompt
+
 
 def test_pii_scrubbing_disabled_by_default(mocker):
     # Setup

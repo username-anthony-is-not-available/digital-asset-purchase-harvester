@@ -99,7 +99,7 @@ The Digital Asset Purchase Harvester now includes an interactive web interface f
 ### Starting the Web Server
 
 ```sh
-python run_web.py
+python -m digital_asset_harvester.web.run
 ```
 
 The web interface will be available at `http://localhost:8000`
@@ -214,19 +214,15 @@ export DAP_OPENAI_API_KEY="your-openai-api-key"
 
 ```
 digital_asset_harvester/
-├── __init__.py
-├── config.py
-├── ingest/
-│   └── mbox_reader.py
-├── output/
-│   └── csv_writer.py
-├── processing/
-│   └── email_purchase_extractor.py
-└── utils/
-   └── file_utils.py
+├── cli.py             # CLI entry point
+├── config.py          # Configuration handling
+├── ingest/            # Email ingestion (mbox, Gmail, IMAP)
+├── llm/               # LLM clients
+├── output/            # CSV output utilities
+├── processing/        # Extraction logic
+├── web/               # Web UI (FastAPI)
+└── validation/        # Data validation
 ```
-
-Legacy modules such as `email_purchase_extractor.py` still proxy to the packaged implementation for backwards compatibility, but new development should import from `digital_asset_harvester`.
 
 ## Requirements
 
@@ -295,11 +291,11 @@ source venv/bin/activate
 
    - **From an mbox file:**
      ```sh
-     python main.py --mbox-file path/to/your.mbox --output path/to/output.csv
+     digital-asset-harvester --mbox-file path/to/your.mbox --output path/to/output.csv
      ```
    - **Directly from Gmail:**
      ```sh
-     python main.py --gmail --output path/to/output.csv
+     digital-asset-harvester --gmail --output path/to/output.csv
      ```
 
 ### Koinly CSV Export
@@ -405,7 +401,7 @@ This will test various email scenarios including:
 
 ```sh
 # Basic usage
-python main.py example.mbox --output output/purchase_data.csv
+digital-asset-harvester --mbox-file example.mbox --output output/purchase_data.csv
 
 # The improved system will now:
 # 1. Pre-filter emails using keyword detection
@@ -414,19 +410,17 @@ python main.py example.mbox --output output/purchase_data.csv
 # 4. Provide detailed processing statistics
 ```
 
-### advanced_config.py overrides
+### Configuration File Overrides
 
-Advanced defaults can be configured in `advanced_config.py`. Any uppercase variable matching a `HarvesterSettings` field name will override the base configuration:
+Advanced defaults can be configured in a TOML configuration file (default: `config/config.toml`).
 
-```python
-# LLM Configuration
-LLM_MODEL_NAME = "llama3.2:3b"
-MIN_CONFIDENCE_THRESHOLD = 0.6
-
-# Processing Configuration
-ENABLE_PREPROCESSING = True    # Enable smart filtering
-STRICT_VALIDATION = True      # Require all fields to be valid
-ENABLE_DEBUG_OUTPUT = False   # Detailed logging for troubleshooting
+```toml
+[harvester]
+llm_model_name = "llama3.2:3b"
+min_confidence_threshold = 0.6
+enable_preprocessing = true
+strict_validation = true
+enable_debug_output = false
 ```
 
 ### LLM client customization
@@ -572,7 +566,7 @@ The IMAP feature is controlled by the `enable_imap` feature flag. You can enable
 export DAP_ENABLE_IMAP=true
 ```
 
-Alternatively, you can set `ENABLE_IMAP = True` in your `advanced_config.py` file.
+Alternatively, you can set `enable_imap = true` in your configuration file.
 
 ### Password Authentication
 

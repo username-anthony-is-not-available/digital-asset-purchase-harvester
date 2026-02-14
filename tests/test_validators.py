@@ -1,5 +1,7 @@
 from decimal import Decimal
+
 from digital_asset_harvester.validation import PurchaseRecord, PurchaseValidator
+
 
 def test_purchase_validator_handles_known_crypto():
     validator = PurchaseValidator(allow_unknown_crypto=False)
