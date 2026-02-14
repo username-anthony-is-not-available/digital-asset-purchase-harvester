@@ -22,6 +22,7 @@ class PurchaseRecord:
     extraction_notes: Optional[str] = None
     confidence: Optional[float] = None
     extraction_method: Optional[str] = None
+    asset_id: Optional[str] = None
 
     @classmethod
     def from_raw(cls, data):
@@ -65,4 +66,5 @@ class PurchaseRecord:
             extraction_notes=str(data.get("extraction_notes", "")) or None,
             confidence=confidence,
             extraction_method=data.get("extraction_method"),
+            asset_id=str(data.get("asset_id", "")) or None,
         )

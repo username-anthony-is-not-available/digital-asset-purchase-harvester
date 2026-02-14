@@ -35,7 +35,7 @@ class CRAReportGenerator:
             "Sent Currency": purchase.get("currency", ""),
             "Fee Quantity": str(purchase.get("fee_amount", "")) if purchase.get("fee_amount") is not None else "",
             "Fee Currency": purchase.get("fee_currency", ""),
-            "Description": f"Transaction at {purchase.get('vendor', 'Unknown')}",
+            "Description": f"Transaction at {purchase.get('vendor', 'Unknown')}" + (f" (Asset ID: {purchase.get('asset_id')})" if purchase.get('asset_id') else ""),
         }
         return row
 
@@ -167,20 +167,22 @@ def write_purchase_data_to_cra_pdf(purchases: List[Dict[str, Any]], output_file:
 
     pdf.set_font("helvetica", size=8)
     # Header
-    pdf.cell(30, 8, "Date", border=1)
-    pdf.cell(30, 8, "Exchange", border=1)
-    pdf.cell(25, 8, "Type", border=1)
-    pdf.cell(25, 8, "Asset", border=1)
-    pdf.cell(30, 8, "Quantity", border=1)
+    pdf.cell(25, 8, "Date", border=1)
+    pdf.cell(25, 8, "Exchange", border=1)
+    pdf.cell(20, 8, "Type", border=1)
+    pdf.cell(20, 8, "Asset", border=1)
+    pdf.cell(35, 8, "Asset ID", border=1)
+    pdf.cell(25, 8, "Quantity", border=1)
     pdf.cell(30, 8, "Spent", border=1)
     pdf.ln()
 
     for p in purchase_dicts:
-        pdf.cell(30, 8, str(p.get("purchase_date") or ""), border=1)
-        pdf.cell(30, 8, str(p.get("vendor") or "Unknown"), border=1)
-        pdf.cell(25, 8, str(p.get("transaction_type") or "buy"), border=1)
-        pdf.cell(25, 8, str(p.get("item_name") or ""), border=1)
-        pdf.cell(30, 8, str(p.get("amount") or ""), border=1)
+        pdf.cell(25, 8, str(p.get("purchase_date") or ""), border=1)
+        pdf.cell(25, 8, str(p.get("vendor") or "Unknown"), border=1)
+        pdf.cell(20, 8, str(p.get("transaction_type") or "buy"), border=1)
+        pdf.cell(20, 8, str(p.get("item_name") or ""), border=1)
+        pdf.cell(35, 8, str(p.get("asset_id") or ""), border=1)
+        pdf.cell(25, 8, str(p.get("amount") or ""), border=1)
         pdf.cell(30, 8, f"{p.get('total_spent') or ''} {p.get('currency') or ''}", border=1)
         pdf.ln()
 
