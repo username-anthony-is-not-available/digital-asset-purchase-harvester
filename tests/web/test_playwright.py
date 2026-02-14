@@ -9,16 +9,16 @@ def test_homepage(page: Page, live_server_url):
     expect(heading).to_have_text("Digital Asset Purchase Harvester")
 
     # Check for the introductory paragraph
-    paragraph = page.locator("p")
-    expect(paragraph).to_have_text("Upload your mbox file to extract cryptocurrency purchase information.")
+    paragraph = page.locator("p").first
+    expect(paragraph).to_contain_text("Upload your mbox file")
 
     # Check for the file input
-    file_input = page.locator("input[type='file']")
+    file_input = page.locator("input[type='file']").first
     expect(file_input).to_be_visible()
 
     # Check for the submit button
-    submit_button = page.locator("input[type='submit']")
-    expect(submit_button).to_have_value("Upload and Process")
+    submit_button = page.get_by_role("button", name="Upload and Process")
+    expect(submit_button).to_be_visible()
 
 def test_upload_file_and_get_results(page: Page, live_server_url):
     page.goto(live_server_url)

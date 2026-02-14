@@ -24,6 +24,7 @@ class CoinbaseExtractor(BaseExtractor):
             r"you received",
             r"recent purchase",
         ]
+        patterns += [r"staking reward"]
         return any(re.search(p, subject_lower) for p in patterns) or "coinbase" in sender_lower
 
     def extract(self, subject: str, sender: str, body: str) -> List[Dict[str, Any]]:
@@ -72,11 +73,22 @@ class CoinbaseExtractor(BaseExtractor):
 
             purchases.append(self._create_purchase_dict(amount, crypto, total_spent, currency, body))
 
+        # Handle Staking Rewards
+        if not purchases and "staking reward" in body.lower():
+            # Pattern: "You just earned 0.00001234 ETH in staking rewards!"
+            match = re.search(r"(?:earned|received)\s+([\d,.]+)\s+([A-Z]{3,5})\s+in\s+staking rewards", body, re.IGNORECASE)
+            if match:
+                amount = match.group(1).replace(",", "")
+                crypto = match.group(2).upper()
+                purchase = self._create_purchase_dict(amount, crypto, None, "USD", body)
+                purchase["transaction_type"] = "staking_reward"
+                purchases.append(purchase)
+
         return purchases
 
     def _create_purchase_dict(self, amount: str, crypto: str, total_spent: str | None, currency: str, body: str) -> Dict[str, Any]:
         # Extract transaction ID
-        txn_id = self._find_match(r"Transaction ID:\s*([A-Z0-9]+)", body)
+        txn_id = self._find_match(r"Transaction ID:\s*([A-Z0-9\-]+)", body)
 
         # Extract fee
         fee_amount = None
