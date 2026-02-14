@@ -1,3 +1,4 @@
+import os
 import shutil
 import uuid
 import csv
@@ -17,7 +18,7 @@ from ..cli import process_emails, configure_logging
 from ..utils.data_utils import normalize_for_frontend, denormalize_from_frontend
 from ..exporters.koinly import KoinlyReportGenerator
 from ..exporters.cryptotaxcalculator import CryptoTaxCalculatorReportGenerator
-from ..exporters.cra import CRAReportGenerator
+from ..exporters.cra import CRAReportGenerator, write_purchase_data_to_cra_pdf
 
 router = APIRouter()
 
@@ -154,6 +155,31 @@ async def export_cra(task_id: str):
         output,
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename=cra_{task_id}.csv"}
+    )
+
+
+@router.get("/export/cra-pdf/{task_id}")
+async def export_cra_pdf(task_id: str):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    denormalized_results = [denormalize_from_frontend(p) for p in results]
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        write_purchase_data_to_cra_pdf(denormalized_results, tmp.name)
+        tmp_path = tmp.name
+
+    def iterfile():
+        with open(tmp_path, mode="rb") as f:
+            yield from f
+        os.remove(tmp_path)
+
+    return StreamingResponse(
+        iterfile(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=cra_report_{task_id}.pdf"},
     )
 
 @router.post("/upload")
