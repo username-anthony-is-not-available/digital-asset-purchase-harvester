@@ -121,6 +121,7 @@
             row.querySelector('.edit-ca').value = row.querySelector('.view-ca').textContent;
             row.querySelector('.edit-fa').value = row.querySelector('.view-fa').textContent;
             row.querySelector('.edit-fc').value = row.querySelector('.view-fc').textContent;
+            row.querySelector('.edit-aid').value = row.querySelector('.view-aid').textContent;
         }
 
         async function saveRow(index, taskId) {
@@ -134,7 +135,8 @@
                 crypto_currency: row.querySelector('.edit-cc').value,
                 crypto_amount: row.querySelector('.edit-ca').value,
                 fee_amount: row.querySelector('.edit-fa').value,
-                fee_currency: row.querySelector('.edit-fc').value
+                fee_currency: row.querySelector('.edit-fc').value,
+                asset_id: row.querySelector('.edit-aid').value
             };
 
             const response = await fetch(`/api/task/${taskId}/records/${index}`, {
@@ -217,6 +219,7 @@
             row.querySelector('.view-ca').textContent = record.crypto_amount || '';
             row.querySelector('.view-fa').textContent = record.fee_amount || '';
             row.querySelector('.view-fc').textContent = record.fee_currency || '';
+            row.querySelector('.view-aid').textContent = record.asset_id || '';
             row.querySelector('.view-status').textContent = record.review_status || 'pending';
 
             const approveBtn = row.querySelector('.approve-btn');
@@ -304,10 +307,11 @@
                         <th onclick="sortTable(6)">Crypto Currency</th>
                         <th onclick="sortTable(7)">Fee Amount</th>
                         <th onclick="sortTable(8)">Fee Currency</th>
-                        <th onclick="sortTable(9)">Date</th>
-                        <th onclick="sortTable(10)">Transaction ID</th>
-                        <th onclick="sortTable(11)">Confidence</th>
-                        <th onclick="sortTable(12)">Status</th>
+                        <th onclick="sortTable(9)">Asset ID</th>
+                        <th onclick="sortTable(10)">Date</th>
+                        <th onclick="sortTable(11)">Transaction ID</th>
+                        <th onclick="sortTable(12)">Confidence</th>
+                        <th onclick="sortTable(13)">Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -403,6 +407,10 @@
                     <td>
                         <span class="view-mode view-fc">${purchase.fee_currency || ''}</span>
                         <input type="text" class="edit-mode edit-fc editable-input" value="${purchase.fee_currency || ''}" style="display:none">
+                    </td>
+                    <td>
+                        <span class="view-mode view-aid">${purchase.asset_id || ''}</span>
+                        <input type="text" class="edit-mode edit-aid editable-input" value="${purchase.asset_id || ''}" style="display:none">
                     </td>
                     <td>
                         <span class="view-mode view-date">${purchase.purchase_date || ''}</span>

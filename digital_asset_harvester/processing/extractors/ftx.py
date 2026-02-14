@@ -51,7 +51,9 @@ class FTXExtractor(BaseExtractor):
 
         return purchases
 
-    def _create_purchase_dict(self, amount: str, crypto: str, total_spent: str | None, currency: str, body: str) -> Dict[str, Any]:
+    def _create_purchase_dict(
+        self, amount: str, crypto: str, total_spent: str | None, currency: str, body: str
+    ) -> Dict[str, Any]:
         return {
             "amount": amount,
             "item_name": crypto,

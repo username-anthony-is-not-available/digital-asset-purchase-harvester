@@ -199,7 +199,11 @@ def process_emails(
         if result.get("has_purchase"):
             for purchase_info in result.get("purchases", []):
                 if duplicate_detector.is_duplicate(purchase_info):
-                    logger.info("Skipping duplicate purchase: %s %s", purchase_info.get("item_name"), purchase_info.get("amount"))
+                    logger.info(
+                        "Skipping duplicate purchase: %s %s",
+                        purchase_info.get("item_name"),
+                        purchase_info.get("amount"),
+                    )
                     metrics.increment("duplicate_purchases_skipped")
                     continue
 
@@ -339,9 +343,7 @@ def _process_and_save_results(
             write_purchase_data_to_csv(output_path, purchases)
     elif output_format == "cryptotaxcalculator":
         if settings.enable_ctc_csv_export:
-            logger.info(
-                "Writing output in CryptoTaxCalculator format to %s", output_path
-            )
+            logger.info("Writing output in CryptoTaxCalculator format to %s", output_path)
             write_purchase_data_to_ctc_csv(purchases, output_path)
         else:
             logger.warning(
@@ -409,6 +411,7 @@ def run(argv: Optional[list[str]] = None) -> int:
 
         if overrides:
             from dataclasses import replace, is_dataclass
+
             if is_dataclass(settings) and not hasattr(settings, "assert_called"):
                 settings = replace(settings, **overrides)
             else:
@@ -446,6 +449,7 @@ def run(argv: Optional[list[str]] = None) -> int:
 
             # Helper to check if settings is a real dataclass or a MagicMock
             from dataclasses import is_dataclass
+
             is_real_settings = is_dataclass(settings) and not hasattr(settings, "assert_called")
 
             # Precedence: CLI args > Config/Env Settings > Default
@@ -456,6 +460,7 @@ def run(argv: Optional[list[str]] = None) -> int:
             # For auth type, we check if it was provided on CLI, otherwise use settings
             # argparse default is "password", but we can check if it's explicitly set in argv
             import sys
+
             if "--imap-auth-type" in sys.argv:
                 imap_auth = args.imap_auth_type
             else:
@@ -464,7 +469,9 @@ def run(argv: Optional[list[str]] = None) -> int:
             imap_client_id = args.client_id or (settings.imap_client_id if is_real_settings else None)
             imap_authority = args.authority or (settings.imap_authority if is_real_settings else None)
 
-            imap_query = args.imap_query if args.imap_query != "ALL" else (settings.imap_query if is_real_settings else "ALL")
+            imap_query = (
+                args.imap_query if args.imap_query != "ALL" else (settings.imap_query if is_real_settings else "ALL")
+            )
             imap_folder = getattr(settings, "imap_folder", "INBOX") if is_real_settings else "INBOX"
 
             if not all([imap_server, imap_user]):

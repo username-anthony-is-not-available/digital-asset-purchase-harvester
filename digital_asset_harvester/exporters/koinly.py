@@ -36,42 +36,51 @@ class KoinlyReportGenerator:
             "Fee Currency": purchase.get("fee_currency", ""),
             "Net Worth Amount": "",
             "Net Worth Currency": "",
-            "Description": f"{tx_type.capitalize()} from {purchase.get('vendor', 'Unknown')}",
+            "Description": f"{tx_type.capitalize()} from {purchase.get('vendor', 'Unknown')}"
+            + (f" (Asset ID: {purchase.get('asset_id')})" if purchase.get("asset_id") else ""),
             "TxHash": purchase.get("transaction_id", ""),
         }
 
         if tx_type == "deposit":
-            row.update({
-                "Label": "deposit",
-                "Sent Amount": "",
-                "Sent Currency": "",
-                "Received Amount": str(purchase.get("amount", "")),
-                "Received Currency": purchase.get("item_name", ""),
-            })
+            row.update(
+                {
+                    "Label": "deposit",
+                    "Sent Amount": "",
+                    "Sent Currency": "",
+                    "Received Amount": str(purchase.get("amount", "")),
+                    "Received Currency": purchase.get("item_name", ""),
+                }
+            )
         elif tx_type == "withdrawal":
-            row.update({
-                "Label": "withdrawal",
-                "Sent Amount": str(purchase.get("amount", "")),
-                "Sent Currency": purchase.get("item_name", ""),
-                "Received Amount": "",
-                "Received Currency": "",
-            })
+            row.update(
+                {
+                    "Label": "withdrawal",
+                    "Sent Amount": str(purchase.get("amount", "")),
+                    "Sent Currency": purchase.get("item_name", ""),
+                    "Received Amount": "",
+                    "Received Currency": "",
+                }
+            )
         elif tx_type == "staking_reward":
-            row.update({
-                "Label": "staking",
-                "Sent Amount": "",
-                "Sent Currency": "",
-                "Received Amount": str(purchase.get("amount", "")),
-                "Received Currency": purchase.get("item_name", ""),
-            })
+            row.update(
+                {
+                    "Label": "staking",
+                    "Sent Amount": "",
+                    "Sent Currency": "",
+                    "Received Amount": str(purchase.get("amount", "")),
+                    "Received Currency": purchase.get("item_name", ""),
+                }
+            )
         else:  # Default to buy
-            row.update({
-                "Label": "buy",
-                "Sent Amount": str(purchase.get("total_spent", "")),
-                "Sent Currency": purchase.get("currency", ""),
-                "Received Amount": str(purchase.get("amount", "")),
-                "Received Currency": purchase.get("item_name", ""),
-            })
+            row.update(
+                {
+                    "Label": "buy",
+                    "Sent Amount": str(purchase.get("total_spent", "")),
+                    "Sent Currency": purchase.get("currency", ""),
+                    "Received Amount": str(purchase.get("amount", "")),
+                    "Received Currency": purchase.get("item_name", ""),
+                }
+            )
 
         return row
 

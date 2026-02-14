@@ -48,7 +48,8 @@ class CryptoTaxCalculatorReportGenerator:
             "From": purchase.get("vendor", ""),
             "To": "",
             "ID": purchase.get("transaction_id", ""),
-            "Description": f"Extracted from {purchase.get('vendor', 'Unknown')}",
+            "Description": f"Extracted from {purchase.get('vendor', 'Unknown')}"
+            + (f" (Asset ID: {purchase.get('asset_id')})" if purchase.get("asset_id") else ""),
         }
         return row
 
