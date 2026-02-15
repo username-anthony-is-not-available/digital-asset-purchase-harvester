@@ -1,12 +1,11 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from .api import router as api_router, tasks, _save_tasks
 
-app = FastAPI()
-
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     """Cleanup stale tasks on startup."""
     modified = False
     for task_id, task in tasks.items():
@@ -17,6 +16,9 @@ async def startup_event():
 
     if modified:
         _save_tasks()
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 app.mount("/static", StaticFiles(directory="digital_asset_harvester/web/static"), name="static")
 templates = Jinja2Templates(directory="digital_asset_harvester/web/templates")

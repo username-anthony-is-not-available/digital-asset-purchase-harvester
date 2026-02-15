@@ -7,6 +7,7 @@ from digital_asset_harvester.processing.extractors.kraken import KrakenExtractor
 from digital_asset_harvester.processing.extractors.gemini import GeminiExtractor
 from digital_asset_harvester.processing.extractors.cryptocom import CryptocomExtractor
 from digital_asset_harvester.processing.extractors.ftx import FTXExtractor
+from digital_asset_harvester.processing.extractors.coinspot import CoinSpotExtractor
 
 # Test data mapping: (ExtractorClass, Subject, Sender, Body, ExpectedResults)
 TEST_CASES = [
@@ -100,6 +101,14 @@ TEST_CASES = [
         "FTX <noreply@ftx.com>",
         "Trade Details:\nAmount: 10 MATIC\nPrice per unit: $0.85\nTotal: $8.50 USD",
         [{"amount": "10", "item_name": "MATIC", "total_spent": "8.50", "currency": "USD", "vendor": "FTX"}]
+    ),
+    # CoinSpot Cases
+    (
+        CoinSpotExtractor,
+        "Purchase Confirmation",
+        "CoinSpot <support@coinspot.com.au>",
+        "You have successfully purchased 50 ADA for $25.00 AUD.\nReference: CS-20240115-001",
+        [{"amount": "50", "item_name": "ADA", "total_spent": "25.00", "currency": "AUD", "vendor": "CoinSpot", "transaction_id": "CS-20240115-001"}]
     ),
     # Edge Case: Thousands separator and different currency
     (

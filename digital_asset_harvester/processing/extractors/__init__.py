@@ -11,6 +11,7 @@ from .kraken import KrakenExtractor
 from .gemini import GeminiExtractor
 from .cryptocom import CryptocomExtractor
 from .ftx import FTXExtractor
+from .coinspot import CoinSpotExtractor
 
 
 class ExtractorRegistry:
@@ -24,6 +25,7 @@ class ExtractorRegistry:
             GeminiExtractor(),
             CryptocomExtractor(),
             FTXExtractor(),
+            CoinSpotExtractor(),
         ]
 
     def extract(self, subject: str, sender: str, body: str) -> Optional[List[Dict[str, Any]]]:
