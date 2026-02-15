@@ -38,6 +38,9 @@ class HarvesterSettings:
     anthropic_api_key: str = ""
     anthropic_model_name: str = "claude-3-sonnet-20240229"
 
+    enable_llm_cache: bool = True
+    llm_cache_file: str = ".llm_cache.json"
+
     enable_preprocessing: bool = True
     enable_pii_scrubbing: bool = False
     enable_regex_extractors: bool = True

@@ -17,7 +17,8 @@ def test_fallback_client_success_primary():
 
     result = client.generate_json("test prompt")
 
-    assert result == expected_result
+    assert result.data == expected_result.data
+    assert result.metadata["provider_used"] == "primary"
     primary.generate_json.assert_called_once()
     secondary.generate_json.assert_not_called()
 
@@ -32,7 +33,8 @@ def test_fallback_client_fallback_on_llmerror():
 
     result = client.generate_json("test prompt")
 
-    assert result == expected_result
+    assert result.data == expected_result.data
+    assert result.metadata["provider_used"] == "secondary"
     primary.generate_json.assert_called_once()
     secondary.generate_json.assert_called_once()
 
@@ -47,7 +49,8 @@ def test_fallback_client_fallback_on_exception():
 
     result = client.generate_json("test prompt")
 
-    assert result == expected_result
+    assert result.data == expected_result.data
+    assert result.metadata["provider_used"] == "secondary"
     primary.generate_json.assert_called_once()
     secondary.generate_json.assert_called_once()
 
@@ -62,7 +65,8 @@ def test_get_llm_client_returns_fallback(mock_fallback, mock_openai, mock_ollama
         enable_ollama_fallback=True,
         enable_cloud_llm=True,
         ollama_fallback_threshold_seconds=5,
-        fallback_cloud_provider="openai"
+        fallback_cloud_provider="openai",
+        enable_llm_cache=False
     )
     mock_get_settings.return_value = settings
 

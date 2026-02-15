@@ -11,7 +11,7 @@ from digital_asset_harvester.llm.openai_client import OpenAILLMClient
 
 def test_get_llm_client_ollama(mocker):
     """Verify that the factory returns the correct client for Ollama."""
-    mock_settings = get_settings_with_overrides(llm_provider="ollama")
+    mock_settings = get_settings_with_overrides(llm_provider="ollama", enable_llm_cache=False)
     mocker.patch("digital_asset_harvester.llm.get_settings", return_value=mock_settings)
     client = get_llm_client()
     assert isinstance(client, OllamaLLMClient)
@@ -21,7 +21,7 @@ def test_get_llm_client_openai(mocker):
     """Verify that the factory returns the correct client for OpenAI."""
     mocker.patch("openai.OpenAI")
     mock_settings = get_settings_with_overrides(
-        llm_provider="openai", enable_cloud_llm=True, openai_api_key="test"
+        llm_provider="openai", enable_cloud_llm=True, openai_api_key="test", enable_llm_cache=False
     )
     mocker.patch("digital_asset_harvester.llm.get_settings", return_value=mock_settings)
     client = get_llm_client()
@@ -32,7 +32,7 @@ def test_get_llm_client_anthropic(mocker):
     """Verify that the factory returns the correct client for Anthropic."""
     mocker.patch("anthropic.Anthropic")
     mock_settings = get_settings_with_overrides(
-        llm_provider="anthropic", enable_cloud_llm=True, anthropic_api_key="test"
+        llm_provider="anthropic", enable_cloud_llm=True, anthropic_api_key="test", enable_llm_cache=False
     )
     mocker.patch("digital_asset_harvester.llm.get_settings", return_value=mock_settings)
     client = get_llm_client()

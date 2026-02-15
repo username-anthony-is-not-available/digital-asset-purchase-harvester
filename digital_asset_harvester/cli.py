@@ -270,6 +270,10 @@ def process_emails(
             for note in result["processing_notes"]:
                 logger.debug("Email %d: %s", idx, note)
 
+        # Merge metrics from processing
+        if "metrics" in result:
+            metrics.merge(result["metrics"])
+
         if result.get("has_purchase"):
             for purchase_info in result.get("purchases", []):
                 if duplicate_detector.is_duplicate(purchase_info, auto_save=False):
@@ -389,15 +393,32 @@ def _process_and_save_results(
                 result = client.upload_purchases(purchases)
                 logger.info("Upload successful: %s", result)
                 logger.info("Processing completed")
+                logger.info("--- Detailed Metrics Summary ---")
                 logger.info("  Emails processed: %d", metrics.get("emails_processed"))
                 logger.info("  Purchases detected: %d", metrics.get("purchases_detected"))
                 logger.info("  Regex extractions: %d", metrics.get("purchases_extracted_regex"))
                 logger.info("  LLM extractions: %d", metrics.get("purchases_extracted_llm"))
                 logger.info("  Emails skipped by preprocessing: %d", metrics.get("emails_skipped_preprocessing"))
                 logger.info("  Duplicates skipped: %d", metrics.get("duplicate_purchases_skipped"))
+
+                # New detailed metrics
+                logger.info("  LLM calls total: %d", metrics.get("llm_calls_total"))
+                logger.info("  LLM cache hits: %d", metrics.get("llm_cache_hits"))
+                logger.info("  LLM cache misses: %d", metrics.get("llm_cache_misses"))
+                logger.info("  LLM fallback usage: %d", metrics.get("llm_fallback_usage"))
+
+                avg_class_lat = metrics.get_average_latency("llm_classification")
+                if not hasattr(avg_class_lat, "assert_called") and avg_class_lat > 0:
+                    logger.info("  Avg Classification Latency: %.2fs", avg_class_lat)
+
+                avg_ext_lat = metrics.get_average_latency("llm_extraction")
+                if not hasattr(avg_ext_lat, "assert_called") and avg_ext_lat > 0:
+                    logger.info("  Avg Extraction Latency: %.2fs", avg_ext_lat)
+
                 llm_failed = metrics.get("llm_calls_failed")
                 if llm_failed and not hasattr(llm_failed, "assert_called") and int(llm_failed) > 0:
                     logger.warning("  LLM calls failed: %d", llm_failed)
+                logger.info("--------------------------------")
                 return
             except KoinlyApiError as e:
                 logger.error("Koinly API upload failed: %s", e)
@@ -467,15 +488,32 @@ def _process_and_save_results(
         write_purchase_data_to_csv(output_path, purchases)
 
     logger.info("Processing completed")
+    logger.info("--- Detailed Metrics Summary ---")
     logger.info("  Emails processed: %d", metrics.get("emails_processed"))
     logger.info("  Purchases detected: %d", metrics.get("purchases_detected"))
     logger.info("  Regex extractions: %d", metrics.get("purchases_extracted_regex"))
     logger.info("  LLM extractions: %d", metrics.get("purchases_extracted_llm"))
     logger.info("  Emails skipped by preprocessing: %d", metrics.get("emails_skipped_preprocessing"))
     logger.info("  Duplicates skipped: %d", metrics.get("duplicate_purchases_skipped"))
+
+    # New detailed metrics
+    logger.info("  LLM calls total: %d", metrics.get("llm_calls_total"))
+    logger.info("  LLM cache hits: %d", metrics.get("llm_cache_hits"))
+    logger.info("  LLM cache misses: %d", metrics.get("llm_cache_misses"))
+    logger.info("  LLM fallback usage: %d", metrics.get("llm_fallback_usage"))
+
+    avg_class_lat = metrics.get_average_latency("llm_classification")
+    if not hasattr(avg_class_lat, "assert_called") and avg_class_lat > 0:
+        logger.info("  Avg Classification Latency: %.2fs", avg_class_lat)
+
+    avg_ext_lat = metrics.get_average_latency("llm_extraction")
+    if not hasattr(avg_ext_lat, "assert_called") and avg_ext_lat > 0:
+        logger.info("  Avg Extraction Latency: %.2fs", avg_ext_lat)
+
     llm_failed = metrics.get("llm_calls_failed")
     if llm_failed and not hasattr(llm_failed, "assert_called") and int(llm_failed) > 0:
         logger.warning("  LLM calls failed: %d", llm_failed)
+    logger.info("--------------------------------")
 
 
 def run(argv: Optional[list[str]] = None) -> int:
