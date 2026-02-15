@@ -7,12 +7,14 @@ import json
 import tempfile
 import threading
 from datetime import datetime
+from typing import List
 from fastapi import APIRouter, File, UploadFile, Depends, BackgroundTasks, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from io import StringIO
 from .. import (
     EmailPurchaseExtractor,
     MboxDataExtractor,
+    EmlDataExtractor,
     get_llm_client,
     get_settings,
 )
@@ -74,6 +76,46 @@ DEFAULT_CSV_HEADERS = [
 def get_logger_factory():
     settings = get_settings()
     return configure_logging(settings)
+
+def process_eml_files(task_id: str, temp_dir: str, logger_factory: StructuredLoggerFactory):
+    """Processes a directory of eml files and stores the result."""
+    with tasks_lock:
+        tasks[task_id] = {
+            "status": "processing",
+            "result": None,
+            "created_at": datetime.now().isoformat()
+        }
+    _save_tasks()
+
+    settings = get_settings()
+    llm_client = get_llm_client()
+    extractor = EmailPurchaseExtractor(
+        settings=settings,
+        llm_client=llm_client,
+        logger_factory=logger_factory,
+    )
+
+    try:
+        eml_reader = EmlDataExtractor(temp_dir)
+        emails = eml_reader.extract_emails(raw=settings.enable_multiprocessing)
+
+        purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
+
+        # Initialize review status and map fields for frontend
+        normalized_purchases = [normalize_for_frontend(p) for p in purchases]
+
+        tasks[task_id]["status"] = "complete"
+        tasks[task_id]["result"] = normalized_purchases
+        tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+        _save_tasks()
+    except Exception as e:
+        import traceback
+        tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
+        _save_tasks()
+    finally:
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+
 
 def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLoggerFactory):
     """Processes the mbox file and stores the result."""
@@ -372,18 +414,29 @@ async def export_cra_pdf(task_id: str):
     )
 
 @router.post("/upload")
-async def upload_file(
+async def upload_files(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),
     logger_factory: StructuredLoggerFactory = Depends(get_logger_factory)
 ):
     task_id = str(uuid.uuid4())
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mbox") as temp_file:
-        shutil.copyfileobj(file.file, temp_file)
-        temp_path = temp_file.name
-
-    background_tasks.add_task(process_mbox_file, task_id, temp_path, logger_factory)
+    # Check if we have a single mbox file
+    if len(files) == 1 and files[0].filename.endswith(".mbox"):
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mbox") as temp_file:
+            shutil.copyfileobj(files[0].file, temp_file)
+            temp_path = temp_file.name
+        background_tasks.add_task(process_mbox_file, task_id, temp_path, logger_factory)
+    else:
+        # Otherwise, assume they are .eml files (or a mix, we will filter in background)
+        temp_dir = tempfile.mkdtemp()
+        for file in files:
+            # Sanitize filename to prevent directory traversal
+            filename = os.path.basename(file.filename)
+            file_path = os.path.join(temp_dir, filename)
+            with open(file_path, "wb") as f:
+                shutil.copyfileobj(file.file, f)
+        background_tasks.add_task(process_eml_files, task_id, temp_dir, logger_factory)
 
     return RedirectResponse(url=f"/status/{task_id}", status_code=303)
 

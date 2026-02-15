@@ -1,0 +1,8 @@
+From: coinbase@coinbase.com
+To: user@example.com
+Subject: Your Coinbase purchase of 0.001 BTC
+Date: Mon, 12 Nov 2023 11:30:00 +0000
+Content-Type: text/plain; charset=utf-8
+
+You just bought 0.001 BTC for $100.00 USD.
+Transaction ID: CB-STAKE-2025-ABC

@@ -12,6 +12,7 @@ from digital_asset_harvester import (
     EmailPurchaseExtractor,
     HarvesterSettings,
     MboxDataExtractor,
+    EmlDataExtractor,
     get_llm_client,
     get_settings,
     log_event,
@@ -48,6 +49,7 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
     )
     source_group = parser.add_mutually_exclusive_group(required=True)
     source_group.add_argument("--mbox-file", help="Path to the mbox file")
+    source_group.add_argument("--eml-dir", help="Path to a directory containing .eml files")
     source_group.add_argument(
         "--gmail",
         action="store_true",
@@ -688,6 +690,20 @@ def run(argv: Optional[list[str]] = None) -> int:
                         settings,
                         args.koinly_upload,
                     )
+        elif args.eml_dir:
+            logger.info(f"Loading emails from directory {args.eml_dir}...")
+            eml_reader = EmlDataExtractor(args.eml_dir)
+            emails = eml_reader.extract_emails(raw=settings.enable_multiprocessing)
+            _process_and_save_results(
+                emails,
+                extractor,
+                logger_factory,
+                args.output,
+                args.output_format,
+                args.progress,
+                settings,
+                args.koinly_upload,
+            )
         else:
             logger.info(f"Loading emails from {args.mbox_file}...")
             mbox_reader = MboxDataExtractor(args.mbox_file)

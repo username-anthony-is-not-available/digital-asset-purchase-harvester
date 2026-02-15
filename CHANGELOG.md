@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **EML File Support**: Batch processing of individual `.eml` files.
+  - New `EmlDataExtractor` for directory-based ingestion.
+  - CLI support via `--eml-dir` argument.
+  - Web UI support for multiple `.eml` file uploads.
+
 - **Ollama Auto-Fallback**: Automatic fallback to Cloud LLM if local Ollama is too slow.
   - New `FallbackLLMClient` to handle provider switching.
   - Configuration options: `enable_ollama_fallback`, `ollama_fallback_threshold_seconds`, `fallback_cloud_provider`.
