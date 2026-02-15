@@ -5,6 +5,7 @@ import uuid
 import csv
 import json
 import tempfile
+import threading
 from fastapi import APIRouter, File, UploadFile, Depends, BackgroundTasks, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from io import StringIO
@@ -29,25 +30,37 @@ logger = logging.getLogger(__name__)
 # In-memory store for task status and results
 TASKS_DB = "tasks_db.json"
 tasks = {}
+tasks_lock = threading.Lock()
 
 def _save_tasks():
-    """Save tasks to a JSON file."""
-    try:
-        with open(TASKS_DB, "w") as f:
-            json.dump(tasks, f)
-    except Exception as e:
-        logger.error(f"Failed to save tasks: {e}")
+    """Save tasks to a JSON file atomically."""
+    with tasks_lock:
+        try:
+            # Use a temporary file for atomic write
+            fd, temp_path = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(TASKS_DB)) or ".", suffix=".tmp")
+            try:
+                with os.fdopen(fd, 'w') as f:
+                    json.dump(tasks, f, indent=2)
+                # Atomic replacement
+                os.replace(temp_path, TASKS_DB)
+            except Exception:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                raise
+        except Exception as e:
+            logger.error(f"Failed to save tasks: {e}")
 
 def _load_tasks():
     """Load tasks from a JSON file."""
     global tasks
-    if os.path.exists(TASKS_DB):
-        try:
-            with open(TASKS_DB, "r") as f:
-                tasks = json.load(f)
-        except Exception as e:
-            logger.error(f"Failed to load tasks: {e}")
-            tasks = {}
+    with tasks_lock:
+        if os.path.exists(TASKS_DB):
+            try:
+                with open(TASKS_DB, "r") as f:
+                    tasks = json.load(f)
+            except Exception as e:
+                logger.error(f"Failed to load tasks: {e}")
+                tasks = {}
 
 _load_tasks()
 
@@ -63,7 +76,8 @@ def get_logger_factory():
 
 def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLoggerFactory):
     """Processes the mbox file and stores the result."""
-    tasks[task_id] = {"status": "processing", "result": None}
+    with tasks_lock:
+        tasks[task_id] = {"status": "processing", "result": None}
 
     settings = get_settings()
     llm_client = get_llm_client()
@@ -96,7 +110,8 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
 
 def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
     """Synchronizes emails from IMAP and stores the result."""
-    tasks[task_id] = {"status": "processing", "result": None}
+    with tasks_lock:
+        tasks[task_id] = {"status": "processing", "result": None}
     settings = get_settings()
 
     if not settings.enable_imap:
@@ -153,7 +168,8 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
 
 def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
     """Synchronizes emails from Gmail API and stores the result."""
-    tasks[task_id] = {"status": "processing", "result": None}
+    with tasks_lock:
+        tasks[task_id] = {"status": "processing", "result": None}
     settings = get_settings()
 
     llm_client = get_llm_client()
@@ -181,7 +197,8 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
 
 def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_factory: StructuredLoggerFactory):
     """Synchronizes emails from Outlook API and stores the result."""
-    tasks[task_id] = {"status": "processing", "result": None}
+    with tasks_lock:
+        tasks[task_id] = {"status": "processing", "result": None}
     settings = get_settings()
 
     llm_client = get_llm_client()
@@ -521,7 +538,8 @@ async def delete_record(task_id: str, index: int):
 @router.delete("/tasks")
 async def clear_tasks():
     global tasks
-    tasks = {}
+    with tasks_lock:
+        tasks = {}
     _save_tasks()
     return {"status": "success", "message": "All tasks cleared"}
 
