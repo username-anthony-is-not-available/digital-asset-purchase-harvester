@@ -37,7 +37,7 @@ def test_upload_file_and_get_results():
         f.write("dummy content")
 
     with open(test_mbox_path, "rb") as f:
-        response = client.post("/api/upload", files={"file": ("test.mbox", f, "application/octet-stream")})
+        response = client.post("/api/upload", files={"files": ("test.mbox", f, "application/octet-stream")})
 
     assert response.history[0].status_code == 303
     task_id = response.url.path.split("/")[-1]
