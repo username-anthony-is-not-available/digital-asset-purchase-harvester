@@ -85,10 +85,7 @@ class DuplicateDetector:
         if self.persistence_path:
             try:
                 with open(self.persistence_path, "w") as f:
-                    data = {
-                        "hashes": list(self.seen_hashes),
-                        "emails": list(self.seen_emails)
-                    }
+                    data = {"hashes": list(self.seen_hashes), "emails": list(self.seen_emails)}
                     json.dump(data, f, indent=2)
             except Exception:
                 pass

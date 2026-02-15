@@ -35,7 +35,8 @@ class CRAReportGenerator:
             "Sent Currency": purchase.get("currency", ""),
             "Fee Quantity": str(purchase.get("fee_amount", "")) if purchase.get("fee_amount") is not None else "",
             "Fee Currency": purchase.get("fee_currency", ""),
-            "Description": f"Transaction at {purchase.get('vendor', 'Unknown')}" + (f" (Asset ID: {purchase.get('asset_id')})" if purchase.get('asset_id') else ""),
+            "Description": f"Transaction at {purchase.get('vendor', 'Unknown')}"
+            + (f" (Asset ID: {purchase.get('asset_id')})" if purchase.get("asset_id") else ""),
         }
         return row
 

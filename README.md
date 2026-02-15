@@ -209,6 +209,7 @@ export DAP_OPENAI_API_KEY="your-openai-api-key"
 ## Documentation
 
 - **[Exchange-Specific Email Format Guides](docs/EXCHANGE_FORMATS.md)**: A reference for the email formats used by various cryptocurrency exchanges.
+- **[Ollama Setup Guide for Windows](docs/OLLAMA_SETUP_WINDOWS.md)**: Detailed instructions for installing and configuring Ollama on Windows (Native or WSL2).
 
 ## Project Structure
 

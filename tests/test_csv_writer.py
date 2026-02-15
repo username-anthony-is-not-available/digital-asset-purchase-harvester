@@ -23,7 +23,7 @@ def test_write_purchase_data_to_csv(tmp_path):
             transaction_type="buy",
             fee_amount=Decimal("2.50"),
             fee_currency="USD",
-            extraction_notes="Notes 1"
+            extraction_notes="Notes 1",
         ),
         PurchaseRecord(
             total_spent=Decimal("543.21"),
@@ -33,7 +33,7 @@ def test_write_purchase_data_to_csv(tmp_path):
             vendor="Binance",
             purchase_date="2024-01-11 11:00:00 UTC",
             transaction_id="TX456",
-            transaction_type="buy"
+            transaction_type="buy",
         ),
     ]
 

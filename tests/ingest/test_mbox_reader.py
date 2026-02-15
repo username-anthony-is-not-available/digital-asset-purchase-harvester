@@ -38,7 +38,7 @@ def test_mbox_reader_extract_emails_from_test_file(mbox_file_path):
     bodies = [email["body"] for email in emails]
     coinbase_body = next((b for b in bodies if "0.001 BTC for $100.00 USD" in b), None)
     assert coinbase_body is not None
-    
+
     binance_body = next((b for b in bodies if "0.1 ETH for 200.00 USD" in b), None)
     assert binance_body is not None
 
@@ -49,7 +49,7 @@ def test_mbox_reader_extract_emails_empty_file(tmp_path):
     """
     temp_file = tmp_path / "empty.mbox"
     temp_file.write_text("")
-    
+
     reader = MboxDataExtractor(str(temp_file))
     emails = list(reader.extract_emails())
     assert emails == []
@@ -67,7 +67,7 @@ This is a test email body.
 """
     temp_file = tmp_path / "single.mbox"
     temp_file.write_text(mbox_content)
-    
+
     reader = MboxDataExtractor(str(temp_file))
     emails = list(reader.extract_emails())
     assert len(emails) == 1
@@ -87,7 +87,7 @@ Body without proper headers
 """
     temp_file = tmp_path / "malformed.mbox"
     temp_file.write_text(mbox_content)
-    
+
     reader = MboxDataExtractor(str(temp_file))
     emails = list(reader.extract_emails())
     # Should still extract something, even if malformed
@@ -100,7 +100,7 @@ def test_mbox_reader_extract_emails_with_metadata(mbox_file_path):
     """
     reader = MboxDataExtractor(mbox_file_path)
     emails = list(reader.extract_emails())
-    
+
     # All emails should have required keys
     for email in emails:
         assert "subject" in email
@@ -108,4 +108,3 @@ def test_mbox_reader_extract_emails_with_metadata(mbox_file_path):
         assert "sender" in email or "from" in email
         assert isinstance(email["body"], str)
         assert isinstance(email["subject"], str)
-
