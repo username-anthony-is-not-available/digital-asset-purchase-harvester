@@ -58,6 +58,25 @@
         .confidence-high { background-color: #28a745; color: white; }
         .confidence-medium { background-color: #ffc107; color: black; }
         .confidence-low { background-color: #dc3545; color: white; }
+        .error-container {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 5px;
+            border: 1px solid #f5c6cb;
+            margin-top: 20px;
+        }
+        .error-traceback {
+            background-color: #333;
+            color: #eee;
+            padding: 15px;
+            border-radius: 3px;
+            overflow-x: auto;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 0.85em;
+            display: none;
+        }
     </style>
     <script>
         let allPurchases = [];
@@ -467,6 +486,27 @@
                         renderTable();
                         updateProgress();
                         applyFilters();
+                    } else if (data.status === 'error') {
+                        clearInterval(interval);
+                        statusElement.classList.add('error');
+
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'error-container';
+                        errorDiv.innerHTML = `
+                            <h2>Processing Error</h2>
+                            <p><strong>Message:</strong> ${data.error || 'Unknown error'}</p>
+                            ${data.traceback ? `
+                                <button onclick="document.getElementById('traceback').style.display =
+                                    document.getElementById('traceback').style.display === 'block' ? 'none' : 'block'">
+                                    Toggle Traceback
+                                </button>
+                                <pre id="traceback" class="error-traceback">${data.traceback}</pre>
+                            ` : ''}
+                            <div style="margin-top: 20px;">
+                                <a href="/"><button>Try Again</button></a>
+                            </div>
+                        `;
+                        processingSection.appendChild(errorDiv);
                     }
                 });
         }, 2000);

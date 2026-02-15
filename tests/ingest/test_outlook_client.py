@@ -32,25 +32,23 @@ def test_search_emails(mock_get_credentials, mock_outlook_responses):
 
     # Mock message list response
     mock_list_response = MagicMock()
-    mock_list_response.json.return_value = {
-        "value": [{"id": "msg1"}, {"id": "msg2"}]
-    }
+    mock_list_response.json.return_value = {"value": [{"id": "msg1"}, {"id": "msg2"}]}
     mock_list_response.raise_for_status.return_value = None
 
     # Mock MIME content responses
     mock_mime_response1 = MagicMock()
-    mock_mime_response1.content = b"Subject: Test 1\r\nFrom: test1@example.com\r\nDate: Mon, 1 Jan 2024 00:00:00 +0000\r\n\r\nBody 1"
+    mock_mime_response1.content = (
+        b"Subject: Test 1\r\nFrom: test1@example.com\r\nDate: Mon, 1 Jan 2024 00:00:00 +0000\r\n\r\nBody 1"
+    )
     mock_mime_response1.raise_for_status.return_value = None
 
     mock_mime_response2 = MagicMock()
-    mock_mime_response2.content = b"Subject: Test 2\r\nFrom: test2@example.com\r\nDate: Tue, 2 Jan 2024 00:00:00 +0000\r\n\r\nBody 2"
+    mock_mime_response2.content = (
+        b"Subject: Test 2\r\nFrom: test2@example.com\r\nDate: Tue, 2 Jan 2024 00:00:00 +0000\r\n\r\nBody 2"
+    )
     mock_mime_response2.raise_for_status.return_value = None
 
-    mock_outlook_responses.side_effect = [
-        mock_list_response,
-        mock_mime_response1,
-        mock_mime_response2
-    ]
+    mock_outlook_responses.side_effect = [mock_list_response, mock_mime_response1, mock_mime_response2]
 
     client = OutlookClient("client_id", "authority")
     emails = list(client.search_emails("test query"))
@@ -70,7 +68,7 @@ def test_search_emails_pagination(mock_get_credentials, mock_outlook_responses):
     mock_list_response1 = MagicMock()
     mock_list_response1.json.return_value = {
         "value": [{"id": "msg1"}],
-        "@odata.nextLink": "https://graph.microsoft.com/v1.0/me/messages?$skip=1"
+        "@odata.nextLink": "https://graph.microsoft.com/v1.0/me/messages?$skip=1",
     }
     mock_list_response1.raise_for_status.return_value = None
 
@@ -81,9 +79,7 @@ def test_search_emails_pagination(mock_get_credentials, mock_outlook_responses):
 
     # Page 2
     mock_list_response2 = MagicMock()
-    mock_list_response2.json.return_value = {
-        "value": [{"id": "msg2"}]
-    }
+    mock_list_response2.json.return_value = {"value": [{"id": "msg2"}]}
     mock_list_response2.raise_for_status.return_value = None
 
     # MIME for Page 2
@@ -95,7 +91,7 @@ def test_search_emails_pagination(mock_get_credentials, mock_outlook_responses):
         mock_list_response1,
         mock_mime_response1,
         mock_list_response2,
-        mock_mime_response2
+        mock_mime_response2,
     ]
 
     client = OutlookClient("client_id", "authority")

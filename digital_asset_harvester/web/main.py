@@ -1,22 +1,48 @@
+from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from .api import router as api_router, tasks, _save_tasks
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Cleanup stale tasks on startup."""
+    """Cleanup stale and old tasks on startup."""
     modified = False
+    now = datetime.now()
+    cutoff = now - timedelta(hours=24)
+
+    tasks_to_delete = []
+
     for task_id, task in tasks.items():
+        # 1. Handle stale processing tasks
         if task.get("status") == "processing":
             task["status"] = "failed"
             task["error"] = "Task interrupted by server restart"
             modified = True
 
+        # 2. Identify old tasks for pruning
+        created_at_str = task.get("created_at")
+        if created_at_str:
+            try:
+                created_at = datetime.fromisoformat(created_at_str)
+                if created_at < cutoff:
+                    tasks_to_delete.append(task_id)
+            except (ValueError, TypeError):
+                # If timestamp is invalid, we could either keep it or prune it.
+                # Pruning invalid timestamps is safer for maintenance.
+                tasks_to_delete.append(task_id)
+
+    # 3. Perform pruning
+    for task_id in tasks_to_delete:
+        del tasks[task_id]
+        modified = True
+
     if modified:
         _save_tasks()
     yield
+
 
 app = FastAPI(lifespan=lifespan)
 

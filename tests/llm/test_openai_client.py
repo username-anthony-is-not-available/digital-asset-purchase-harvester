@@ -53,9 +53,7 @@ def test_generate_json_malformed():
     mock_response = MockCompletion([MockChoice("not-json")])
     mock_client = MockOpenAIClient([mock_response])
     settings = get_settings_with_overrides(openai_api_key="test")
-    client = OpenAILLMClient(
-        settings=settings, client=mock_client, default_retries=1
-    )
+    client = OpenAILLMClient(settings=settings, client=mock_client, default_retries=1)
 
     with pytest.raises(LLMResponseFormatError):
         client.generate_json("prompt")
@@ -65,9 +63,7 @@ def test_generate_json_exhausts_retries():
     """Test that the client gives up after exhausting retries."""
     mock_client = MockOpenAIClient([])
     settings = get_settings_with_overrides(openai_api_key="test")
-    client = OpenAILLMClient(
-        settings=settings, client=mock_client, default_retries=2
-    )
+    client = OpenAILLMClient(settings=settings, client=mock_client, default_retries=2)
 
     with pytest.raises(LLMError):
         client.generate_json("prompt")

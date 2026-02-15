@@ -3,25 +3,34 @@ import re
 from email.header import decode_header, make_header
 from typing import Dict, Any
 
+
 def decode_header_value(value: str) -> str:
     """Safely decodes email header values."""
     if not value:
         return ""
     return str(make_header(decode_header(value)))
 
+
 def strip_html_tags(html: str) -> str:
     """Basic HTML tag stripping using regex."""
     # Remove script and style elements
-    html = re.sub(r'<(script|style)[^>]*>.*?</\1>', '', html, flags=re.DOTALL | re.IGNORECASE)
+    html = re.sub(r"<(script|style)[^>]*>.*?</\1>", "", html, flags=re.DOTALL | re.IGNORECASE)
     # Replace common block elements with newlines to preserve some structure
-    html = re.sub(r'<(p|br|div|tr|h1|h2|h3|h4|h5|h6)[^>]*>', '\n', html, flags=re.IGNORECASE)
+    html = re.sub(r"<(p|br|div|tr|h1|h2|h3|h4|h5|h6)[^>]*>", "\n", html, flags=re.IGNORECASE)
     # Remove all remaining tags
-    text = re.sub(r'<[^>]+>', '', html)
+    text = re.sub(r"<[^>]+>", "", html)
     # Unescape common entities
-    text = text.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&').replace('&quot;', '"')
+    text = (
+        text.replace("&nbsp;", " ")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&")
+        .replace("&quot;", '"')
+    )
     # Cleanup whitespace
-    text = re.sub(r'\n\s*\n', '\n\n', text)
+    text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
+
 
 def extract_body(message: email.message.Message) -> str:
     """Extracts the body from an email message, falling back to HTML if plain text is missing."""
@@ -38,7 +47,7 @@ def extract_body(message: email.message.Message) -> str:
 
             if content_type == "text/plain":
                 payload = part.get_payload(decode=True)
-                charset = part.get_content_charset() or 'utf-8'
+                charset = part.get_content_charset() or "utf-8"
                 try:
                     plain_text = payload.decode(charset, errors="ignore")
                 except (UnicodeDecodeError, AttributeError):
@@ -47,7 +56,7 @@ def extract_body(message: email.message.Message) -> str:
                     return plain_text
             elif content_type == "text/html":
                 payload = part.get_payload(decode=True)
-                charset = part.get_content_charset() or 'utf-8'
+                charset = part.get_content_charset() or "utf-8"
                 try:
                     html_content = payload.decode(charset, errors="ignore")
                 except (UnicodeDecodeError, AttributeError):
@@ -55,7 +64,7 @@ def extract_body(message: email.message.Message) -> str:
     else:
         content_type = message.get_content_type()
         payload = message.get_payload(decode=True)
-        charset = message.get_content_charset() or 'utf-8'
+        charset = message.get_content_charset() or "utf-8"
         try:
             body = payload.decode(charset, errors="ignore")
         except (UnicodeDecodeError, AttributeError):
@@ -74,6 +83,7 @@ def extract_body(message: email.message.Message) -> str:
 
     return ""
 
+
 def message_to_dict(message: email.message.Message) -> Dict[str, Any]:
     """Converts an email.message.Message to a dictionary."""
     return {
@@ -81,4 +91,5 @@ def message_to_dict(message: email.message.Message) -> Dict[str, Any]:
         "sender": decode_header_value(message.get("from", "")),
         "date": decode_header_value(message.get("date", "")),
         "body": extract_body(message),
+        "message_id": message.get("Message-ID", ""),
     }

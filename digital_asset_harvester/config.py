@@ -55,6 +55,7 @@ class HarvesterSettings:
     enable_parallel_processing: bool = False
     enable_multiprocessing: bool = False
     max_workers: int = 5
+    incremental_processing: bool = False
 
     strict_validation: bool = True
     allow_unknown_cryptos: bool = True

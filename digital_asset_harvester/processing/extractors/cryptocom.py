@@ -51,7 +51,9 @@ class CryptocomExtractor(BaseExtractor):
 
         return purchases
 
-    def _create_purchase_dict(self, amount: str, crypto: str, total_spent: str | None, currency: str, body: str) -> Dict[str, Any]:
+    def _create_purchase_dict(
+        self, amount: str, crypto: str, total_spent: str | None, currency: str, body: str
+    ) -> Dict[str, Any]:
         # Extract order ID
         txn_id = self._find_match(r"order\s+#?([A-Z0-9\-]+)", body)
 

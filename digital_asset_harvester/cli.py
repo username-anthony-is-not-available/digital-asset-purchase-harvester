@@ -105,6 +105,11 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
         help="Only fetch new emails since the last run (applies to IMAP)",
     )
     parser.add_argument(
+        "--incremental",
+        action="store_true",
+        help="Skip processing of already seen emails (Message-ID based)",
+    )
+    parser.add_argument(
         "--parallel",
         action="store_true",
         help="Enable parallel processing of emails (defaults to threading)",
@@ -241,21 +246,24 @@ def process_emails(
         default_fields={"component": "cli"},
     )
     duplicate_detector = DuplicateDetector(persistence_path=history_path)
+    incremental = getattr(settings, "incremental_processing", False)
+    if not isinstance(incremental, bool):
+        incremental = False
 
     results: list[dict] = []
 
     # Convert iterable to list for parallel processing if needed
     enable_parallel = getattr(settings, "enable_parallel_processing", False)
-    enable_multiprocessing = getattr(settings, "enable_multiprocessing", False)
-
-    # Ensure it's a real boolean if it's a mock
-    if hasattr(enable_parallel, "assert_called") or str(type(enable_parallel)).find("MagicMock") > -1:
+    if not isinstance(enable_parallel, bool):
         enable_parallel = False
-    if hasattr(enable_multiprocessing, "assert_called") or str(type(enable_multiprocessing)).find("MagicMock") > -1:
+
+    enable_multiprocessing = getattr(settings, "enable_multiprocessing", False)
+    if not isinstance(enable_multiprocessing, bool):
         enable_multiprocessing = False
 
     is_parallel = enable_parallel or enable_multiprocessing
-    email_list = list(emails) if is_parallel else emails
+    # If incremental or parallel, we need a list to filter or submit to workers
+    email_list = list(emails) if (is_parallel or incremental) else emails
 
     iterator = tqdm(
         email_list,
@@ -277,7 +285,11 @@ def process_emails(
         if result.get("has_purchase"):
             for purchase_info in result.get("purchases", []):
                 if duplicate_detector.is_duplicate(purchase_info, auto_save=False):
-                    logger.info("Skipping duplicate purchase: %s %s", purchase_info.get("item_name"), purchase_info.get("amount"))
+                    logger.info(
+                        "Skipping duplicate purchase: %s %s",
+                        purchase_info.get("item_name"),
+                        purchase_info.get("amount"),
+                    )
                     metrics.increment("duplicate_purchases_skipped")
                     continue
 
@@ -303,6 +315,26 @@ def process_emails(
             if any("filtered out by preprocessing" in note for note in result.get("processing_notes", [])):
                 metrics.increment("emails_skipped_preprocessing")
 
+    if incremental:
+        # Pre-filter email list to skip duplicates
+        filtered_emails = []
+        skipped_count = 0
+
+        # If it's a generator, we have to consume it
+        for e in email_list:
+            msg_id = e.get("message_id")
+            if msg_id and duplicate_detector.is_email_duplicate(msg_id, auto_save=False):
+                skipped_count += 1
+                metrics.increment("emails_skipped_incremental")
+                continue
+            filtered_emails.append(e)
+
+        if skipped_count > 0:
+            logger.info("Incremental mode: skipped %d already processed emails", skipped_count)
+
+        email_list = filtered_emails
+        # Since we converted to list, we can just use it for parallel check below
+
     if is_parallel:
         from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 
@@ -319,10 +351,7 @@ def process_emails(
             submit_fn = lambda exc, email, idx: exc.submit(_process_single_email, email, idx, extractor)
 
         with executor_class(max_workers=max_workers) as executor:
-            futures = {
-                submit_fn(executor, email, idx): (email, idx)
-                for idx, email in enumerate(email_list, 1)
-            }
+            futures = {submit_fn(executor, email, idx): (email, idx) for idx, email in enumerate(email_list, 1)}
 
             for future in as_completed(futures):
                 email, idx = futures[future]
@@ -399,6 +428,7 @@ def _process_and_save_results(
                 logger.info("  Regex extractions: %d", metrics.get("purchases_extracted_regex"))
                 logger.info("  LLM extractions: %d", metrics.get("purchases_extracted_llm"))
                 logger.info("  Emails skipped by preprocessing: %d", metrics.get("emails_skipped_preprocessing"))
+                logger.info("  Emails skipped (incremental mode): %d", metrics.get("emails_skipped_incremental"))
                 logger.info("  Duplicates skipped: %d", metrics.get("duplicate_purchases_skipped"))
 
                 # New detailed metrics
@@ -408,15 +438,15 @@ def _process_and_save_results(
                 logger.info("  LLM fallback usage: %d", metrics.get("llm_fallback_usage"))
 
                 avg_class_lat = metrics.get_average_latency("llm_classification")
-                if not hasattr(avg_class_lat, "assert_called") and avg_class_lat > 0:
+                if isinstance(avg_class_lat, (int, float)) and avg_class_lat > 0:
                     logger.info("  Avg Classification Latency: %.2fs", avg_class_lat)
 
                 avg_ext_lat = metrics.get_average_latency("llm_extraction")
-                if not hasattr(avg_ext_lat, "assert_called") and avg_ext_lat > 0:
+                if isinstance(avg_ext_lat, (int, float)) and avg_ext_lat > 0:
                     logger.info("  Avg Extraction Latency: %.2fs", avg_ext_lat)
 
                 llm_failed = metrics.get("llm_calls_failed")
-                if llm_failed and not hasattr(llm_failed, "assert_called") and int(llm_failed) > 0:
+                if isinstance(llm_failed, (int, float)) and int(llm_failed) > 0:
                     logger.warning("  LLM calls failed: %d", llm_failed)
                 logger.info("--------------------------------")
                 return
@@ -447,9 +477,7 @@ def _process_and_save_results(
             write_purchase_data_to_csv(output_path, purchases)
     elif output_format == "cryptotaxcalculator":
         if settings.enable_ctc_csv_export:
-            logger.info(
-                "Writing output in CryptoTaxCalculator format to %s", output_path
-            )
+            logger.info("Writing output in CryptoTaxCalculator format to %s", output_path)
             write_purchase_data_to_ctc_csv(purchases, output_path)
         else:
             logger.warning(
@@ -494,6 +522,7 @@ def _process_and_save_results(
     logger.info("  Regex extractions: %d", metrics.get("purchases_extracted_regex"))
     logger.info("  LLM extractions: %d", metrics.get("purchases_extracted_llm"))
     logger.info("  Emails skipped by preprocessing: %d", metrics.get("emails_skipped_preprocessing"))
+    logger.info("  Emails skipped (incremental mode): %d", metrics.get("emails_skipped_incremental"))
     logger.info("  Duplicates skipped: %d", metrics.get("duplicate_purchases_skipped"))
 
     # New detailed metrics
@@ -503,15 +532,15 @@ def _process_and_save_results(
     logger.info("  LLM fallback usage: %d", metrics.get("llm_fallback_usage"))
 
     avg_class_lat = metrics.get_average_latency("llm_classification")
-    if not hasattr(avg_class_lat, "assert_called") and avg_class_lat > 0:
+    if isinstance(avg_class_lat, (int, float)) and avg_class_lat > 0:
         logger.info("  Avg Classification Latency: %.2fs", avg_class_lat)
 
     avg_ext_lat = metrics.get_average_latency("llm_extraction")
-    if not hasattr(avg_ext_lat, "assert_called") and avg_ext_lat > 0:
+    if isinstance(avg_ext_lat, (int, float)) and avg_ext_lat > 0:
         logger.info("  Avg Extraction Latency: %.2fs", avg_ext_lat)
 
     llm_failed = metrics.get("llm_calls_failed")
-    if llm_failed and not hasattr(llm_failed, "assert_called") and int(llm_failed) > 0:
+    if isinstance(llm_failed, (int, float)) and int(llm_failed) > 0:
         logger.warning("  LLM calls failed: %d", llm_failed)
     logger.info("--------------------------------")
 
@@ -531,20 +560,23 @@ def run(argv: Optional[list[str]] = None) -> int:
             overrides["enable_parallel_processing"] = True
         if args.multiprocessing:
             overrides["enable_multiprocessing"] = True
+        if args.incremental:
+            overrides["incremental_processing"] = True
         if args.max_workers:
             overrides["max_workers"] = args.max_workers
 
         if overrides:
             from dataclasses import replace, is_dataclass
-            if is_dataclass(settings) and not hasattr(settings, "assert_called"):
+
+            # Determine if settings is a real HarvesterSettings or a Mock
+            if is_dataclass(settings) and isinstance(settings, HarvesterSettings):
                 settings = replace(settings, **overrides)
             else:
-                # If it's a mock, we can just update its attributes if it's not frozen
+                # If it's a mock, we try to update its attributes directly
                 for k, v in overrides.items():
                     try:
                         setattr(settings, k, v)
                     except (AttributeError, TypeError):
-                        # Mock might be frozen or something
                         pass
 
         llm_client = get_llm_client()
@@ -574,11 +606,17 @@ def run(argv: Optional[list[str]] = None) -> int:
             logger.info("Fetching emails from Outlook...")
 
             # Priority: CLI arg > outlook_client_id > imap_client_id (legacy fallback)
-            client_id = args.client_id or getattr(settings, "outlook_client_id", "") or getattr(settings, "imap_client_id", "")
-            authority = args.authority or getattr(settings, "outlook_authority", "") or getattr(settings, "imap_authority", "")
+            client_id = (
+                args.client_id or getattr(settings, "outlook_client_id", "") or getattr(settings, "imap_client_id", "")
+            )
+            authority = (
+                args.authority or getattr(settings, "outlook_authority", "") or getattr(settings, "imap_authority", "")
+            )
 
             if not all([client_id, authority]):
-                logger.error("Outlook API requires --client-id and --authority (or configured outlook_client_id and outlook_authority).")
+                logger.error(
+                    "Outlook API requires --client-id and --authority (or configured outlook_client_id and outlook_authority)."
+                )
                 return 1
 
             outlook_client = OutlookClient(client_id, authority)
@@ -600,6 +638,7 @@ def run(argv: Optional[list[str]] = None) -> int:
 
             # Helper to check if settings is a real dataclass or a MagicMock
             from dataclasses import is_dataclass
+
             is_real_settings = is_dataclass(settings) and not hasattr(settings, "assert_called")
 
             # Precedence: CLI args > Config/Env Settings > Default
@@ -610,6 +649,7 @@ def run(argv: Optional[list[str]] = None) -> int:
             # For auth type, we check if it was provided on CLI, otherwise use settings
             # argparse default is "password", but we can check if it's explicitly set in argv
             import sys
+
             if "--imap-auth-type" in sys.argv:
                 imap_auth = args.imap_auth_type
             else:
@@ -618,7 +658,9 @@ def run(argv: Optional[list[str]] = None) -> int:
             imap_client_id = args.client_id or (settings.imap_client_id if is_real_settings else None)
             imap_authority = args.authority or (settings.imap_authority if is_real_settings else None)
 
-            imap_query = args.imap_query if args.imap_query != "ALL" else (settings.imap_query if is_real_settings else "ALL")
+            imap_query = (
+                args.imap_query if args.imap_query != "ALL" else (settings.imap_query if is_real_settings else "ALL")
+            )
             imap_folder = getattr(settings, "imap_folder", "INBOX") if is_real_settings else "INBOX"
 
             if not all([imap_server, imap_user]):
@@ -653,9 +695,7 @@ def run(argv: Optional[list[str]] = None) -> int:
 
                     logger.info("Found %d new emails.", len(uids))
                     emails = list(
-                        imap_client.fetch_emails_by_uids(
-                            uids, imap_folder, raw=settings.enable_multiprocessing
-                        )
+                        imap_client.fetch_emails_by_uids(uids, imap_folder, raw=settings.enable_multiprocessing)
                     )
 
                     _process_and_save_results(
@@ -675,9 +715,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                         sync_state.set_last_uid(imap_server, imap_user, imap_folder, max_uid)
                         logger.info("Updated sync state: last UID = %d", max_uid)
                 else:
-                    emails = imap_client.search_emails(
-                        imap_query, imap_folder, raw=settings.enable_multiprocessing
-                    )
+                    emails = imap_client.search_emails(imap_query, imap_folder, raw=settings.enable_multiprocessing)
                     _process_and_save_results(
                         emails,
                         extractor,

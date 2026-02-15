@@ -6,10 +6,12 @@ from digital_asset_harvester.web.main import app
 import threading
 import time
 
+
 @pytest.fixture(scope="session")
 def live_server_url():
     """Provides the full URL for the running uvicorn server."""
     return "http://localhost:8000"
+
 
 @pytest.fixture(scope="session", autouse=True)
 def start_live_server(live_server_url):
@@ -22,11 +24,13 @@ def start_live_server(live_server_url):
     yield
     # No explicit shutdown needed for daemon threads
 
+
 @pytest.fixture(scope="function", autouse=True)
 def mock_process_mbox_playwright():
     """
     Mocks the backend mbox processing for Playwright tests.
     """
+
     def mock_task(task_id, temp_path, logger_factory):
         tasks[task_id] = {
             "status": "complete",
@@ -41,7 +45,7 @@ def mock_process_mbox_playwright():
                     "crypto_currency": "BTC",
                     "crypto_amount": "0.001",
                     "asset_id": "bitcoin",
-                    "confidence_score": 0.95
+                    "confidence_score": 0.95,
                 },
                 {
                     "email_subject": "Your order to buy 0.1 ETH has been filled",
@@ -53,10 +57,10 @@ def mock_process_mbox_playwright():
                     "crypto_currency": "ETH",
                     "crypto_amount": "0.1",
                     "asset_id": "ethereum",
-                    "confidence_score": 0.95
-                }
-            ]
+                    "confidence_score": 0.95,
+                },
+            ],
         }
 
-    with patch('digital_asset_harvester.web.api.process_mbox_file', side_effect=mock_task) as mock:
+    with patch("digital_asset_harvester.web.api.process_mbox_file", side_effect=mock_task) as mock:
         yield mock
