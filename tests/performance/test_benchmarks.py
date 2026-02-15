@@ -11,7 +11,6 @@ from digital_asset_harvester.processing.email_purchase_extractor import (
 )
 from digital_asset_harvester.telemetry import StructuredLoggerFactory
 
-
 # Sample email for benchmarking
 SAMPLE_PURCHASE_EMAIL = """Subject: You bought Bitcoin
 From: no-reply@coinbase.com

@@ -1,6 +1,7 @@
 import pytest
 from playwright.sync_api import Page, expect
 
+
 def test_homepage(page: Page, live_server_url):
     page.goto(live_server_url)
 
@@ -19,6 +20,7 @@ def test_homepage(page: Page, live_server_url):
     # Check for the submit button
     submit_button = page.get_by_role("button", name="Upload and Process")
     expect(submit_button).to_be_visible()
+
 
 def test_upload_file_and_get_results(page: Page, live_server_url):
     page.goto(live_server_url)
@@ -62,6 +64,7 @@ def test_upload_file_and_get_results(page: Page, live_server_url):
     expect(binance_row).to_contain_text("200.00")
     expect(binance_row).to_contain_text("0.1")
 
+
 def test_confidence_filtering(page: Page, live_server_url):
     page.goto(live_server_url)
 
@@ -85,6 +88,7 @@ def test_confidence_filtering(page: Page, live_server_url):
     page.locator("#confidence-threshold").evaluate("el => { el.value = 0.5; el.dispatchEvent(new Event('input')); }")
     expect(page.locator("tr", has_text="Coinbase")).to_be_visible()
     expect(page.locator("tr", has_text="Binance")).to_be_visible()
+
 
 def test_manual_edit(page: Page, live_server_url):
     page.goto(live_server_url)
@@ -114,6 +118,7 @@ def test_manual_edit(page: Page, live_server_url):
     expect(coinbase_row.locator(".view-vendor")).to_have_text("Updated Coinbase")
     expect(coinbase_row.locator(".view-amount")).to_have_text("150.00")
 
+
 def test_approve_record(page: Page, live_server_url):
     page.goto(live_server_url)
 
@@ -134,6 +139,7 @@ def test_approve_record(page: Page, live_server_url):
 
     # Check progress bar
     expect(page.locator("#progress-text")).to_contain_text("1 / 2 Approved")
+
 
 def test_batch_approve(page: Page, live_server_url):
     page.goto(live_server_url)

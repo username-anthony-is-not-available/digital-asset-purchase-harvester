@@ -8,10 +8,12 @@ from digital_asset_harvester import (
 )
 from digital_asset_harvester.llm.provider import LLMResult
 
+
 @pytest.fixture
 def golden_expected():
     with open("tests/fixtures/golden_expected.json", "r") as f:
         return json.load(f)
+
 
 @pytest.fixture
 def mock_llm_client():
@@ -65,12 +67,8 @@ def mock_llm_client():
             # Classification
             is_purchase = email_id not in ["newsletter", "security_alert", None]
             return LLMResult(
-                data={
-                    "is_crypto_purchase": is_purchase,
-                    "confidence": 0.99,
-                    "reasoning": f"Identified as {email_id}"
-                },
-                raw_text="{}"
+                data={"is_crypto_purchase": is_purchase, "confidence": 0.99, "reasoning": f"Identified as {email_id}"},
+                raw_text="{}",
             )
         else:
             # Extraction
@@ -87,11 +85,11 @@ def mock_llm_client():
                                 "vendor": "SomeExchange",
                                 "purchase_date": "2024-01-10 19:00:00",
                                 "confidence": 0.95,
-                                "extraction_notes": "Extracted from body"
+                                "extraction_notes": "Extracted from body",
                             }
                         ]
                     },
-                    raw_text="{}"
+                    raw_text="{}",
                 )
 
             # Others should be handled by regex and not even reach here if regex is enabled
@@ -99,6 +97,7 @@ def mock_llm_client():
 
     client.generate_json.side_effect = side_effect
     return client
+
 
 @pytest.mark.integration
 def test_golden_mbox_extraction(golden_expected, mock_llm_client):
@@ -112,10 +111,7 @@ def test_golden_mbox_extraction(golden_expected, mock_llm_client):
         strict_validation=False,
     )
 
-    extractor = EmailPurchaseExtractor(
-        settings=settings,
-        llm_client=mock_llm_client
-    )
+    extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
 
     emails = list(mbox_reader.extract_emails())
     assert len(emails) == len(golden_expected)
@@ -140,8 +136,9 @@ def test_golden_mbox_extraction(golden_expected, mock_llm_client):
 
         actual_purchases = result.get("purchases", [])
 
-        assert len(actual_purchases) == len(expected_purchases), \
-            f"Mismatch in number of purchases for {email_id}. Expected {len(expected_purchases)}, got {len(actual_purchases)}"
+        assert len(actual_purchases) == len(
+            expected_purchases
+        ), f"Mismatch in number of purchases for {email_id}. Expected {len(expected_purchases)}, got {len(actual_purchases)}"
 
         for i, expected in enumerate(expected_purchases):
             actual = actual_purchases[i]
@@ -150,7 +147,9 @@ def test_golden_mbox_extraction(golden_expected, mock_llm_client):
             assert float(actual["amount"]) == pytest.approx(float(expected["amount"])), f"{email_id} amount mismatch"
 
             if "total_spent" in expected and expected["total_spent"] is not None:
-                assert float(actual["total_spent"]) == pytest.approx(float(expected["total_spent"])), f"{email_id} total_spent mismatch"
+                assert float(actual["total_spent"]) == pytest.approx(
+                    float(expected["total_spent"])
+                ), f"{email_id} total_spent mismatch"
 
             if "currency" in expected and expected["currency"] is not None:
                 assert actual["currency"] == expected["currency"], f"{email_id} currency mismatch"
@@ -161,9 +160,14 @@ def test_golden_mbox_extraction(golden_expected, mock_llm_client):
                 assert actual["transaction_id"] == expected["transaction_id"], f"{email_id} transaction_id mismatch"
 
             if "transaction_type" in expected:
-                assert actual["transaction_type"] == expected["transaction_type"], f"{email_id} transaction_type mismatch"
+                assert (
+                    actual["transaction_type"] == expected["transaction_type"]
+                ), f"{email_id} transaction_type mismatch"
 
-            assert actual["extraction_method"] == expected["extraction_method"], f"{email_id} extraction_method mismatch"
+            assert (
+                actual["extraction_method"] == expected["extraction_method"]
+            ), f"{email_id} extraction_method mismatch"
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

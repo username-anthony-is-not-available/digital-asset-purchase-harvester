@@ -52,12 +52,16 @@ class LLMCache:
         content = f"{prompt}:{model}:{temperature}"
         return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
-    def get(self, prompt: str, model: Optional[str] = None, temperature: Optional[float] = None) -> Optional[Dict[str, Any]]:
+    def get(
+        self, prompt: str, model: Optional[str] = None, temperature: Optional[float] = None
+    ) -> Optional[Dict[str, Any]]:
         """Retrieve a cached response if available."""
         prompt_hash = self._get_hash(prompt, model, temperature)
         return self.cache.get(prompt_hash)
 
-    def set(self, prompt: str, data: Dict[str, Any], model: Optional[str] = None, temperature: Optional[float] = None) -> None:
+    def set(
+        self, prompt: str, data: Dict[str, Any], model: Optional[str] = None, temperature: Optional[float] = None
+    ) -> None:
         """Cache a response."""
         prompt_hash = self._get_hash(prompt, model, temperature)
         self.cache[prompt_hash] = data

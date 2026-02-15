@@ -3,6 +3,7 @@ import mailbox
 import os
 from datetime import datetime, timezone
 
+
 def create_golden_mbox():
     mbox_path = "tests/fixtures/golden.mbox"
     expected_path = "tests/fixtures/golden_expected.json"
@@ -24,9 +25,9 @@ def create_golden_mbox():
                     "total_spent": 100.0,
                     "currency": "USD",
                     "vendor": "Coinbase",
-                    "extraction_method": "regex"
+                    "extraction_method": "regex",
                 }
-            ]
+            ],
         },
         {
             "id": "binance_purchase",
@@ -41,9 +42,9 @@ def create_golden_mbox():
                     "total_spent": 200.0,
                     "currency": "USD",
                     "vendor": "Binance",
-                    "extraction_method": "regex"
+                    "extraction_method": "regex",
                 }
-            ]
+            ],
         },
         {
             "id": "kraken_purchase",
@@ -58,9 +59,9 @@ def create_golden_mbox():
                     "total_spent": 50.0,
                     "currency": "EUR",
                     "vendor": "Kraken",
-                    "extraction_method": "regex"
+                    "extraction_method": "regex",
                 }
-            ]
+            ],
         },
         {
             "id": "gemini_purchase",
@@ -76,13 +77,13 @@ def create_golden_mbox():
                     "currency": "USD",
                     "vendor": "Gemini",
                     "transaction_id": "GEM-2024-001",
-                    "extraction_method": "regex"
+                    "extraction_method": "regex",
                 }
-            ]
+            ],
         },
         {
             "id": "cryptocom_purchase",
-            "from": "\"Crypto Exchange\" <noreply@crypto.com>",
+            "from": '"Crypto Exchange" <noreply@crypto.com>',
             "subject": "Your order #12345 has been executed",
             "body": "Your market order #12345 to buy 2.5 SOL has been filled at a price of $25.00 per SOL.\nTotal cost: $62.50 USD.",
             "date": "Fri, 5 Jan 2024 14:00:00 +0000",
@@ -94,9 +95,9 @@ def create_golden_mbox():
                     "currency": "USD",
                     "vendor": "Crypto.com",
                     "transaction_id": "12345",
-                    "extraction_method": "regex"
+                    "extraction_method": "regex",
                 }
-            ]
+            ],
         },
         {
             "id": "ftx_purchase",
@@ -111,9 +112,9 @@ def create_golden_mbox():
                     "total_spent": 8.5,
                     "currency": "USD",
                     "vendor": "FTX",
-                    "extraction_method": "regex"
+                    "extraction_method": "regex",
                 }
-            ]
+            ],
         },
         {
             "id": "coinspot_purchase",
@@ -129,9 +130,9 @@ def create_golden_mbox():
                     "currency": "AUD",
                     "vendor": "CoinSpot",
                     "transaction_id": "CS-20240115-001",
-                    "extraction_method": "regex"
+                    "extraction_method": "regex",
                 }
-            ]
+            ],
         },
         {
             "id": "coinbase_staking",
@@ -146,9 +147,9 @@ def create_golden_mbox():
                     "vendor": "Coinbase",
                     "transaction_id": "CB-STAKE-2025-ABC",
                     "transaction_type": "staking_reward",
-                    "extraction_method": "regex"
+                    "extraction_method": "regex",
                 }
-            ]
+            ],
         },
         {
             "id": "binance_multi",
@@ -163,7 +164,7 @@ def create_golden_mbox():
                     "total_spent": 130.0,
                     "currency": "USDT",
                     "vendor": "Binance",
-                    "extraction_method": "regex"
+                    "extraction_method": "regex",
                 },
                 {
                     "amount": 0.1,
@@ -171,9 +172,9 @@ def create_golden_mbox():
                     "total_spent": 350.0,
                     "currency": "USDT",
                     "vendor": "Binance",
-                    "extraction_method": "regex"
-                }
-            ]
+                    "extraction_method": "regex",
+                },
+            ],
         },
         {
             "id": "generic_llm_purchase",
@@ -188,9 +189,9 @@ def create_golden_mbox():
                     "total_spent": 0.1,
                     "currency": "ETH",
                     "vendor": "SomeExchange",
-                    "extraction_method": "llm"
+                    "extraction_method": "llm",
                 }
-            ]
+            ],
         },
         {
             "id": "newsletter",
@@ -198,7 +199,7 @@ def create_golden_mbox():
             "subject": "Crypto Weekly",
             "body": "Market is bullish today. Bitcoin is up 5%.",
             "date": "Thu, 11 Jan 2024 20:00:00 +0000",
-            "expected": []
+            "expected": [],
         },
         {
             "id": "security_alert",
@@ -206,8 +207,8 @@ def create_golden_mbox():
             "subject": "New login from unknown device",
             "body": "We detected a login from a new device in London.",
             "date": "Fri, 12 Jan 2024 21:00:00 +0000",
-            "expected": []
-        }
+            "expected": [],
+        },
     ]
 
     # Remove existing mbox if any
@@ -236,6 +237,7 @@ def create_golden_mbox():
         f.write("\n")
 
     print(f"Generated {mbox_path} and {expected_path}")
+
 
 if __name__ == "__main__":
     create_golden_mbox()

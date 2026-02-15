@@ -53,9 +53,7 @@ class PurchaseInfo:
 class EmailPurchaseExtractor:
     settings: HarvesterSettings = field(default_factory=get_settings)
     llm_client: LLMProvider = field(default_factory=get_llm_client)
-    logger_factory: StructuredLoggerFactory = field(
-        default_factory=StructuredLoggerFactory
-    )
+    logger_factory: StructuredLoggerFactory = field(default_factory=StructuredLoggerFactory)
     validator: PurchaseValidator = field(init=False)
     pii_scrubber: PIIScrubber = field(init=False)
     event_logger: StructuredLoggerAdapter = field(init=False)
@@ -65,9 +63,7 @@ class EmailPurchaseExtractor:
     _MAX_CACHE_SIZE: int = 1000
 
     def __post_init__(self) -> None:
-        self.validator = PurchaseValidator(
-            allow_unknown_crypto=self.settings.allow_unknown_cryptos
-        )
+        self.validator = PurchaseValidator(allow_unknown_crypto=self.settings.allow_unknown_cryptos)
         # Initialize PII scrubber with crypto terms to avoid over-scrubbing
         skip_terms = set(CRYPTOCURRENCY_TERMS) | set(CRYPTO_EXCHANGES)
         self.pii_scrubber = PIIScrubber(skip_terms=skip_terms)
@@ -158,9 +154,7 @@ class EmailPurchaseExtractor:
         full_text = f"{metadata['subject']} {metadata['sender']} {metadata['body']}"
 
         # Check for crypto exchanges in sender or content
-        has_crypto_exchange = self._contains_keywords(
-            metadata["sender"], CRYPTO_EXCHANGES_PATTERN
-        )
+        has_crypto_exchange = self._contains_keywords(metadata["sender"], CRYPTO_EXCHANGES_PATTERN)
         has_crypto_terms = self._contains_keywords(full_text, CRYPTOCURRENCY_TERMS_PATTERN)
 
         return has_crypto_exchange or has_crypto_terms
@@ -171,9 +165,7 @@ class EmailPurchaseExtractor:
         full_text = f"{metadata['subject']} {metadata['body']}"
 
         has_purchase_keywords = self._contains_keywords(full_text, PURCHASE_KEYWORDS_PATTERN)
-        has_non_purchase_patterns = self._contains_keywords(
-            full_text, NON_PURCHASE_PATTERNS_PATTERN
-        )
+        has_non_purchase_patterns = self._contains_keywords(full_text, NON_PURCHASE_PATTERNS_PATTERN)
 
         return has_purchase_keywords and not has_non_purchase_patterns
 
@@ -199,26 +191,17 @@ class EmailPurchaseExtractor:
 
         return False
 
-    def is_crypto_purchase_email(
-        self, email_content: str, max_retries: Optional[int] = None
-    ) -> bool:
+    def is_crypto_purchase_email(self, email_content: str, max_retries: Optional[int] = None) -> bool:
         self.metrics.increment("classification_total")
-        retries = (
-            max_retries if max_retries is not None else self.settings.llm_max_retries
-        )
+        retries = max_retries if max_retries is not None else self.settings.llm_max_retries
 
         if self.settings.enable_preprocessing:
             if self._should_skip_llm_analysis(email_content):
-                logger.debug(
-                    "Skipping LLM analysis - email filtered out by preprocessing"
-                )
+                logger.debug("Skipping LLM analysis - email filtered out by preprocessing")
                 self.metrics.increment("classification_skipped_preprocessing")
                 return False
 
-            if not (
-                self._is_likely_crypto_related(email_content)
-                and self._is_likely_purchase_related(email_content)
-            ):
+            if not (self._is_likely_crypto_related(email_content) and self._is_likely_purchase_related(email_content)):
                 logger.debug("Email doesn't meet basic crypto + purchase criteria")
                 return False
 
@@ -227,9 +210,7 @@ class EmailPurchaseExtractor:
         prompt = self.prompts.render("classification", email_content=scrubbed_content)
 
         try:
-            logger.info(
-                "Submitting email for classification (up to %d attempts)", retries
-            )
+            logger.info("Submitting email for classification (up to %d attempts)", retries)
             start_time = time.time()
             result = self.llm_client.generate_json(prompt, retries=retries)
             duration = time.time() - start_time
@@ -244,9 +225,7 @@ class EmailPurchaseExtractor:
                 self.metrics.increment("llm_fallback_usage")
 
         except LLMError as exc:
-            logger.error(
-                "Failed to categorize email after %d attempts: %s", retries, exc
-            )
+            logger.error("Failed to categorize email after %d attempts: %s", retries, exc)
             self.metrics.increment("llm_calls_failed")
             return False
 
@@ -292,9 +271,7 @@ class EmailPurchaseExtractor:
         if self.settings.enable_regex_extractors:
             self.metrics.increment("extraction_regex_attempts")
             metadata = self._extract_email_metadata(email_content)
-            regex_results = registry.extract(
-                metadata["subject"], metadata["sender"], metadata["body"]
-            )
+            regex_results = registry.extract(metadata["subject"], metadata["sender"], metadata["body"])
             if regex_results:
                 logger.info("Successfully extracted purchase info using regex extractor")
                 self.metrics.increment("extraction_regex_success")
@@ -302,9 +279,7 @@ class EmailPurchaseExtractor:
 
         # 2. Fallback to LLM extraction
         self.metrics.increment("extraction_llm_attempts")
-        retries = (
-            max_retries if max_retries is not None else self.settings.llm_max_retries
-        )
+        retries = max_retries if max_retries is not None else self.settings.llm_max_retries
 
         # Apply PII scrubbing before sending to LLM
         scrubbed_content = self._scrub_pii_if_enabled(email_content)
@@ -315,9 +290,7 @@ class EmailPurchaseExtractor:
         )
 
         try:
-            logger.info(
-                "Submitting email for purchase extraction (up to %d attempts)", retries
-            )
+            logger.info("Submitting email for purchase extraction (up to %d attempts)", retries)
             start_time = time.time()
             result = self.llm_client.generate_json(prompt, retries=retries)
             duration = time.time() - start_time
@@ -333,9 +306,7 @@ class EmailPurchaseExtractor:
 
             self.metrics.increment("extraction_llm_success")
         except LLMError as exc:
-            logger.error(
-                "Failed to extract purchase info after %d attempts: %s", retries, exc
-            )
+            logger.error("Failed to extract purchase info after %d attempts: %s", retries, exc)
             self.metrics.increment("llm_calls_failed")
             return []
 
@@ -387,22 +358,18 @@ class EmailPurchaseExtractor:
                         date = date.replace(tzinfo=timezone.utc)
                     else:
                         date = date.astimezone(timezone.utc)
-                    purchase_data["purchase_date"] = date.strftime(
-                        "%Y-%m-%d %H:%M:%S %Z"
-                    )
+                    purchase_data["purchase_date"] = date.strftime("%Y-%m-%d %H:%M:%S %Z")
                 except (ValueError, TypeError) as e:
                     logger.warning("Invalid date format (%s). Using current time.", e)
-                    purchase_data["purchase_date"] = datetime.now(timezone.utc).strftime(
-                        "%Y-%m-%d %H:%M:%S %Z"
-                    )
+                    purchase_data["purchase_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")
             else:
                 logger.warning("No purchase date found, using current time")
-                purchase_data["purchase_date"] = datetime.now(timezone.utc).strftime(
-                    "%Y-%m-%d %H:%M:%S %Z"
-                )
+                purchase_data["purchase_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")
         return transactions
 
-    def _process_extracted_transactions(self, transactions: List[Dict[str, Any]], method: str = "llm") -> List[Dict[str, Any]]:
+    def _process_extracted_transactions(
+        self, transactions: List[Dict[str, Any]], method: str = "llm"
+    ) -> List[Dict[str, Any]]:
         """Common processing for transactions (validation, dates, etc.)."""
         extracted_purchases = []
         for purchase_data in transactions:
@@ -429,9 +396,7 @@ class EmailPurchaseExtractor:
                 }
 
             missing_fields = {
-                field
-                for field in required_fields
-                if field not in purchase_data or purchase_data[field] is None
+                field for field in required_fields if field not in purchase_data or purchase_data[field] is None
             }
 
             # Log extraction quality
@@ -442,9 +407,7 @@ class EmailPurchaseExtractor:
                 self.event_logger,
                 "extraction_completed",
                 confidence=confidence,
-                missing_fields=";".join(sorted(missing_fields))
-                if missing_fields
-                else "",
+                missing_fields=";".join(sorted(missing_fields)) if missing_fields else "",
             )
 
             if (
@@ -460,9 +423,7 @@ class EmailPurchaseExtractor:
                 continue
 
             if missing_fields:
-                logger.warning(
-                    "Missing required field(s): %s", ", ".join(sorted(missing_fields))
-                )
+                logger.warning("Missing required field(s): %s", ", ".join(sorted(missing_fields)))
                 if self.settings.strict_validation:
                     continue
 
@@ -522,9 +483,7 @@ class EmailPurchaseExtractor:
         extracted_purchases = self.extract_purchase_info(email_content)
 
         if not extracted_purchases:
-            logger.warning(
-                "Failed to extract purchase information despite positive classification"
-            )
+            logger.warning("Failed to extract purchase information despite positive classification")
             reason = "LLM failed to identify structured purchase data in the email body"
             processing_notes.append(f"Classification positive but extraction failed: {reason}")
             return {
@@ -580,9 +539,7 @@ class EmailPurchaseExtractor:
             }
 
         logger.info("Successfully processed crypto purchase email")
-        processing_notes.append(
-            f"Successfully extracted and validated {len(validated_purchases)} purchase(s)"
-        )
+        processing_notes.append(f"Successfully extracted and validated {len(validated_purchases)} purchase(s)")
 
         return {
             "has_purchase": True,
