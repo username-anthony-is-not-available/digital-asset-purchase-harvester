@@ -360,6 +360,43 @@ A new device has been logged into your account from IP 192.168.1.1.
 
 ---
 
+## CoinSpot Confirmation Email Format
+
+CoinSpot emails are common in Australia and follow a clear, consistent structure.
+
+### Key Identifiers
+
+*   **Subject Lines:**
+    *   "Purchase Confirmation"
+*   **Sender Addresses:** `support@coinspot.com.au`
+*   **Primary Keywords:** "successfully purchased", "Reference", "AUD"
+*   **Content Type:** Plain text or HTML
+
+### Transaction Details Format
+
+CoinSpot emails typically include:
+
+1.  **Purchase Statement:** "You have successfully purchased [amount] [crypto] for $[price] [currency]."
+2.  **Reference Number:** Starts with "Reference:" (e.g., CS-20240115-001)
+
+### Sample CoinSpot Email
+
+```eml
+From: CoinSpot <support@coinspot.com.au>
+Subject: Purchase Confirmation
+Date: Mon, 15 Jan 2024 10:00:00 +1100
+
+You have successfully purchased 50 ADA for $25.00 AUD.
+Reference: CS-20240115-001
+```
+
+### Extraction Tips
+
+*   The currency is almost always AUD.
+*   Reference number is a reliable transaction ID.
+
+---
+
 ## Common Email Patterns
 
 Understanding common patterns across exchanges helps improve the accuracy of email detection and parsing.

@@ -89,7 +89,7 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
 
     try:
         mbox_reader = MboxDataExtractor(temp_path)
-        emails = mbox_reader.extract_emails()
+        emails = mbox_reader.extract_emails(raw=settings.enable_multiprocessing)
 
         purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
 
@@ -148,7 +148,7 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
                 tasks[task_id] = {"status": "complete", "result": []}
                 return
 
-            emails = list(imap_client.fetch_emails_by_uids(uids, settings.imap_folder))
+            emails = list(imap_client.fetch_emails_by_uids(uids, settings.imap_folder, raw=settings.enable_multiprocessing))
             purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
 
             if emails:
@@ -182,7 +182,7 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
     try:
         gmail_client = GmailClient()
         query = settings.gmail_query
-        emails = gmail_client.search_emails(query)
+        emails = gmail_client.search_emails(query, raw=settings.enable_multiprocessing)
         purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
 
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
@@ -211,7 +211,7 @@ def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_fa
     try:
         outlook_client = OutlookClient(client_id, authority)
         query = settings.outlook_query
-        emails = outlook_client.search_emails(query)
+        emails = outlook_client.search_emails(query, raw=settings.enable_multiprocessing)
         purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
 
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
