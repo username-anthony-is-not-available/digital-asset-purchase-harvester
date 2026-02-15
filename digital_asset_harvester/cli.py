@@ -25,6 +25,7 @@ from digital_asset_harvester.integrations.koinly_api_client import (
     KoinlyApiClient,
     KoinlyApiError,
 )
+from digital_asset_harvester.integrations.blockchain_verifier import BlockchainVerifier
 from digital_asset_harvester.exporters.koinly import (
     write_purchase_data_to_koinly_csv,
 )
@@ -126,6 +127,11 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
         "--koinly-upload",
         action="store_true",
         help="Upload transactions to Koinly (requires API support)",
+    )
+    parser.add_argument(
+        "--verify",
+        action="store_true",
+        help="Verify harvested totals against on-chain balances",
     )
     parser.add_argument(
         "--progress",
@@ -370,12 +376,42 @@ def _process_and_save_results(
     show_progress: bool,
     settings: HarvesterSettings,
     koinly_upload: bool = False,
+    verify_balances: bool = False,
 ) -> None:
     """Helper to process emails and save the results."""
     purchases, metrics = process_emails(emails, extractor, logger_factory, show_progress=show_progress)
     ensure_directory_exists(output_path)
 
     logger = logging.getLogger(__name__)
+
+    # Blockchain Balance Verification
+    if verify_balances or settings.enable_blockchain_verification:
+        logger.info("Verifying harvested totals against on-chain balances...")
+        wallets_config = settings.blockchain_wallets
+        if not wallets_config:
+            logger.warning("No blockchain wallets configured. Set DAP_BLOCKCHAIN_WALLETS environment variable.")
+        else:
+            verifier = BlockchainVerifier(wallets_config)
+            report = verifier.verify(purchases)
+            if report.get("success"):
+                logger.info("--- Blockchain Verification Report ---")
+                for asset, data in report.get("results", {}).items():
+                    status = data.get("status", "unknown")
+                    harvested = data.get("harvested_total", 0)
+                    on_chain = data.get("on_chain_balance")
+
+                    if status == "match":
+                        logger.info(f"  {asset}: MATCH (Harvested: {harvested}, On-chain: {on_chain})")
+                    elif status == "discrepancy":
+                        diff = data.get("difference", 0)
+                        logger.warning(f"  {asset}: DISCREPANCY! (Harvested: {harvested}, On-chain: {on_chain}, Diff: {diff})")
+                    elif status == "no_wallet_configured":
+                        logger.info(f"  {asset}: Skipped (No wallet configured)")
+                    else:
+                        logger.error(f"  {asset}: {status.upper()} ({data.get('error_message', 'Unknown error')})")
+                logger.info("---------------------------------------")
+            else:
+                logger.error(f"Verification failed: {report.get('error')}")
 
     # Handle Koinly API upload if requested
     if koinly_upload:
@@ -571,6 +607,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                 args.progress,
                 settings,
                 args.koinly_upload,
+                args.verify,
             )
         elif args.outlook:
             logger.info("Fetching emails from Outlook...")
@@ -596,6 +633,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                 args.progress,
                 settings,
                 args.koinly_upload,
+                args.verify,
             )
         elif settings.enable_imap and args.imap:
             logger.info("Fetching emails from IMAP server...")
@@ -669,6 +707,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                         args.progress,
                         settings,
                         args.koinly_upload,
+                        args.verify,
                     )
 
                     # Update sync state with highest UID
@@ -689,6 +728,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                         args.progress,
                         settings,
                         args.koinly_upload,
+                        args.verify,
                     )
         elif args.eml_dir:
             logger.info(f"Loading emails from directory {args.eml_dir}...")
@@ -703,6 +743,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                 args.progress,
                 settings,
                 args.koinly_upload,
+                args.verify,
             )
         else:
             logger.info(f"Loading emails from {args.mbox_file}...")
@@ -717,6 +758,7 @@ def run(argv: Optional[list[str]] = None) -> int:
                 args.progress,
                 settings,
                 args.koinly_upload,
+                args.verify,
             )
         return 0
 

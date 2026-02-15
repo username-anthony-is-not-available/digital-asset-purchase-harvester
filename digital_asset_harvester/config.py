@@ -88,6 +88,9 @@ class HarvesterSettings:
     koinly_portfolio_id: str = ""
     koinly_api_base_url: str = "https://api.koinly.io/v1"
 
+    enable_blockchain_verification: bool = False
+    blockchain_wallets: str = ""
+
 
 def _coerce_value(value: str, expected_type: Type[Any], *, field_name: str) -> Any:
     """Convert string environment values to the expected type."""

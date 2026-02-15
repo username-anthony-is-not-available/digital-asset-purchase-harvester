@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Token Balance Verification**: Cross-reference harvested purchases with actual on-chain balances.
+  - New `BlockchainVerifier` integration using `blockchain-core`.
+  - Configurable wallet addresses via `DAP_BLOCKCHAIN_WALLETS`.
+  - CLI support via `--verify` flag.
+  - Detailed discrepancy reporting in logs.
+
 - **EML File Support**: Batch processing of individual `.eml` files.
   - New `EmlDataExtractor` for directory-based ingestion.
   - CLI support via `--eml-dir` argument.
