@@ -1,6 +1,7 @@
 """Logic for identifying and extracting crypto purchase information from emails."""
 
 import logging
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
@@ -22,6 +23,7 @@ from digital_asset_harvester.processing.constants import (
 )
 from digital_asset_harvester.validation import PurchaseRecord, PurchaseValidator
 from digital_asset_harvester.telemetry import (
+    MetricsTracker,
     StructuredLoggerAdapter,
     StructuredLoggerFactory,
     log_event,
@@ -50,6 +52,7 @@ class EmailPurchaseExtractor:
     validator: PurchaseValidator = field(init=False)
     pii_scrubber: PIIScrubber = field(init=False)
     event_logger: StructuredLoggerAdapter = field(init=False)
+    metrics: MetricsTracker = field(default_factory=MetricsTracker)
     prompts: PromptManager = field(default_factory=lambda: DEFAULT_PROMPTS)
     _metadata_cache: Dict[str, Dict[str, str]] = field(default_factory=dict, init=False)
 
@@ -173,6 +176,7 @@ class EmailPurchaseExtractor:
     def is_crypto_purchase_email(
         self, email_content: str, max_retries: Optional[int] = None
     ) -> bool:
+        self.metrics.increment("classification_total")
         retries = (
             max_retries if max_retries is not None else self.settings.llm_max_retries
         )
@@ -182,6 +186,7 @@ class EmailPurchaseExtractor:
                 logger.debug(
                     "Skipping LLM analysis - email filtered out by preprocessing"
                 )
+                self.metrics.increment("classification_skipped_preprocessing")
                 return False
 
             if not (
@@ -199,11 +204,24 @@ class EmailPurchaseExtractor:
             logger.info(
                 "Submitting email for classification (up to %d attempts)", retries
             )
+            start_time = time.time()
             result = self.llm_client.generate_json(prompt, retries=retries)
+            duration = time.time() - start_time
+            self.metrics.record_latency("llm_classification", duration)
+            self.metrics.increment("llm_calls_total")
+            if result.metadata and result.metadata.get("cached"):
+                self.metrics.increment("llm_cache_hits")
+            else:
+                self.metrics.increment("llm_cache_misses")
+
+            if result.metadata and result.metadata.get("fallback_used"):
+                self.metrics.increment("llm_fallback_usage")
+
         except LLMError as exc:
             logger.error(
                 "Failed to categorize email after %d attempts: %s", retries, exc
             )
+            self.metrics.increment("llm_calls_failed")
             return False
 
         payload = result.data
@@ -246,15 +264,18 @@ class EmailPurchaseExtractor:
     ) -> List[Dict[str, Any]]:
         # 1. Try specialized regex extractors first if enabled
         if self.settings.enable_regex_extractors:
+            self.metrics.increment("extraction_regex_attempts")
             metadata = self._extract_email_metadata(email_content)
             regex_results = registry.extract(
                 metadata["subject"], metadata["sender"], metadata["body"]
             )
             if regex_results:
                 logger.info("Successfully extracted purchase info using regex extractor")
+                self.metrics.increment("extraction_regex_success")
                 return self._process_extracted_transactions(regex_results, method="regex")
 
         # 2. Fallback to LLM extraction
+        self.metrics.increment("extraction_llm_attempts")
         retries = (
             max_retries if max_retries is not None else self.settings.llm_max_retries
         )
@@ -271,11 +292,25 @@ class EmailPurchaseExtractor:
             logger.info(
                 "Submitting email for purchase extraction (up to %d attempts)", retries
             )
+            start_time = time.time()
             result = self.llm_client.generate_json(prompt, retries=retries)
+            duration = time.time() - start_time
+            self.metrics.record_latency("llm_extraction", duration)
+            self.metrics.increment("llm_calls_total")
+            if result.metadata and result.metadata.get("cached"):
+                self.metrics.increment("llm_cache_hits")
+            else:
+                self.metrics.increment("llm_cache_misses")
+
+            if result.metadata and result.metadata.get("fallback_used"):
+                self.metrics.increment("llm_fallback_usage")
+
+            self.metrics.increment("extraction_llm_success")
         except LLMError as exc:
             logger.error(
                 "Failed to extract purchase info after %d attempts: %s", retries, exc
             )
+            self.metrics.increment("llm_calls_failed")
             return []
 
         payload = result.data
@@ -454,6 +489,7 @@ class EmailPurchaseExtractor:
                 "has_purchase": False,
                 "purchases": [],
                 "processing_notes": [f"Email not classified as crypto purchase: {reason}"],
+                "metrics": self.metrics,
             }
 
         # If classified as purchase, extract the details
@@ -469,6 +505,7 @@ class EmailPurchaseExtractor:
                 "has_purchase": False,
                 "purchases": [],
                 "processing_notes": processing_notes,
+                "metrics": self.metrics,
             }
 
         validated_purchases = []
@@ -513,6 +550,7 @@ class EmailPurchaseExtractor:
                 "has_purchase": False,
                 "purchases": [],
                 "processing_notes": processing_notes,
+                "metrics": self.metrics,
             }
 
         logger.info("Successfully processed crypto purchase email")
@@ -524,4 +562,5 @@ class EmailPurchaseExtractor:
             "has_purchase": True,
             "purchases": validated_purchases,
             "processing_notes": processing_notes,
+            "metrics": self.metrics,
         }

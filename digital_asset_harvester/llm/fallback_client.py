@@ -34,13 +34,23 @@ class FallbackLLMClient(LLMProvider):
     ) -> LLMResult:
         try:
             logger.info("Trying primary LLM provider...")
-            return self.primary.generate_json(
+            result = self.primary.generate_json(
                 prompt, model=model, retries=retries, temperature=temperature
             )
+            if result.metadata is None:
+                result.metadata = {}
+            result.metadata["fallback_used"] = False
+            result.metadata["provider_used"] = "primary"
+            return result
         except (LLMError, Exception) as exc:
             logger.warning(
                 "Primary LLM provider failed, falling back to secondary: %s", exc
             )
-            return self.secondary.generate_json(
+            result = self.secondary.generate_json(
                 prompt, model=model, retries=retries, temperature=temperature
             )
+            if result.metadata is None:
+                result.metadata = {}
+            result.metadata["fallback_used"] = True
+            result.metadata["provider_used"] = "secondary"
+            return result

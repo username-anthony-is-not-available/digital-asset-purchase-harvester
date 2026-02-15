@@ -58,6 +58,14 @@ class PIIScrubber:
             re.MULTILINE
         )
 
+        # Cryptocurrency Wallet Addresses
+        # BTC (Legacy, SegWit, Bech32)
+        self.btc_re = re.compile(r'\b(?:[13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[ac-hj-np-z02-9]{11,71})\b')
+        # ETH (and ERC-20)
+        self.eth_re = re.compile(r'\b0x[a-fA-F0-9]{40}\b')
+        # LTC
+        self.ltc_re = re.compile(r'\b(?:[LM][a-km-zA-HJ-NP-Z1-9]{26,33}|ltc1[ac-hj-np-z02-9]{11,71})\b')
+
     def _should_mask(self, match_text: str) -> bool:
         """Check if the matched text should actually be masked."""
         return match_text.lower() not in self.skip_terms
@@ -108,5 +116,10 @@ class PIIScrubber:
             return match.group(0)
 
         text = self.name_greeting_re.sub(mask_name, text)
+
+        # Scrub crypto addresses
+        text = self.btc_re.sub("[BTC_ADDRESS]", text)
+        text = self.eth_re.sub("[ETH_ADDRESS]", text)
+        text = self.ltc_re.sub("[LTC_ADDRESS]", text)
 
         return text

@@ -70,15 +70,26 @@ def get_llm_client(
             secondary = get_llm_client(
                 provider=settings.fallback_cloud_provider, settings=settings
             )
-            return FallbackLLMClient(primary, secondary)
-
-        return OllamaLLMClient(settings=settings)
-    if provider_name == "openai":
+            client = FallbackLLMClient(primary, secondary)
+        else:
+            client = OllamaLLMClient(settings=settings)
+    elif provider_name == "openai":
         from .openai_client import OpenAILLMClient
 
-        return OpenAILLMClient(settings=settings)
-    if provider_name == "anthropic":
+        client = OpenAILLMClient(settings=settings)
+    elif provider_name == "anthropic":
         from .anthropic_client import AnthropicLLMClient
 
-        return AnthropicLLMClient(settings=settings)
-    raise ValueError(f"Unknown LLM provider: {provider_name}")
+        client = AnthropicLLMClient(settings=settings)
+    else:
+        raise ValueError(f"Unknown LLM provider: {provider_name}")
+
+    # Wrap with caching if enabled
+    if settings.enable_llm_cache:
+        from .cache import LLMCache
+        from .cache_client import CachingLLMClient
+
+        cache = LLMCache(settings.llm_cache_file)
+        return CachingLLMClient(client, cache)
+
+    return client

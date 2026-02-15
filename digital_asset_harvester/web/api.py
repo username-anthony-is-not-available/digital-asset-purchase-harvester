@@ -84,6 +84,7 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
 
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
+        tasks[task_id]["metrics"] = extractor.metrics.snapshot()
         _save_tasks()
     except Exception as e:
         import traceback
@@ -142,6 +143,7 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
             normalized_purchases = [normalize_for_frontend(p) for p in purchases]
             tasks[task_id]["status"] = "complete"
             tasks[task_id]["result"] = normalized_purchases
+            tasks[task_id]["metrics"] = extractor.metrics.snapshot()
             _save_tasks()
 
     except Exception as e:
@@ -170,6 +172,7 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
+        tasks[task_id]["metrics"] = extractor.metrics.snapshot()
         _save_tasks()
     except Exception as e:
         import traceback
@@ -197,6 +200,7 @@ def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_fa
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
+        tasks[task_id]["metrics"] = extractor.metrics.snapshot()
         _save_tasks()
     except Exception as e:
         import traceback
@@ -512,3 +516,34 @@ async def delete_record(task_id: str, index: int):
     deleted_record = results.pop(index)
     _save_tasks()
     return {"status": "success", "deleted_record": deleted_record}
+
+
+@router.delete("/tasks")
+async def clear_tasks():
+    global tasks
+    tasks = {}
+    _save_tasks()
+    return {"status": "success", "message": "All tasks cleared"}
+
+
+@router.get("/metrics")
+async def get_metrics():
+    """Aggregate metrics from all completed tasks."""
+    from ..telemetry import MetricsTracker
+
+    combined_metrics = MetricsTracker()
+
+    for task_id, task in tasks.items():
+        if task.get("status") == "complete" and "metrics" in task:
+            task_metrics = task["metrics"]
+            for key, value in task_metrics.items():
+                if isinstance(value, (int, float)) and not key.endswith("_latency"):
+                    combined_metrics.increment(key, int(value))
+
+    # Since we are not currently storing MetricsTracker objects in tasks (we store normalized dicts)
+    # let's at least return the number of tasks as a metric
+    combined_metrics.set_metadata("total_tasks", len(tasks))
+    combined_metrics.increment("completed_tasks", sum(1 for t in tasks.values() if t.get("status") == "complete"))
+    combined_metrics.increment("error_tasks", sum(1 for t in tasks.values() if t.get("status") == "error"))
+
+    return {"status": "success", "metrics": combined_metrics.snapshot()}
