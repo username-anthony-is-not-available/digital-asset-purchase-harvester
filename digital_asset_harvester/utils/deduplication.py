@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any, Dict, Optional
+import json
+import os
+from typing import Any, Dict, Optional, Set
 
 
 def generate_record_hash(record: Dict[str, Any]) -> str:
@@ -33,17 +35,48 @@ def generate_record_hash(record: Dict[str, Any]) -> str:
 class DuplicateDetector:
     """Helper class to track seen records and identify duplicates."""
 
-    def __init__(self) -> None:
-        self.seen_hashes: set[str] = set()
+    def __init__(self, persistence_path: Optional[str] = None) -> None:
+        self.seen_hashes: Set[str] = set()
+        self.persistence_path = persistence_path
+        if self.persistence_path:
+            self.load_history()
 
-    def is_duplicate(self, record: Dict[str, Any]) -> bool:
+    def is_duplicate(self, record: Dict[str, Any], auto_save: bool = True) -> bool:
         """Check if a record is a duplicate and mark it as seen."""
         record_hash = generate_record_hash(record)
         if record_hash in self.seen_hashes:
             return True
         self.seen_hashes.add(record_hash)
+        if self.persistence_path and auto_save:
+            self.save_history()
         return False
+
+    def load_history(self) -> None:
+        """Load seen hashes from a JSON file."""
+        if self.persistence_path and os.path.exists(self.persistence_path):
+            try:
+                with open(self.persistence_path, "r") as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        self.seen_hashes.update(data)
+            except Exception:
+                # Fallback if file is corrupted
+                pass
+
+    def save_history(self) -> None:
+        """Save seen hashes to a JSON file."""
+        if self.persistence_path:
+            try:
+                with open(self.persistence_path, "w") as f:
+                    json.dump(list(self.seen_hashes), f)
+            except Exception:
+                pass
 
     def reset(self) -> None:
         """Clear the set of seen hashes."""
         self.seen_hashes.clear()
+        if self.persistence_path and os.path.exists(self.persistence_path):
+            try:
+                os.remove(self.persistence_path)
+            except Exception:
+                pass

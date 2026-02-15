@@ -410,33 +410,37 @@ class EmailPurchaseExtractor:
         # Use our existing date processing
         return self._process_extracted_dates(extracted_purchases)
 
-    def _validate_purchase_data(self, purchase_data: Dict[str, Any]) -> bool:
+    def _validate_purchase_data(self, purchase_data: Dict[str, Any]) -> tuple[bool, List[str]]:
         """Validate extracted purchase data for basic sanity checks."""
 
         if not purchase_data:
-            return False
+            return False, ["No data to validate"]
 
         if not self.settings.enable_validation:
-            return True
+            return True, []
 
         strict = self.settings.strict_validation
+        validation_errors = []
 
         try:
             record = PurchaseRecord.from_raw(purchase_data)
         except ValueError:
             logger.warning("Purchase record failed numeric conversion")
+            validation_errors.append("Purchase record failed numeric conversion")
             if self.settings.require_numeric_validation or strict:
-                return False
-            return True
+                return False, validation_errors
+            return True, validation_errors
 
         issues = self.validator.validate(record)
         for issue in issues:
-            logger.warning("Validation issue for %s: %s", issue.field, issue.message)
+            msg = f"Validation issue for {issue.field}: {issue.message}"
+            logger.warning(msg)
+            validation_errors.append(msg)
 
         if issues and strict:
-            return False
+            return False, validation_errors
 
-        return True
+        return True, validation_errors
 
     def process_email(self, email_content: str) -> Dict[str, Any]:
         """Process an email to determine if it contains cryptocurrency purchase information."""
@@ -445,10 +449,11 @@ class EmailPurchaseExtractor:
         # First check if it's likely a crypto purchase email
         if not self.is_crypto_purchase_email(email_content):
             logger.debug("Email classified as non-crypto-purchase")
+            reason = "Email did not match required keywords for crypto purchases"
             return {
                 "has_purchase": False,
                 "purchases": [],
-                "processing_notes": ["Email not classified as crypto purchase"],
+                "processing_notes": [f"Email not classified as crypto purchase: {reason}"],
             }
 
         # If classified as purchase, extract the details
@@ -458,7 +463,8 @@ class EmailPurchaseExtractor:
             logger.warning(
                 "Failed to extract purchase information despite positive classification"
             )
-            processing_notes.append("Classification positive but extraction failed")
+            reason = "LLM failed to identify structured purchase data in the email body"
+            processing_notes.append(f"Classification positive but extraction failed: {reason}")
             return {
                 "has_purchase": False,
                 "purchases": [],
@@ -475,7 +481,8 @@ class EmailPurchaseExtractor:
                 purchase_info["confidence"] = calculate_confidence(purchase_record)
 
                 # Validate the extracted data
-                if self._validate_purchase_data(purchase_info):
+                is_valid, validation_issues = self._validate_purchase_data(purchase_info)
+                if is_valid:
                     # Normalize types for consistency (especially for regex extractors)
                     if purchase_record.amount is not None:
                         purchase_info["amount"] = float(purchase_record.amount)
@@ -493,8 +500,9 @@ class EmailPurchaseExtractor:
                     validated_purchases.append(purchase_info)
                 else:
                     logger.warning("Extracted purchase data failed validation")
+                    reason = "; ".join(validation_issues)
                     processing_notes.append(
-                        f"Extracted data for {purchase_info.get('item_name')} failed validation"
+                        f"Extracted data for {purchase_info.get('item_name')} failed validation: {reason}"
                     )
             except Exception as e:
                 logger.warning("Error processing extracted purchase: %s", e)

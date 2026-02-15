@@ -175,6 +175,37 @@
             }
         }
 
+        async function addRecord(taskId) {
+            const response = await fetch(`/api/task/${taskId}/records`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                allPurchases.push(data.record);
+                renderTable();
+                updateProgress();
+            } else {
+                alert('Failed to add record');
+            }
+        }
+
+        async function deleteRow(index, taskId) {
+            if (!confirm('Are you sure you want to delete this record?')) return;
+
+            const response = await fetch(`/api/task/${taskId}/records/${index}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                allPurchases.splice(index, 1);
+                renderTable();
+                updateProgress();
+            } else {
+                alert('Failed to delete record');
+            }
+        }
+
         async function approveSelected(taskId) {
             const selectedIndices = [];
             document.querySelectorAll('.row-checkbox:checked').forEach(cb => {
@@ -293,6 +324,7 @@
 
             <div class="batch-actions">
                 <button onclick="approveSelected(document.getElementById('task-id').textContent)">Approve Selected (a)</button>
+                <button onclick="addRecord(document.getElementById('task-id').textContent)">Add Transaction</button>
             </div>
 
             <table>
@@ -427,6 +459,7 @@
                     <td>
                         <button class="view-mode approve-btn" onclick="approveRow(${index}, '${taskId}')" style="${purchase.review_status === 'approved' ? 'display:none' : ''}">Approve</button>
                         <button class="view-mode" onclick="editRow(${index})">Edit</button>
+                        <button class="view-mode" onclick="deleteRow(${index}, '${taskId}')">Delete</button>
                         <button class="edit-mode" onclick="saveRow(${index}, '${taskId}')" style="display:none">Save</button>
                         <button class="edit-mode" onclick="cancelEdit(${index})" style="display:none">Cancel</button>
                     </td>

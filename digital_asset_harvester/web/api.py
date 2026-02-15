@@ -1,4 +1,5 @@
 import os
+import logging
 import shutil
 import uuid
 import csv
@@ -23,9 +24,32 @@ from ..exporters.cryptotaxcalculator import CryptoTaxCalculatorReportGenerator
 from ..exporters.cra import CRAReportGenerator, write_purchase_data_to_cra_pdf
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # In-memory store for task status and results
+TASKS_DB = "tasks_db.json"
 tasks = {}
+
+def _save_tasks():
+    """Save tasks to a JSON file."""
+    try:
+        with open(TASKS_DB, "w") as f:
+            json.dump(tasks, f)
+    except Exception as e:
+        logger.error(f"Failed to save tasks: {e}")
+
+def _load_tasks():
+    """Load tasks from a JSON file."""
+    global tasks
+    if os.path.exists(TASKS_DB):
+        try:
+            with open(TASKS_DB, "r") as f:
+                tasks = json.load(f)
+        except Exception as e:
+            logger.error(f"Failed to load tasks: {e}")
+            tasks = {}
+
+_load_tasks()
 
 DEFAULT_CSV_HEADERS = [
     "email_subject", "vendor", "currency", "amount", "purchase_date",
@@ -49,16 +73,25 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
         logger_factory=logger_factory,
     )
 
-    mbox_reader = MboxDataExtractor(temp_path)
-    emails = mbox_reader.extract_emails()
+    try:
+        mbox_reader = MboxDataExtractor(temp_path)
+        emails = mbox_reader.extract_emails()
 
-    purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
+        purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
 
-    # Initialize review status and map fields for frontend
-    normalized_purchases = [normalize_for_frontend(p) for p in purchases]
+        # Initialize review status and map fields for frontend
+        normalized_purchases = [normalize_for_frontend(p) for p in purchases]
 
-    tasks[task_id]["status"] = "complete"
-    tasks[task_id]["result"] = normalized_purchases
+        tasks[task_id]["status"] = "complete"
+        tasks[task_id]["result"] = normalized_purchases
+        _save_tasks()
+    except Exception as e:
+        import traceback
+        tasks[task_id] = {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+        _save_tasks()
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
 def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
     """Synchronizes emails from IMAP and stores the result."""
@@ -109,9 +142,12 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
             normalized_purchases = [normalize_for_frontend(p) for p in purchases]
             tasks[task_id]["status"] = "complete"
             tasks[task_id]["result"] = normalized_purchases
+            _save_tasks()
 
     except Exception as e:
-        tasks[task_id] = {"status": "error", "error": str(e)}
+        import traceback
+        tasks[task_id] = {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+        _save_tasks()
 
 def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
     """Synchronizes emails from Gmail API and stores the result."""
@@ -134,8 +170,11 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
+        _save_tasks()
     except Exception as e:
-        tasks[task_id] = {"status": "error", "error": str(e)}
+        import traceback
+        tasks[task_id] = {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+        _save_tasks()
 
 def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_factory: StructuredLoggerFactory):
     """Synchronizes emails from Outlook API and stores the result."""
@@ -158,8 +197,11 @@ def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_fa
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
+        _save_tasks()
     except Exception as e:
-        tasks[task_id] = {"status": "error", "error": str(e)}
+        import traceback
+        tasks[task_id] = {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+        _save_tasks()
 
 @router.get("/export/koinly/{task_id}")
 async def export_koinly(task_id: str):
@@ -394,6 +436,7 @@ async def update_record(task_id: str, index: int, updated_record: dict):
     results[index].update(updated_record)
     # Reset review status on manual edit
     results[index]["review_status"] = "pending"
+    _save_tasks()
     return {"status": "success", "updated_record": results[index]}
 
 
@@ -408,6 +451,7 @@ async def approve_record(task_id: str, index: int):
         raise HTTPException(status_code=404, detail="Record index out of bounds")
 
     results[index]["review_status"] = "approved"
+    _save_tasks()
     return {"status": "success", "record": results[index]}
 
 
@@ -424,4 +468,47 @@ async def approve_batch(task_id: str, indices: list[int]):
             results[index]["review_status"] = "approved"
             updated_indices.append(index)
 
+    _save_tasks()
     return {"status": "success", "approved_indices": updated_indices}
+
+
+@router.post("/task/{task_id}/records")
+async def add_record(task_id: str):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    new_record = {
+        "email_subject": "Manual Entry",
+        "vendor": "Manual",
+        "currency": "USD",
+        "amount": 0.0,
+        "purchase_date": "",
+        "transaction_id": "",
+        "crypto_currency": "",
+        "crypto_amount": 0.0,
+        "fee_amount": 0.0,
+        "fee_currency": "",
+        "asset_id": "",
+        "confidence_score": 1.0,
+        "review_status": "pending"
+    }
+    results.append(new_record)
+    _save_tasks()
+    return {"status": "success", "index": len(results) - 1, "record": new_record}
+
+
+@router.delete("/task/{task_id}/records/{index}")
+async def delete_record(task_id: str, index: int):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    if index < 0 or index >= len(results):
+        raise HTTPException(status_code=404, detail="Record index out of bounds")
+
+    deleted_record = results.pop(index)
+    _save_tasks()
+    return {"status": "success", "deleted_record": deleted_record}

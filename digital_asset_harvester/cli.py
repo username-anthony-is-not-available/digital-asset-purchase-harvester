@@ -231,6 +231,7 @@ def process_emails(
     extractor: EmailPurchaseExtractor,
     logger_factory: StructuredLoggerFactory,
     show_progress: bool = True,
+    history_path: Optional[str] = ".processed_hashes.json",
 ) -> tuple[list[dict], MetricsTracker]:
     logger = logging.getLogger(__name__)
     settings = extractor.settings
@@ -239,7 +240,7 @@ def process_emails(
         "digital_asset_harvester.app",
         default_fields={"component": "cli"},
     )
-    duplicate_detector = DuplicateDetector()
+    duplicate_detector = DuplicateDetector(persistence_path=history_path)
 
     results: list[dict] = []
 
@@ -271,7 +272,7 @@ def process_emails(
 
         if result.get("has_purchase"):
             for purchase_info in result.get("purchases", []):
-                if duplicate_detector.is_duplicate(purchase_info):
+                if duplicate_detector.is_duplicate(purchase_info, auto_save=False):
                     logger.info("Skipping duplicate purchase: %s %s", purchase_info.get("item_name"), purchase_info.get("amount"))
                     metrics.increment("duplicate_purchases_skipped")
                     continue
@@ -346,6 +347,9 @@ def process_emails(
 
             _, _, result = _process_single_email(email, idx, extractor)
             handle_result(email, idx, result)
+
+    if history_path:
+        duplicate_detector.save_history()
 
     log_event(app_logger, "processing_summary", **metrics.snapshot())
     return results, metrics

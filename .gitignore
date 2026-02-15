@@ -175,3 +175,8 @@ cython_debug/
 
 # Output directory for generated CSV files (not source code)
 /output/
+
+# Persistence files
+tasks_db.json
+.processed_hashes.json
+.sync_state.json
