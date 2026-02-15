@@ -1,0 +1,114 @@
+From MAILER-DAEMON Sun Feb 15 17:30:04 2026
+From: Coinbase <no-reply@coinbase.com>
+Subject: Your Coinbase purchase of 0.001 BTC
+Date: Mon, 1 Jan 2024 10:00:00 +0000
+Message-ID: <coinbase_purchase@golden-test.local>
+
+You successfully purchased 0.001 BTC for $100.00 USD.
+
+From MAILER-DAEMON Sun Feb 15 17:30:04 2026
+From: Binance <do-not-reply@binance.com>
+Subject: Your order to buy 0.1 ETH has been filled
+Date: Tue, 2 Jan 2024 11:00:00 +0000
+Message-ID: <binance_purchase@golden-test.local>
+
+Your order to buy 0.1 ETH for 200.00 USD has been filled.
+
+From MAILER-DAEMON Sun Feb 15 17:30:04 2026
+From: Kraken <noreply@kraken.com>
+Subject: Trade Confirmation: Buy 0.5 XMR
+Date: Wed, 3 Jan 2024 12:00:00 +0000
+Message-ID: <kraken_purchase@golden-test.local>
+
+You have successfully bought 0.5 XMR for 50.00 EUR.
+
+From MAILER-DAEMON Sun Feb 15 17:30:04 2026
+From: Gemini <orders@gemini.com>
+Subject: Order Confirmation - Buy BTC
+Date: Thu, 4 Jan 2024 13:00:00 +0000
+Message-ID: <gemini_purchase@golden-test.local>
+
+Your order to purchase 0.005 BTC for $150.00 has been completed.
+Transaction ID: GEM-2024-001
+
+From MAILER-DAEMON Sun Feb 15 17:30:04 2026
+From: "Crypto Exchange" <noreply@crypto.com>
+Subject: Your order #12345 has been executed
+Date: Fri, 5 Jan 2024 14:00:00 +0000
+Message-ID: <cryptocom_purchase@golden-test.local>
+
+Your market order #12345 to buy 2.5 SOL has been filled at a price of $25.00 per SOL.
+Total cost: $62.50 USD.
+
+From MAILER-DAEMON Sun Feb 15 17:30:04 2026
+From: FTX <noreply@ftx.com>
+Subject: Trade Executed: BUY 10 MATIC
+Date: Sat, 6 Jan 2024 15:00:00 +0000
+Message-ID: <ftx_purchase@golden-test.local>
+
+Amount: 10 MATIC
+Price per unit: $0.85
+Total: $8.50 USD
+
+From MAILER-DAEMON Sun Feb 15 17:30:04 2026
+From: CoinSpot <support@coinspot.com.au>
+Subject: Purchase Confirmation
+Date: Sun, 7 Jan 2024 16:00:00 +0000
+Message-ID: <coinspot_purchase@golden-test.local>
+
+You have successfully purchased 50 ADA for $25.00 AUD.
+Reference: CS-20240115-001
+
+From MAILER-DAEMON Sun Feb 15 17:30:04 2026
+From: Coinbase <no-reply@coinbase.com>
+Subject: You've earned a staking reward
+Date: Mon, 8 Jan 2024 17:00:00 +0000
+Message-ID: <coinbase_staking@golden-test.local>
+
+You just earned 0.00001234 ETH in staking rewards!
+Transaction ID: CB-STAKE-2025-ABC
+
+From MAILER-DAEMON Sun Feb 15 17:30:04 2026
+From: Binance <do-not-reply@binance.com>
+Subject: Trade Confirmation
+Date: Tue, 9 Jan 2024 18:00:00 +0000
+Message-ID: <binance_multi@golden-test.local>
+
+Your trade order has been filled.
+
+Order Details:
+- Pair: BTC/USDT
+- Side: Buy
+- Amount: 0.002 BTC
+- Price: 65,000.00 USDT
+- Total: 130.00 USDT
+
+- Pair: ETH/USDT
+- Side: Buy
+- Amount: 0.1 ETH
+- Price: 3,500.00 USDT
+- Total: 350.00 USDT
+
+From MAILER-DAEMON Sun Feb 15 17:30:04 2026
+From: info@someexchange.io
+Subject: Receipt for your order
+Date: Wed, 10 Jan 2024 19:00:00 +0000
+Message-ID: <generic_llm_purchase@golden-test.local>
+
+You bought 1000 DOGE for 0.1 ETH on our platform.
+
+From MAILER-DAEMON Sun Feb 15 17:30:04 2026
+From: Newsletter <news@crypto.com>
+Subject: Crypto Weekly
+Date: Thu, 11 Jan 2024 20:00:00 +0000
+Message-ID: <newsletter@golden-test.local>
+
+Market is bullish today. Bitcoin is up 5%.
+
+From MAILER-DAEMON Sun Feb 15 17:30:04 2026
+From: Security <security@binance.com>
+Subject: New login from unknown device
+Date: Fri, 12 Jan 2024 21:00:00 +0000
+Message-ID: <security_alert@golden-test.local>
+
+We detected a login from a new device in London.
