@@ -63,7 +63,7 @@ class TestKoinlyReportGenerator:
         generator = KoinlyReportGenerator()
 
         # Test "buy" transaction
-        buy_row = generator._convert_purchase_to_koinly_row(vars(sample_purchases[0]))
+        buy_row = generator._convert_purchase_to_koinly_row(sample_purchases[0].model_dump())
         assert buy_row["Label"] == "buy"
         assert buy_row["Sent Amount"] == "100.00"
         assert buy_row["Sent Currency"] == "USD"
@@ -73,7 +73,7 @@ class TestKoinlyReportGenerator:
         assert buy_row["Description"] == "Buy from Coinbase"
 
         # Test "deposit" transaction
-        deposit_row = generator._convert_purchase_to_koinly_row(vars(sample_purchases[1]))
+        deposit_row = generator._convert_purchase_to_koinly_row(sample_purchases[1].model_dump())
         assert deposit_row["Label"] == "deposit"
         assert deposit_row["Sent Amount"] == ""
         assert deposit_row["Sent Currency"] == ""
@@ -84,7 +84,7 @@ class TestKoinlyReportGenerator:
 
         # Test "withdrawal" transaction
         withdrawal_row = generator._convert_purchase_to_koinly_row(
-            vars(sample_purchases[2])
+            sample_purchases[2].model_dump()
         )
         assert withdrawal_row["Label"] == "withdrawal"
         assert withdrawal_row["Sent Amount"] == "2.0"
@@ -113,7 +113,7 @@ class TestKoinlyReportGenerator:
 
     def test_generate_csv_rows(self, sample_purchases):
         generator = KoinlyReportGenerator()
-        purchase_dicts = [vars(p) for p in sample_purchases]
+        purchase_dicts = [p.model_dump() for p in sample_purchases]
         rows = generator.generate_csv_rows(purchase_dicts)
         assert len(rows) == 3
         assert rows[0]["Label"] == "buy"

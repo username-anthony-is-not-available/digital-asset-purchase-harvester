@@ -1,44 +1,16 @@
-"""Validation utilities for purchase data."""
+"""Validation utilities for purchase data using Pydantic V2."""
 
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass
-from decimal import Decimal
-from typing import Iterable, List, Optional
+from typing import List
 
-from .schemas import PurchaseRecord
+from pydantic import ValidationError
+
+from .schemas import KNOWN_CRYPTO_NAMES, PurchaseRecord
 
 logger = logging.getLogger(__name__)
-
-ISO_CURRENCY_PATTERN = re.compile(r"^[A-Z]{3,5}$")
-CRYPTO_SYMBOL_PATTERN = re.compile(r"^[A-Z0-9]{2,10}$")
-
-KNOWN_CRYPTO_NAMES = {
-    "bitcoin",
-    "btc",
-    "ethereum",
-    "eth",
-    "litecoin",
-    "ltc",
-    "solana",
-    "sol",
-    "dogecoin",
-    "doge",
-    "cardano",
-    "ada",
-    "polkadot",
-    "dot",
-    "ripple",
-    "xrp",
-    "binance coin",
-    "bnb",
-    "tether",
-    "usdt",
-    "usd coin",
-    "usdc",
-}
 
 
 @dataclass(frozen=True)
@@ -52,35 +24,41 @@ class PurchaseValidator:
         self.allow_unknown_crypto = allow_unknown_crypto
 
     def validate(self, record: PurchaseRecord) -> List[ValidationIssue]:
+        """
+        Validate a PurchaseRecord.
+        Note: PurchaseRecord already performs most validations on instantiation/validation.
+        This method captures those and adds any extra checks (like known cryptos).
+        """
         issues: List[ValidationIssue] = []
 
-        if record.total_spent is not None and record.total_spent < Decimal("0"):
-            issues.append(ValidationIssue("total_spent", "must be non-negative"))
+        # If we have a record, it might have been created without context.
+        # So we re-check known cryptos here if needed.
+        if record.item_name:
+            lower_item = record.item_name.lower()
+            if lower_item not in KNOWN_CRYPTO_NAMES and not self.allow_unknown_crypto:
+                issues.append(ValidationIssue("item_name", "unknown cryptocurrency"))
 
-        if record.amount is not None and record.amount <= Decimal("0"):
-            issues.append(ValidationIssue("amount", "must be greater than zero"))
+        return issues
 
-        if record.currency and not ISO_CURRENCY_PATTERN.match(record.currency.upper()):
-            issues.append(ValidationIssue("currency", "must be ISO 4217 uppercase code"))
-
-        lower_item = record.item_name.lower()
-        if not lower_item:
-            issues.append(ValidationIssue("item_name", "is required"))
-        elif lower_item not in KNOWN_CRYPTO_NAMES and not self.allow_unknown_crypto:
-            issues.append(ValidationIssue("item_name", "unknown cryptocurrency"))
-
-        if not record.vendor.strip():
-            issues.append(ValidationIssue("vendor", "is required"))
-
-        if not record.purchase_date.strip():
-            issues.append(ValidationIssue("purchase_date", "is required"))
-
-        if record.fee_amount is not None and record.fee_amount < Decimal("0"):
-            issues.append(ValidationIssue("fee_amount", "must be non-negative"))
-
-        if record.fee_currency and not ISO_CURRENCY_PATTERN.match(record.fee_currency.upper()):
-            # Fee currency could be crypto, so let's check both patterns
-            if not CRYPTO_SYMBOL_PATTERN.match(record.fee_currency.upper()):
-                issues.append(ValidationIssue("fee_currency", "must be valid currency code or symbol"))
+    @classmethod
+    def validate_raw(cls, data: dict, allow_unknown_crypto: bool = True) -> List[ValidationIssue]:
+        """Validate raw data and return a list of issues."""
+        issues: List[ValidationIssue] = []
+        try:
+            # Use Pydantic to validate, passing allow_unknown_crypto in context
+            PurchaseRecord.model_validate(
+                data, context={"allow_unknown_crypto": allow_unknown_crypto}
+            )
+            # We don't need to call validator.validate() here because Pydantic
+            # now handles the unknown crypto check if context is provided.
+        except ValidationError as e:
+            for error in e.errors():
+                # Get the field name from loc
+                field = str(error["loc"][0]) if error["loc"] else "unknown"
+                message = error["msg"]
+                # Clean up "Value error, " prefix from Pydantic custom validators
+                if message.startswith("Value error, "):
+                    message = message[len("Value error, ") :]
+                issues.append(ValidationIssue(field, message))
 
         return issues

@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
 
+from pydantic import ValidationError
+
 from digital_asset_harvester.config import HarvesterSettings, get_settings
 from digital_asset_harvester.confidence import calculate_confidence
 from digital_asset_harvester.utils.pii_scrubber import PIIScrubber
@@ -471,7 +473,9 @@ class EmailPurchaseExtractor:
         # Use our existing date processing
         return self._process_extracted_dates(extracted_purchases)
 
-    def _validate_purchase_data(self, purchase_data: Dict[str, Any]) -> tuple[bool, List[str]]:
+    def _validate_purchase_data(
+        self, purchase_data: Dict[str, Any]
+    ) -> tuple[bool, List[str]]:
         """Validate extracted purchase data for basic sanity checks."""
 
         if not purchase_data:
@@ -484,14 +488,24 @@ class EmailPurchaseExtractor:
         validation_errors = []
 
         try:
-            record = PurchaseRecord.from_raw(purchase_data)
-        except ValueError:
-            logger.warning("Purchase record failed numeric conversion")
-            validation_errors.append("Purchase record failed numeric conversion")
+            # Pydantic validation handles numeric conversion and basic constraints
+            record = PurchaseRecord.model_validate(purchase_data)
+        except (ValueError, ValidationError) as e:
+            if isinstance(e, ValidationError):
+                for error in e.errors():
+                    field = str(error["loc"][0]) if error["loc"] else "unknown"
+                    msg = f"Validation issue for {field}: {error['msg']}"
+                    logger.warning(msg)
+                    validation_errors.append(msg)
+            else:
+                logger.warning("Purchase record failed validation: %s", e)
+                validation_errors.append(str(e))
+
             if self.settings.require_numeric_validation or strict:
                 return False, validation_errors
             return True, validation_errors
 
+        # Extra validation (e.g., unknown crypto)
         issues = self.validator.validate(record)
         for issue in issues:
             msg = f"Validation issue for {issue.field}: {issue.message}"
@@ -538,7 +552,7 @@ class EmailPurchaseExtractor:
         for purchase_info in extracted_purchases:
             # Create a PurchaseRecord to pass to calculate_confidence
             try:
-                purchase_record = PurchaseRecord.from_raw(purchase_info)
+                purchase_record = PurchaseRecord.model_validate(purchase_info)
 
                 # Calculate and update the confidence score
                 purchase_info["confidence"] = calculate_confidence(purchase_record)
