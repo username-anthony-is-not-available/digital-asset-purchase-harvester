@@ -454,7 +454,20 @@ async def update_record(task_id: str, index: int, updated_record: dict):
     if index < 0 or index >= len(results):
         raise HTTPException(status_code=404, detail="Record index out of bounds")
 
+    # Check if crypto_currency changed and we need to update asset_id
+    from ..utils.asset_mapping import mapper
+    old_currency = results[index].get("crypto_currency")
+    new_currency = updated_record.get("crypto_currency")
+
     results[index].update(updated_record)
+
+    if new_currency and new_currency != old_currency:
+        # Only auto-update asset_id if it wasn't explicitly provided/changed to something non-empty
+        if not updated_record.get("asset_id"):
+            asset_id = mapper.get_asset_id(new_currency)
+            if asset_id:
+                results[index]["asset_id"] = asset_id
+
     # Reset review status on manual edit
     results[index]["review_status"] = "pending"
     _save_tasks()
@@ -476,6 +489,21 @@ async def approve_record(task_id: str, index: int):
     return {"status": "success", "record": results[index]}
 
 
+@router.put("/task/{task_id}/records/{index}/reject")
+async def reject_record(task_id: str, index: int):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    if index < 0 or index >= len(results):
+        raise HTTPException(status_code=404, detail="Record index out of bounds")
+
+    results[index]["review_status"] = "rejected"
+    _save_tasks()
+    return {"status": "success", "record": results[index]}
+
+
 @router.post("/task/{task_id}/approve-batch")
 async def approve_batch(task_id: str, indices: list[int]):
     task = tasks.get(task_id)
@@ -491,6 +519,23 @@ async def approve_batch(task_id: str, indices: list[int]):
 
     _save_tasks()
     return {"status": "success", "approved_indices": updated_indices}
+
+
+@router.post("/task/{task_id}/reject-batch")
+async def reject_batch(task_id: str, indices: list[int]):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    updated_indices = []
+    for index in indices:
+        if 0 <= index < len(results):
+            results[index]["review_status"] = "rejected"
+            updated_indices.append(index)
+
+    _save_tasks()
+    return {"status": "success", "rejected_indices": updated_indices}
 
 
 @router.post("/task/{task_id}/records")

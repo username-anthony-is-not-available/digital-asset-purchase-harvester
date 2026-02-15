@@ -86,18 +86,26 @@
             }
         }
 
-        function filterByConfidence() {
+        function applyFilters() {
             const threshold = parseFloat(document.getElementById('confidence-threshold').value);
+            const hideRejected = document.getElementById('hide-rejected').checked;
             document.getElementById('threshold-value').textContent = threshold.toFixed(2);
+
             const rows = document.querySelectorAll('#results-tbody tr');
             rows.forEach(row => {
                 const confidence = parseFloat(row.getAttribute('data-confidence'));
-                if (isNaN(confidence) || confidence >= threshold) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
+                const isRejected = row.classList.contains('status-rejected');
+
+                let visible = true;
+                if (!isNaN(confidence) && confidence < threshold) visible = false;
+                if (hideRejected && isRejected) visible = false;
+
+                row.style.display = visible ? '' : 'none';
             });
+        }
+
+        function filterByConfidence() {
+            applyFilters();
         }
 
         function editRow(index) {
@@ -154,6 +162,7 @@
                 updateRowUI(index, record);
                 cancelEdit(index);
                 updateProgress();
+                applyFilters();
             } else {
                 alert('Failed to save changes');
             }
@@ -170,8 +179,26 @@
                 allPurchases[index] = record;
                 updateRowUI(index, record);
                 updateProgress();
+                applyFilters();
             } else {
                 alert('Failed to approve');
+            }
+        }
+
+        async function rejectRow(index, taskId) {
+            const response = await fetch(`/api/task/${taskId}/records/${index}/reject`, {
+                method: 'PUT'
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const record = data.record;
+                allPurchases[index] = record;
+                updateRowUI(index, record);
+                updateProgress();
+                applyFilters();
+            } else {
+                alert('Failed to reject');
             }
         }
 
@@ -229,14 +256,52 @@
                 });
                 document.getElementById('select-all').checked = false;
                 updateProgress();
+                applyFilters();
             } else {
                 alert('Failed to approve batch');
             }
         }
 
+        async function rejectSelected(taskId) {
+            const selectedIndices = [];
+            document.querySelectorAll('.row-checkbox:checked').forEach(cb => {
+                selectedIndices.push(parseInt(cb.getAttribute('data-index')));
+            });
+
+            if (selectedIndices.length === 0) return;
+
+            const response = await fetch(`/api/task/${taskId}/reject-batch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(selectedIndices)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                data.rejected_indices.forEach(index => {
+                    allPurchases[index].review_status = 'rejected';
+                    updateRowUI(index, allPurchases[index]);
+                    document.querySelector(`.row-checkbox[data-index="${index}"]`).checked = false;
+                });
+                document.getElementById('select-all').checked = false;
+                updateProgress();
+                applyFilters();
+            } else {
+                alert('Failed to reject batch');
+            }
+        }
+
         function updateRowUI(index, record) {
             const row = document.querySelector(`#row-${index}`);
-            row.className = record.review_status === 'approved' ? 'status-approved' : 'status-pending';
+            row.className = '';
+            if (record.review_status === 'approved') {
+                row.classList.add('status-approved');
+            } else if (record.review_status === 'rejected') {
+                row.classList.add('status-rejected');
+            } else {
+                row.classList.add('status-pending');
+            }
+
             if ((record.confidence_score || 0) < CONFIDENCE_THRESHOLD_LOW) {
                 row.classList.add('low-confidence');
             }
@@ -254,20 +319,27 @@
             row.querySelector('.view-status').textContent = record.review_status || 'pending';
 
             const approveBtn = row.querySelector('.approve-btn');
+            const rejectBtn = row.querySelector('.reject-btn');
+
             if (record.review_status === 'approved') {
                 approveBtn.style.display = 'none';
+                rejectBtn.style.display = 'inline-block';
+            } else if (record.review_status === 'rejected') {
+                approveBtn.style.display = 'inline-block';
+                rejectBtn.style.display = 'none';
             } else {
                 approveBtn.style.display = 'inline-block';
+                rejectBtn.style.display = 'inline-block';
             }
         }
 
         function updateProgress() {
-            const total = allPurchases.length;
+            const nonRejected = allPurchases.filter(p => p.review_status !== 'rejected').length;
             const approved = allPurchases.filter(p => p.review_status === 'approved').length;
-            const percent = total > 0 ? (approved / total) * 100 : 0;
+            const percent = nonRejected > 0 ? (approved / nonRejected) * 100 : 0;
 
             document.getElementById('progress-fill').style.width = `${percent}%`;
-            document.getElementById('progress-text').textContent = `${approved} / ${total} Approved`;
+            document.getElementById('progress-text').textContent = `${approved} / ${nonRejected} Approved (excluding rejected)`;
         }
 
         function toggleSelectAll() {
@@ -284,6 +356,10 @@
             if (e.key === 'a') {
                 const taskId = document.getElementById('task-id').textContent;
                 approveSelected(taskId);
+            }
+            if (e.key === 'r') {
+                const taskId = document.getElementById('task-id').textContent;
+                rejectSelected(taskId);
             }
         });
     </script>
@@ -307,8 +383,12 @@
             <div class="filter-section">
                 <div>
                     <label for="confidence-threshold">Confidence Threshold: </label>
-                    <input type="range" id="confidence-threshold" min="0" max="1" step="0.05" value="0" oninput="filterByConfidence()">
+                    <input type="range" id="confidence-threshold" min="0" max="1" step="0.05" value="0" oninput="applyFilters()">
                     <span id="threshold-value">0.00</span>
+                </div>
+
+                <div>
+                    <label><input type="checkbox" id="hide-rejected" onchange="applyFilters()"> Hide Rejected</label>
                 </div>
 
                 <div class="export-buttons" style="margin-bottom: 0;">
@@ -324,6 +404,7 @@
 
             <div class="batch-actions">
                 <button onclick="approveSelected(document.getElementById('task-id').textContent)">Approve Selected (a)</button>
+                <button onclick="rejectSelected(document.getElementById('task-id').textContent)">Reject Selected (r)</button>
                 <button onclick="addRecord(document.getElementById('task-id').textContent)">Add Transaction</button>
             </div>
 
@@ -385,6 +466,7 @@
                         allPurchases = data.result || [];
                         renderTable();
                         updateProgress();
+                        applyFilters();
                     }
                 });
         }, 2000);
@@ -404,7 +486,15 @@
                 const confidenceClass = purchase.confidence_score >= 0.9 ? 'confidence-high' :
                                       purchase.confidence_score >= 0.7 ? 'confidence-medium' : 'confidence-low';
 
-                row.className = purchase.review_status === 'approved' ? 'status-approved' : 'status-pending';
+                row.className = '';
+                if (purchase.review_status === 'approved') {
+                    row.classList.add('status-approved');
+                } else if (purchase.review_status === 'rejected') {
+                    row.classList.add('status-rejected');
+                } else {
+                    row.classList.add('status-pending');
+                }
+
                 if ((purchase.confidence_score || 0) < CONFIDENCE_THRESHOLD_LOW) {
                     row.classList.add('low-confidence');
                 }
@@ -458,6 +548,7 @@
                     <td><span class="view-status">${purchase.review_status || 'pending'}</span></td>
                     <td>
                         <button class="view-mode approve-btn" onclick="approveRow(${index}, '${taskId}')" style="${purchase.review_status === 'approved' ? 'display:none' : ''}">Approve</button>
+                        <button class="view-mode reject-btn" onclick="rejectRow(${index}, '${taskId}')" style="${purchase.review_status === 'rejected' ? 'display:none' : ''}">Reject</button>
                         <button class="view-mode" onclick="editRow(${index})">Edit</button>
                         <button class="view-mode" onclick="deleteRow(${index}, '${taskId}')">Delete</button>
                         <button class="edit-mode" onclick="saveRow(${index}, '${taskId}')" style="display:none">Save</button>
