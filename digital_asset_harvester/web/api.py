@@ -6,6 +6,7 @@ import csv
 import json
 import tempfile
 import threading
+from datetime import datetime
 from fastapi import APIRouter, File, UploadFile, Depends, BackgroundTasks, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from io import StringIO
@@ -77,7 +78,12 @@ def get_logger_factory():
 def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLoggerFactory):
     """Processes the mbox file and stores the result."""
     with tasks_lock:
-        tasks[task_id] = {"status": "processing", "result": None}
+        tasks[task_id] = {
+            "status": "processing",
+            "result": None,
+            "created_at": datetime.now().isoformat()
+        }
+    _save_tasks()
 
     settings = get_settings()
     llm_client = get_llm_client()
@@ -102,7 +108,7 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
         _save_tasks()
     except Exception as e:
         import traceback
-        tasks[task_id] = {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+        tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
         _save_tasks()
     finally:
         if os.path.exists(temp_path):
@@ -111,11 +117,17 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
 def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
     """Synchronizes emails from IMAP and stores the result."""
     with tasks_lock:
-        tasks[task_id] = {"status": "processing", "result": None}
+        tasks[task_id] = {
+            "status": "processing",
+            "result": None,
+            "created_at": datetime.now().isoformat()
+        }
+    _save_tasks()
     settings = get_settings()
 
     if not settings.enable_imap:
-        tasks[task_id] = {"status": "error", "error": "IMAP is not enabled in settings"}
+        tasks[task_id].update({"status": "error", "error": "IMAP is not enabled in settings"})
+        _save_tasks()
         return
 
     llm_client = get_llm_client()
@@ -145,7 +157,8 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
             uids = imap_client.uid_search(full_query, settings.imap_folder)
 
             if not uids:
-                tasks[task_id] = {"status": "complete", "result": []}
+                tasks[task_id].update({"status": "complete", "result": []})
+                _save_tasks()
                 return
 
             emails = list(imap_client.fetch_emails_by_uids(uids, settings.imap_folder, raw=settings.enable_multiprocessing))
@@ -163,13 +176,18 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
 
     except Exception as e:
         import traceback
-        tasks[task_id] = {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+        tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
         _save_tasks()
 
 def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
     """Synchronizes emails from Gmail API and stores the result."""
     with tasks_lock:
-        tasks[task_id] = {"status": "processing", "result": None}
+        tasks[task_id] = {
+            "status": "processing",
+            "result": None,
+            "created_at": datetime.now().isoformat()
+        }
+    _save_tasks()
     settings = get_settings()
 
     llm_client = get_llm_client()
@@ -192,13 +210,18 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
         _save_tasks()
     except Exception as e:
         import traceback
-        tasks[task_id] = {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+        tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
         _save_tasks()
 
 def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_factory: StructuredLoggerFactory):
     """Synchronizes emails from Outlook API and stores the result."""
     with tasks_lock:
-        tasks[task_id] = {"status": "processing", "result": None}
+        tasks[task_id] = {
+            "status": "processing",
+            "result": None,
+            "created_at": datetime.now().isoformat()
+        }
+    _save_tasks()
     settings = get_settings()
 
     llm_client = get_llm_client()
@@ -221,7 +244,7 @@ def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_fa
         _save_tasks()
     except Exception as e:
         import traceback
-        tasks[task_id] = {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
+        tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
         _save_tasks()
 
 @router.get("/export/koinly/{task_id}")
