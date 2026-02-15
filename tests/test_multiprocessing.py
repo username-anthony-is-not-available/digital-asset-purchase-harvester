@@ -4,12 +4,10 @@ from digital_asset_harvester.processing.email_purchase_extractor import EmailPur
 from digital_asset_harvester.telemetry import StructuredLoggerFactory
 from unittest.mock import MagicMock
 
+
 def test_process_emails_uses_multiprocessing(mocker):
     # GIVEN
-    settings = HarvesterSettings(
-        enable_multiprocessing=True,
-        max_workers=3
-    )
+    settings = HarvesterSettings(enable_multiprocessing=True, max_workers=3)
     mock_extractor = MagicMock()
     mock_extractor.settings = settings
     factory = StructuredLoggerFactory(json_output=False)
@@ -25,8 +23,10 @@ def test_process_emails_uses_multiprocessing(mocker):
     # THEN
     m_executor.assert_called_once_with(max_workers=3)
 
+
 def test_cli_multiprocessing_flag():
     from digital_asset_harvester.cli import build_parser
+
     settings = HarvesterSettings()
     parser = build_parser(settings)
     args = parser.parse_args(["--mbox-file", "test.mbox", "--multiprocessing"])

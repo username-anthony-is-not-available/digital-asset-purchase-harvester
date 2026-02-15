@@ -1,9 +1,24 @@
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from .api import router as api_router, tasks
+from .api import router as api_router, tasks, _save_tasks
 
 app = FastAPI()
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Cleanup stale tasks on startup."""
+    modified = False
+    for task_id, task in tasks.items():
+        if task.get("status") == "processing":
+            task["status"] = "failed"
+            task["error"] = "Task interrupted by server restart"
+            modified = True
+
+    if modified:
+        _save_tasks()
+
 
 app.mount("/static", StaticFiles(directory="digital_asset_harvester/web/static"), name="static")
 templates = Jinja2Templates(directory="digital_asset_harvester/web/templates")

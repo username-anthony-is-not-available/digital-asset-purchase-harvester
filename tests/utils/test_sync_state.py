@@ -4,6 +4,7 @@ import tempfile
 import pytest
 from digital_asset_harvester.utils.sync_state import SyncState
 
+
 def test_sync_state_persistence():
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         state_file = tmp.name
@@ -30,6 +31,7 @@ def test_sync_state_persistence():
     finally:
         if os.path.exists(state_file):
             os.remove(state_file)
+
 
 def test_sync_state_invalid_json():
     with tempfile.NamedTemporaryFile(delete=False) as tmp:

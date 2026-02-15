@@ -23,7 +23,7 @@ class HarvesterSettings:
     llm_model_name: str = "llama3.2:3b"
     llm_max_retries: int = 3
     llm_timeout_seconds: int = 30
-    ollama_base_url: str = "http://localhost:11434"
+    ollama_base_url: str = ""
 
     enable_privacy_mode: bool = False
     enable_cloud_llm: bool = False
@@ -142,6 +142,16 @@ def _compose_settings(**direct_overrides: Any) -> HarvesterSettings:
     merged: Dict[str, Any] = asdict(HarvesterSettings())
     merged.update(_load_file_overrides())
     merged.update(_load_env_overrides())
+
+    # Handle OLLAMA_HOST compatibility if ollama_base_url is not set
+    if not merged.get("ollama_base_url"):
+        # Precedence: DAP_OLLAMA_BASE_URL (handled by _load_env_overrides) > OLLAMA_HOST > Default
+        ollama_host = os.getenv("OLLAMA_HOST")
+        if ollama_host:
+            merged["ollama_base_url"] = ollama_host
+        else:
+            merged["ollama_base_url"] = "http://localhost:11434"
+
     merged.update({k: v for k, v in direct_overrides.items() if v is not None})
     return HarvesterSettings(**merged)
 
