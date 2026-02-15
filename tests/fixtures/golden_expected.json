@@ -1,0 +1,115 @@
+{
+    "coinbase_purchase": [
+        {
+            "amount": 0.001,
+            "item_name": "BTC",
+            "total_spent": 100.0,
+            "currency": "USD",
+            "vendor": "Coinbase",
+            "extraction_method": "regex"
+        }
+    ],
+    "binance_purchase": [
+        {
+            "amount": 0.1,
+            "item_name": "ETH",
+            "total_spent": 200.0,
+            "currency": "USD",
+            "vendor": "Binance",
+            "extraction_method": "regex"
+        }
+    ],
+    "kraken_purchase": [
+        {
+            "amount": 0.5,
+            "item_name": "XMR",
+            "total_spent": 50.0,
+            "currency": "EUR",
+            "vendor": "Kraken",
+            "extraction_method": "regex"
+        }
+    ],
+    "gemini_purchase": [
+        {
+            "amount": 0.005,
+            "item_name": "BTC",
+            "total_spent": 150.0,
+            "currency": "USD",
+            "vendor": "Gemini",
+            "transaction_id": "GEM-2024-001",
+            "extraction_method": "regex"
+        }
+    ],
+    "cryptocom_purchase": [
+        {
+            "amount": 2.5,
+            "item_name": "SOL",
+            "total_spent": 62.5,
+            "currency": "USD",
+            "vendor": "Crypto.com",
+            "transaction_id": "12345",
+            "extraction_method": "regex"
+        }
+    ],
+    "ftx_purchase": [
+        {
+            "amount": 10.0,
+            "item_name": "MATIC",
+            "total_spent": 8.5,
+            "currency": "USD",
+            "vendor": "FTX",
+            "extraction_method": "regex"
+        }
+    ],
+    "coinspot_purchase": [
+        {
+            "amount": 50.0,
+            "item_name": "ADA",
+            "total_spent": 25.0,
+            "currency": "AUD",
+            "vendor": "CoinSpot",
+            "transaction_id": "CS-20240115-001",
+            "extraction_method": "regex"
+        }
+    ],
+    "coinbase_staking": [
+        {
+            "amount": 1.234e-05,
+            "item_name": "ETH",
+            "vendor": "Coinbase",
+            "transaction_id": "CB-STAKE-2025-ABC",
+            "transaction_type": "staking_reward",
+            "extraction_method": "regex"
+        }
+    ],
+    "binance_multi": [
+        {
+            "amount": 0.002,
+            "item_name": "BTC",
+            "total_spent": 130.0,
+            "currency": "USDT",
+            "vendor": "Binance",
+            "extraction_method": "regex"
+        },
+        {
+            "amount": 0.1,
+            "item_name": "ETH",
+            "total_spent": 350.0,
+            "currency": "USDT",
+            "vendor": "Binance",
+            "extraction_method": "regex"
+        }
+    ],
+    "generic_llm_purchase": [
+        {
+            "amount": 1000.0,
+            "item_name": "DOGE",
+            "total_spent": 0.1,
+            "currency": "ETH",
+            "vendor": "SomeExchange",
+            "extraction_method": "llm"
+        }
+    ],
+    "newsletter": [],
+    "security_alert": []
+}
