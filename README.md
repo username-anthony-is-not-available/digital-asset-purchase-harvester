@@ -606,6 +606,33 @@ digital-asset-harvester --imap \
   --output crypto_purchases.csv
 ```
 
+### Direct Ingestion via APIs
+
+In addition to mbox files and IMAP, the harvester supports direct ingestion using Gmail and Outlook APIs. This is often faster and more convenient than downloading large mbox files.
+
+#### Gmail API
+
+Follow the "Gmail API Setup" section to get your `credentials.json`. Then run:
+
+```sh
+digital-asset-harvester --gmail --output crypto_purchases.csv
+```
+
+You can customize the search query with `--gmail-query` (default: `from:coinbase OR from:binance`).
+
+#### Outlook API (Microsoft Graph)
+
+To use the Outlook API, you'll need to register an application in the Azure portal and get a client ID and authority URL. Then, you can run the script with the `--outlook` flag:
+
+```sh
+digital-asset-harvester --outlook \
+  --client-id your_client_id \
+  --authority https://login.microsoftonline.com/your_tenant_id \
+  --output crypto_purchases.csv
+```
+
+You can customize the search query with `--outlook-query` (default: `from:coinbase OR from:binance`).
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

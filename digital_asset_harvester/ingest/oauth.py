@@ -19,6 +19,7 @@ except ImportError:
 # Scopes for Gmail and Outlook
 GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 OUTLOOK_SCOPES = ["https://outlook.office.com/IMAP.AccessAsUser.All"]
+GRAPH_SCOPES = ["https://graph.microsoft.com/Mail.Read"]
 
 
 def get_gmail_credentials() -> Credentials:
@@ -42,22 +43,25 @@ def get_gmail_credentials() -> Credentials:
     return creds
 
 
-def get_outlook_credentials(client_id: str, authority: str) -> str:
+def get_outlook_credentials(client_id: str, authority: str, scopes: list[str] = None) -> str:
     """
     Authenticates with the Outlook API using OAuth 2.0.
     """
     if not OAUTH_DEPENDENCIES_AVAILABLE or msal is None:
         raise ImportError("Outlook dependencies (msal) are not installed.")
 
+    if scopes is None:
+        scopes = OUTLOOK_SCOPES
+
     app = msal.PublicClientApplication(client_id=client_id, authority=authority)
 
     accounts = app.get_accounts()
     if accounts:
-        result = app.acquire_token_silent(OUTLOOK_SCOPES, account=accounts[0])
+        result = app.acquire_token_silent(scopes, account=accounts[0])
         if result:
             return result["access_token"]
 
-    flow = app.initiate_device_flow(scopes=OUTLOOK_SCOPES)
+    flow = app.initiate_device_flow(scopes=scopes)
     print(flow["message"])
     result = app.acquire_token_by_device_flow(flow)
 

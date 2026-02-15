@@ -18,6 +18,7 @@ from digital_asset_harvester import (
     write_purchase_data_to_csv,
 )
 from digital_asset_harvester.ingest.gmail_client import GmailClient
+from digital_asset_harvester.ingest.outlook_client import OutlookClient
 from digital_asset_harvester.ingest.imap_client import ImapClient
 from digital_asset_harvester.integrations.koinly_api_client import (
     KoinlyApiClient,
@@ -52,6 +53,11 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
         action="store_true",
         help="Import emails directly from Gmail",
     )
+    source_group.add_argument(
+        "--outlook",
+        action="store_true",
+        help="Import emails directly from Outlook (Microsoft Graph API)",
+    )
 
     if settings.enable_imap:
         source_group.add_argument("--imap", action="store_true", help="Import emails from an IMAP server")
@@ -74,8 +80,13 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
 
     parser.add_argument(
         "--gmail-query",
-        default="from:coinbase OR from:binance",
+        default=settings.gmail_query,
         help="The query to use when searching for emails in Gmail",
+    )
+    parser.add_argument(
+        "--outlook-query",
+        default=settings.outlook_query,
+        help="The query to use when searching for emails in Outlook",
     )
     parser.add_argument(
         "--output",
@@ -505,7 +516,32 @@ def run(argv: Optional[list[str]] = None) -> int:
             logger.info("Fetching emails from Gmail...")
             gmail_client = GmailClient()
             emails = gmail_client.search_emails(
-                args.gmail_query, raw=settings.enable_multiprocessing
+                args.gmail_query, raw=getattr(settings, "enable_multiprocessing", False)
+            )
+            _process_and_save_results(
+                emails,
+                extractor,
+                logger_factory,
+                args.output,
+                args.output_format,
+                args.progress,
+                settings,
+                args.koinly_upload,
+            )
+        elif args.outlook:
+            logger.info("Fetching emails from Outlook...")
+
+            # Priority: CLI arg > outlook_client_id > imap_client_id (legacy fallback)
+            client_id = args.client_id or getattr(settings, "outlook_client_id", "") or getattr(settings, "imap_client_id", "")
+            authority = args.authority or getattr(settings, "outlook_authority", "") or getattr(settings, "imap_authority", "")
+
+            if not all([client_id, authority]):
+                logger.error("Outlook API requires --client-id and --authority (or configured outlook_client_id and outlook_authority).")
+                return 1
+
+            outlook_client = OutlookClient(client_id, authority)
+            emails = outlook_client.search_emails(
+                args.outlook_query, raw=getattr(settings, "enable_multiprocessing", False)
             )
             _process_and_save_results(
                 emails,

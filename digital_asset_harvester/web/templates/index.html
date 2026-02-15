@@ -24,6 +24,22 @@
                 <input type="submit" value="Sync from IMAP">
             </form>
         </div>
+
+        <div class="card">
+            <h2>Direct Gmail API Sync</h2>
+            <p>Fetch emails directly from Gmail using the Gmail API.</p>
+            <form action="/api/sync/gmail" method="post">
+                <input type="submit" value="Sync from Gmail">
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Direct Outlook API Sync</h2>
+            <p>Fetch emails directly from Outlook using the Microsoft Graph API.</p>
+            <form action="/api/sync/outlook" method="post">
+                <input type="submit" value="Sync from Outlook">
+            </form>
+        </div>
     </div>
 </body>
 </html>

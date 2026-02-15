@@ -70,6 +70,11 @@ class HarvesterSettings:
     imap_client_id: str = ""
     imap_authority: str = ""
 
+    gmail_query: str = "from:coinbase OR from:binance"
+    outlook_client_id: str = ""
+    outlook_authority: str = ""
+    outlook_query: str = "from:coinbase OR from:binance"
+
     enable_koinly_csv_export: bool = False
     enable_ctc_csv_export: bool = False
     enable_cra_csv_export: bool = False
