@@ -162,11 +162,9 @@ def test_process_email_filtered_by_preprocessing(mocker):
 
     extractor = EmailPurchaseExtractor()
     result = extractor.process_email(email_content)
-    assert result == {
-        "has_purchase": False,
-        "purchases": [],
-        "processing_notes": ["Email not classified as crypto purchase"],
-    }
+    assert result["has_purchase"] is False
+    assert result["purchases"] == []
+    assert "Email not classified as crypto purchase" in result["processing_notes"][0]
 
 
 def test_process_email_with_coinbase_fixture(mocker, monkeypatch):

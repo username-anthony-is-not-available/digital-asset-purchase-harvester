@@ -50,7 +50,7 @@ def test_process_emails_collects_metrics(mocker):
 
     # WHEN
     purchases, metrics = process_emails(
-        emails, mock_extractor, factory, show_progress=False
+        emails, mock_extractor, factory, show_progress=False, history_path=None
     )
 
     # THEN
