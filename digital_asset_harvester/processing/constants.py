@@ -1,5 +1,7 @@
 """Constants and keyword lists for email processing."""
 
+import re
+
 # Common cryptocurrency exchanges and platforms
 CRYPTO_EXCHANGES = {
     # Major global exchanges
@@ -248,3 +250,17 @@ NON_PURCHASE_PATTERNS = {
     "terms of service",
     "privacy policy",
 }
+
+# Compiled regex patterns for high-performance keyword matching
+CRYPTO_EXCHANGES_PATTERN = re.compile(
+    r"\b(" + "|".join(re.escape(ex) for ex in CRYPTO_EXCHANGES) + r")\b", re.IGNORECASE
+)
+CRYPTOCURRENCY_TERMS_PATTERN = re.compile(
+    r"\b(" + "|".join(re.escape(term) for term in CRYPTOCURRENCY_TERMS) + r")\b", re.IGNORECASE
+)
+PURCHASE_KEYWORDS_PATTERN = re.compile(
+    r"\b(" + "|".join(re.escape(kw) for kw in PURCHASE_KEYWORDS) + r")\b", re.IGNORECASE
+)
+NON_PURCHASE_PATTERNS_PATTERN = re.compile(
+    r"\b(" + "|".join(re.escape(p) for p in NON_PURCHASE_PATTERNS) + r")\b", re.IGNORECASE
+)

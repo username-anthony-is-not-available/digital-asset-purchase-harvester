@@ -1,5 +1,6 @@
 """Logic for identifying and extracting crypto purchase information from emails."""
 
+import email
 import logging
 import time
 from dataclasses import dataclass, field
@@ -14,12 +15,17 @@ from digital_asset_harvester.llm import get_llm_client
 from digital_asset_harvester.llm.ollama_client import LLMError
 from digital_asset_harvester.llm.provider import LLMProvider
 from digital_asset_harvester.prompts import DEFAULT_PROMPTS, PromptManager
+from digital_asset_harvester.ingest.email_parser import decode_header_value, extract_body
 from digital_asset_harvester.processing.extractors import registry
 from digital_asset_harvester.processing.constants import (
     CRYPTO_EXCHANGES,
+    CRYPTO_EXCHANGES_PATTERN,
     CRYPTOCURRENCY_TERMS,
+    CRYPTOCURRENCY_TERMS_PATTERN,
     NON_PURCHASE_PATTERNS,
+    NON_PURCHASE_PATTERNS_PATTERN,
     PURCHASE_KEYWORDS,
+    PURCHASE_KEYWORDS_PATTERN,
 )
 from digital_asset_harvester.validation import PurchaseRecord, PurchaseValidator
 from digital_asset_harvester.telemetry import (
@@ -71,10 +77,9 @@ class EmailPurchaseExtractor:
             },
         )
 
-    def _contains_keywords(self, text: str, keywords: Set[str]) -> bool:
-        """Check if text contains any of the specified keywords (case-insensitive)."""
-        text_lower = text.lower()
-        return any(keyword in text_lower for keyword in keywords)
+    def _contains_keywords(self, text: str, pattern: Any) -> bool:
+        """Check if text matches the specified regex pattern."""
+        return bool(pattern.search(text))
 
     def _extract_email_metadata(self, email_content: str) -> Dict[str, str]:
         """Extract subject, sender, and body from email content with caching."""
@@ -82,47 +87,61 @@ class EmailPurchaseExtractor:
             return self._metadata_cache[email_content]
 
         metadata = {"subject": "", "sender": "", "body": ""}
-        lines = email_content.split("\n")
 
-        body_started = False
-        body_lines = []
+        # Check if it looks like a raw RFC 5322 message
+        # A simple heuristic: starts with a common header or has a colon in the first non-empty line
+        first_line = ""
+        for line in email_content.split("\n"):
+            if line.strip():
+                first_line = line
+                break
 
-        for i, line in enumerate(lines):
-            if body_started:
-                body_lines.append(line)
-                continue
+        if ":" in first_line and first_line.split(":")[0].replace("-", "").isalnum():
+            # Use standard email library for robust parsing
+            msg = email.message_from_string(email_content)
+            metadata["subject"] = decode_header_value(msg.get("subject", ""))
+            metadata["sender"] = decode_header_value(msg.get("from", ""))
+            metadata["body"] = extract_body(msg)
 
-            line_strip = line.strip()
-            line_lower = line_strip.lower()
+            # Special case: If our CLI-formatted "Body: " marker is present and body is still empty
+            if not metadata["body"] or len(metadata["body"]) < 10:
+                for line in email_content.split("\n"):
+                    if line.lower().startswith("body: "):
+                        metadata["body"] = line[6:].strip()
+                        break
 
-            if line_lower.startswith("subject: "):
-                metadata["subject"] = line_strip[9:].strip()
-            elif line_lower.startswith("from: "):
-                metadata["sender"] = line_strip[6:].strip()
-            elif line_lower.startswith("body: "):
-                # Support the "Body: " marker from our application's formatting
-                body_started = True
-                body_lines.append(line_strip[6:].strip())
-            elif not line_strip:
-                # Blank line separation (RFC 5322).
-                # We skip blank lines if more headers seem to follow (supporting non-standard formats).
-                if i + 1 < len(lines):
-                    next_line = lines[i + 1].strip()
-                    if ":" in next_line and next_line.split(":")[0].replace(
-                        "-", ""
-                    ).isalnum():
-                        continue
+        # Fallback if standard parsing failed to get basic metadata
+        if not metadata["subject"] and not metadata["sender"]:
+            lines = email_content.split("\n")
+            body_started = False
+            body_lines = []
 
-                # Otherwise, a blank line signals the start of the body if we have some metadata.
-                if metadata["subject"] or metadata["sender"]:
-                    body_started = True
-            elif ":" not in line_strip:
-                # Non-header line signals start of body
-                if metadata["subject"] or metadata["sender"]:
-                    body_started = True
+            for i, line in enumerate(lines):
+                if body_started:
                     body_lines.append(line)
+                    continue
 
-        metadata["body"] = "\n".join(body_lines).strip()
+                line_strip = line.strip()
+                line_lower = line_strip.lower()
+
+                if line_lower.startswith("subject: "):
+                    metadata["subject"] = line_strip[9:].strip()
+                elif line_lower.startswith("from: "):
+                    metadata["sender"] = line_strip[6:].strip()
+                elif line_lower.startswith("body: "):
+                    body_started = True
+                    body_lines.append(line_strip[6:].strip())
+                elif not line_strip:
+                    if metadata["subject"] or metadata["sender"]:
+                        body_started = True
+                elif ":" not in line_strip:
+                    if metadata["subject"] or metadata["sender"]:
+                        body_started = True
+                        body_lines.append(line)
+
+            if body_lines:
+                metadata["body"] = "\n".join(body_lines).strip()
+
         self._metadata_cache[email_content] = metadata
         return metadata
 
@@ -133,9 +152,9 @@ class EmailPurchaseExtractor:
 
         # Check for crypto exchanges in sender or content
         has_crypto_exchange = self._contains_keywords(
-            metadata["sender"], CRYPTO_EXCHANGES
+            metadata["sender"], CRYPTO_EXCHANGES_PATTERN
         )
-        has_crypto_terms = self._contains_keywords(full_text, CRYPTOCURRENCY_TERMS)
+        has_crypto_terms = self._contains_keywords(full_text, CRYPTOCURRENCY_TERMS_PATTERN)
 
         return has_crypto_exchange or has_crypto_terms
 
@@ -144,9 +163,9 @@ class EmailPurchaseExtractor:
         metadata = self._extract_email_metadata(email_content)
         full_text = f"{metadata['subject']} {metadata['body']}"
 
-        has_purchase_keywords = self._contains_keywords(full_text, PURCHASE_KEYWORDS)
+        has_purchase_keywords = self._contains_keywords(full_text, PURCHASE_KEYWORDS_PATTERN)
         has_non_purchase_patterns = self._contains_keywords(
-            full_text, NON_PURCHASE_PATTERNS
+            full_text, NON_PURCHASE_PATTERNS_PATTERN
         )
 
         return has_purchase_keywords and not has_non_purchase_patterns
@@ -164,7 +183,7 @@ class EmailPurchaseExtractor:
         full_text = f"{metadata['subject']} {metadata['sender']} {metadata['body']}"
 
         # Skip if contains clear non-purchase patterns
-        if self._contains_keywords(full_text, NON_PURCHASE_PATTERNS):
+        if self._contains_keywords(full_text, NON_PURCHASE_PATTERNS_PATTERN):
             return True
 
         # Skip if doesn't contain any crypto-related terms
