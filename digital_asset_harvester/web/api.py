@@ -13,7 +13,7 @@ from .. import (
     get_llm_client,
     get_settings,
 )
-from ..ingest.imap_client import ImapClient
+from ..ingest import ImapClient, GmailClient, OutlookClient
 from ..utils.sync_state import SyncState
 from ..telemetry import StructuredLoggerFactory
 from ..cli import process_emails, configure_logging
@@ -110,6 +110,54 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
             tasks[task_id]["status"] = "complete"
             tasks[task_id]["result"] = normalized_purchases
 
+    except Exception as e:
+        tasks[task_id] = {"status": "error", "error": str(e)}
+
+def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
+    """Synchronizes emails from Gmail API and stores the result."""
+    tasks[task_id] = {"status": "processing", "result": None}
+    settings = get_settings()
+
+    llm_client = get_llm_client()
+    extractor = EmailPurchaseExtractor(
+        settings=settings,
+        llm_client=llm_client,
+        logger_factory=logger_factory,
+    )
+
+    try:
+        gmail_client = GmailClient()
+        query = settings.gmail_query
+        emails = gmail_client.search_emails(query)
+        purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
+
+        normalized_purchases = [normalize_for_frontend(p) for p in purchases]
+        tasks[task_id]["status"] = "complete"
+        tasks[task_id]["result"] = normalized_purchases
+    except Exception as e:
+        tasks[task_id] = {"status": "error", "error": str(e)}
+
+def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_factory: StructuredLoggerFactory):
+    """Synchronizes emails from Outlook API and stores the result."""
+    tasks[task_id] = {"status": "processing", "result": None}
+    settings = get_settings()
+
+    llm_client = get_llm_client()
+    extractor = EmailPurchaseExtractor(
+        settings=settings,
+        llm_client=llm_client,
+        logger_factory=logger_factory,
+    )
+
+    try:
+        outlook_client = OutlookClient(client_id, authority)
+        query = settings.outlook_query
+        emails = outlook_client.search_emails(query)
+        purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
+
+        normalized_purchases = [normalize_for_frontend(p) for p in purchases]
+        tasks[task_id]["status"] = "complete"
+        tasks[task_id]["result"] = normalized_purchases
     except Exception as e:
         tasks[task_id] = {"status": "error", "error": str(e)}
 
@@ -264,6 +312,34 @@ async def sync_imap(
 
     task_id = str(uuid.uuid4())
     background_tasks.add_task(process_imap_sync, task_id, logger_factory)
+
+    return RedirectResponse(url=f"/status/{task_id}", status_code=303)
+
+@router.post("/sync/gmail")
+async def sync_gmail(
+    background_tasks: BackgroundTasks,
+    logger_factory: StructuredLoggerFactory = Depends(get_logger_factory)
+):
+    task_id = str(uuid.uuid4())
+    background_tasks.add_task(process_gmail_sync, task_id, logger_factory)
+
+    return RedirectResponse(url=f"/status/{task_id}", status_code=303)
+
+@router.post("/sync/outlook")
+async def sync_outlook(
+    background_tasks: BackgroundTasks,
+    logger_factory: StructuredLoggerFactory = Depends(get_logger_factory)
+):
+    settings = get_settings()
+    # Support both new and legacy setting names
+    client_id = settings.outlook_client_id or settings.imap_client_id
+    authority = settings.outlook_authority or settings.imap_authority
+
+    if not client_id or not authority:
+        raise HTTPException(status_code=400, detail="Outlook API requires outlook_client_id and outlook_authority in settings")
+
+    task_id = str(uuid.uuid4())
+    background_tasks.add_task(process_outlook_sync, task_id, client_id, authority, logger_factory)
 
     return RedirectResponse(url=f"/status/{task_id}", status_code=303)
 

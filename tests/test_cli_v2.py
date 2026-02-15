@@ -177,6 +177,7 @@ def test_run_imap_outlook_oauth2(mocker):
 def test_run_gmail_calls_dependencies(mocker):
     # GIVEN
     m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
+    m_get_settings.return_value.gmail_query = "from:coinbase OR from:binance"
     m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
     m_gmail_client = mocker.patch("digital_asset_harvester.cli.GmailClient")
     m_llm_client = mocker.patch(
@@ -200,6 +201,40 @@ def test_run_gmail_calls_dependencies(mocker):
     m_gmail_client.assert_called_once()
     m_gmail_client.return_value.search_emails.assert_called_once_with(
         "test query", raw=m_get_settings.return_value.enable_multiprocessing
+    )
+    m_llm_client.assert_called_once()
+    m_extractor.assert_called_once()
+    m_process_emails.assert_called_once()
+    m_ensure_dir.assert_called_once_with("output/purchase_data.csv")
+    m_write_csv.assert_called_once()
+
+def test_run_outlook_calls_dependencies(mocker):
+    # GIVEN
+    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
+    m_get_settings.return_value.outlook_query = "from:coinbase OR from:binance"
+    m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
+    m_outlook_client = mocker.patch("digital_asset_harvester.cli.OutlookClient")
+    m_llm_client = mocker.patch(
+        "digital_asset_harvester.llm.ollama_client.OllamaLLMClient"
+    )
+    m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
+    m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
+    m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
+    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
+
+    m_outlook_client.return_value.search_emails.return_value = []
+    m_process_emails.return_value = ([], MagicMock(get=lambda x: 0))
+
+    # WHEN
+    result = run(["--outlook", "--client-id", "id", "--authority", "auth"])
+
+    # THEN
+    assert result == 0
+    m_get_settings.assert_called()
+    m_configure_logging.assert_called_once()
+    m_outlook_client.assert_called_once_with("id", "auth")
+    m_outlook_client.return_value.search_emails.assert_called_once_with(
+        "from:coinbase OR from:binance", raw=m_get_settings.return_value.enable_multiprocessing
     )
     m_llm_client.assert_called_once()
     m_extractor.assert_called_once()
