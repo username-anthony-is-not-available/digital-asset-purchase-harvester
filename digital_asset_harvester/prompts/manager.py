@@ -62,6 +62,12 @@ Return a JSON object with this exact structure:
     "confidence": float (0.0 to 1.0),
     "reasoning": "Brief explanation of your decision"
 }
+
+CONFIDENCE BENCHMARKS:
+- 1.0: Clearly an automated purchase confirmation or trade receipt.
+- 0.8-0.9: Likely a purchase but wording is slightly non-standard.
+- 0.5-0.7: Ambiguous email that might be transactional but lacks clear "buy/purchased" confirmation.
+- <0.5: Unlikely to be a purchase (marketing, newsletter, etc).
 """,
 )
 
@@ -129,6 +135,12 @@ Return JSON with this exact structure:
         }
     ]
 }
+
+CONFIDENCE BENCHMARKS:
+- 1.0: All core fields (date, asset, amount, vendor) are explicitly and unambiguously present.
+- 0.8-0.9: Core info is clear, but minor fields (like currency or fees) might be inferred from context.
+- 0.5-0.7: Some core information is ambiguous or requires significant interpretation.
+- <0.5: High uncertainty; key information like amount or asset is unclear.
 
 If no valid purchase information can be extracted, return an empty array for the "transactions" field.
 """,

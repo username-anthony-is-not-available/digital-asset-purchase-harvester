@@ -17,9 +17,15 @@ def calculate_confidence(purchase: PurchaseRecord) -> float:
     """
     Calculate the confidence of an extraction based on the method used.
 
-    Note: Currently, only LLM extraction is implemented. REGEX and HEURISTIC
-    are placeholders for future extraction methods.
+    If the purchase record already has a confidence score (e.g., from an LLM),
+    that score is prioritized. Otherwise, a default score is returned based
+    on the extraction method.
     """
+    # Prioritize existing confidence if available
+    if purchase.confidence is not None:
+        return purchase.confidence
+
+    # Fallback to defaults based on method
     if purchase.extraction_method == ExtractionMethod.REGEX.value:
         return 0.95
     elif purchase.extraction_method == ExtractionMethod.HEURISTIC.value:
