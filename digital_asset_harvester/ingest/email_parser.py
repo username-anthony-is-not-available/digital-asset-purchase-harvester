@@ -81,4 +81,5 @@ def message_to_dict(message: email.message.Message) -> Dict[str, Any]:
         "sender": decode_header_value(message.get("from", "")),
         "date": decode_header_value(message.get("date", "")),
         "body": extract_body(message),
+        "message_id": message.get("Message-ID", ""),
     }

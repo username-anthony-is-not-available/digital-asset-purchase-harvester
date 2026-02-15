@@ -37,6 +37,7 @@ class DuplicateDetector:
 
     def __init__(self, persistence_path: Optional[str] = None) -> None:
         self.seen_hashes: Set[str] = set()
+        self.seen_emails: Set[str] = set()
         self.persistence_path = persistence_path
         if self.persistence_path:
             self.load_history()
@@ -51,6 +52,19 @@ class DuplicateDetector:
             self.save_history()
         return False
 
+    def is_email_duplicate(self, email_id: Optional[str], auto_save: bool = True) -> bool:
+        """Check if an email has already been processed based on its Message-ID."""
+        if not email_id:
+            return False
+
+        if email_id in self.seen_emails:
+            return True
+
+        self.seen_emails.add(email_id)
+        if self.persistence_path and auto_save:
+            self.save_history()
+        return False
+
     def load_history(self) -> None:
         """Load seen hashes from a JSON file."""
         if self.persistence_path and os.path.exists(self.persistence_path):
@@ -59,6 +73,9 @@ class DuplicateDetector:
                     data = json.load(f)
                     if isinstance(data, list):
                         self.seen_hashes.update(data)
+                    elif isinstance(data, dict):
+                        self.seen_hashes.update(data.get("hashes", []))
+                        self.seen_emails.update(data.get("emails", []))
             except Exception:
                 # Fallback if file is corrupted
                 pass
@@ -68,13 +85,18 @@ class DuplicateDetector:
         if self.persistence_path:
             try:
                 with open(self.persistence_path, "w") as f:
-                    json.dump(list(self.seen_hashes), f)
+                    data = {
+                        "hashes": list(self.seen_hashes),
+                        "emails": list(self.seen_emails)
+                    }
+                    json.dump(data, f, indent=2)
             except Exception:
                 pass
 
     def reset(self) -> None:
         """Clear the set of seen hashes."""
         self.seen_hashes.clear()
+        self.seen_emails.clear()
         if self.persistence_path and os.path.exists(self.persistence_path):
             try:
                 os.remove(self.persistence_path)

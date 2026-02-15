@@ -3,6 +3,7 @@
 import email
 import logging
 import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
@@ -60,7 +61,8 @@ class EmailPurchaseExtractor:
     event_logger: StructuredLoggerAdapter = field(init=False)
     metrics: MetricsTracker = field(default_factory=MetricsTracker)
     prompts: PromptManager = field(default_factory=lambda: DEFAULT_PROMPTS)
-    _metadata_cache: Dict[str, Dict[str, str]] = field(default_factory=dict, init=False)
+    _metadata_cache: OrderedDict[str, Dict[str, str]] = field(default_factory=OrderedDict, init=False)
+    _MAX_CACHE_SIZE: int = 1000
 
     def __post_init__(self) -> None:
         self.validator = PurchaseValidator(
@@ -84,6 +86,8 @@ class EmailPurchaseExtractor:
     def _extract_email_metadata(self, email_content: str) -> Dict[str, str]:
         """Extract subject, sender, and body from email content with caching."""
         if email_content in self._metadata_cache:
+            # Move to end for LRU
+            self._metadata_cache.move_to_end(email_content)
             return self._metadata_cache[email_content]
 
         metadata = {"subject": "", "sender": "", "body": ""}
@@ -143,6 +147,9 @@ class EmailPurchaseExtractor:
                 metadata["body"] = "\n".join(body_lines).strip()
 
         self._metadata_cache[email_content] = metadata
+        if len(self._metadata_cache) > self._MAX_CACHE_SIZE:
+            self._metadata_cache.popitem(last=False)
+
         return metadata
 
     def _is_likely_crypto_related(self, email_content: str) -> bool:
