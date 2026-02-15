@@ -317,6 +317,27 @@ digital-asset-harvester --mbox-file your_emails.mbox --output-format koinly --ou
 
 This will create a `koinly_transactions.csv` file in the correct format for manual upload to Koinly.
 
+### Blockchain Balance Verification
+
+The harvester can verify your harvested totals against actual on-chain wallet balances using the `blockchain-core` library.
+
+To enable this feature:
+1. Set the `DAP_ENABLE_BLOCKCHAIN_VERIFICATION` environment variable to `true`.
+2. Provide your wallet addresses using the `DAP_BLOCKCHAIN_WALLETS` environment variable as a comma-separated list of `ASSET:ADDRESS` pairs.
+
+Example:
+```sh
+export DAP_ENABLE_BLOCKCHAIN_VERIFICATION=true
+export DAP_BLOCKCHAIN_WALLETS="BTC:1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa,ETH:0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"
+```
+
+Then run the harvester with the `--verify` flag:
+```sh
+digital-asset-harvester --mbox-file your_emails.mbox --verify
+```
+
+A verification report will be displayed in the logs, showing matches and discrepancies.
+
 ### Koinly API Integration (Experimental)
 
 **Note:** Koinly does not currently provide a public API for uploading transactions. The API integration feature is implemented as a placeholder for future compatibility.
