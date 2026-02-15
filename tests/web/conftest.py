@@ -40,6 +40,7 @@ def mock_process_mbox_playwright():
                     "transaction_id": "N/A",
                     "crypto_currency": "BTC",
                     "crypto_amount": "0.001",
+                    "asset_id": "bitcoin",
                     "confidence_score": 0.95
                 },
                 {
@@ -51,6 +52,7 @@ def mock_process_mbox_playwright():
                     "transaction_id": "N/A",
                     "crypto_currency": "ETH",
                     "crypto_amount": "0.1",
+                    "asset_id": "ethereum",
                     "confidence_score": 0.95
                 }
             ]

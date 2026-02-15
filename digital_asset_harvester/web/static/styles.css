@@ -58,6 +58,12 @@ th {
     background-color: #d4edda !important;
 }
 
+.status-rejected {
+    background-color: #f8d7da !important;
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
 .low-confidence {
     border-left: 5px solid #dc3545;
 }
@@ -135,4 +141,14 @@ button:hover {
 
 .approve-btn:hover {
     background-color: #218838;
+}
+
+.reject-btn {
+    background-color: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+.reject-btn:hover {
+    background-color: #c82333;
 }
