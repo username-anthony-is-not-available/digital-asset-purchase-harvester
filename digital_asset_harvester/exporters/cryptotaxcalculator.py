@@ -86,6 +86,8 @@ def write_purchase_data_to_ctc_csv(purchases: List[Dict[str, Any]], output_file:
         for p in purchases:
             if isinstance(p, dict):
                 purchase_dicts.append(p)
+            elif hasattr(p, "model_dump"):
+                purchase_dicts.append(p.model_dump())
             else:
                 purchase_dicts.append(vars(p))
 

@@ -2,11 +2,14 @@
 
 from decimal import Decimal
 
+import pytest
+from pydantic import ValidationError
+
 from digital_asset_harvester.validation import PurchaseRecord, PurchaseValidator
 
 
-def test_purchase_record_from_raw_converts_values():
-    record = PurchaseRecord.from_raw(
+def test_purchase_record_validate_converts_values():
+    record = PurchaseRecord.model_validate(
         {
             "total_spent": "100.50",
             "currency": "USD",
@@ -22,21 +25,36 @@ def test_purchase_record_from_raw_converts_values():
 
 
 def test_purchase_validator_detects_issues():
-    validator = PurchaseValidator(allow_unknown_crypto=False)
-    record = PurchaseRecord.from_raw(
-        {
-            "total_spent": "-1",
-            "currency": "usd",
-            "amount": "0",
-            "item_name": "UnknownCoin",
-            "vendor": "",
-            "purchase_date": "",
-        }
-    )
+    data = {
+        "total_spent": "-1",
+        "currency": "invalid",
+        "amount": "0",
+        "item_name": "UnknownCoin",
+        "vendor": "",
+        "purchase_date": "",
+    }
 
-    issues = validator.validate(record)
+    # Use validate_raw to catch all issues including Pydantic ones
+    issues = PurchaseValidator.validate_raw(data, allow_unknown_crypto=False)
     fields = {issue.field for issue in issues}
 
-    # currency should be valid when provided as 'usd' (case-insensitive), so the
-    # validator should report exactly the other failing fields.
-    assert {"total_spent", "amount", "item_name", "vendor", "purchase_date"} == fields
+    assert {
+        "total_spent",
+        "currency",
+        "amount",
+        "item_name",
+        "vendor",
+        "purchase_date",
+    } == fields
+
+
+def test_purchase_record_validation_error():
+    with pytest.raises(ValidationError):
+        PurchaseRecord.model_validate(
+            {
+                "amount": "-1",  # Invalid
+                "item_name": "BTC",
+                "vendor": "Coinbase",
+                "purchase_date": "2024-01-01",
+            }
+        )

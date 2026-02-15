@@ -1,20 +1,55 @@
-"""Data schemas for validation."""
+"""Data schemas for validation using Pydantic V2."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
-from typing import Optional
+import re
+from decimal import Decimal
+from typing import Any, Optional
+
+from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
+
+ISO_CURRENCY_PATTERN = re.compile(r"^[A-Z]{3,5}$")
+CRYPTO_SYMBOL_PATTERN = re.compile(r"^[A-Z0-9]{2,10}$")
+
+KNOWN_CRYPTO_NAMES = {
+    "bitcoin",
+    "btc",
+    "ethereum",
+    "eth",
+    "litecoin",
+    "ltc",
+    "solana",
+    "sol",
+    "dogecoin",
+    "doge",
+    "cardano",
+    "ada",
+    "polkadot",
+    "dot",
+    "ripple",
+    "xrp",
+    "binance coin",
+    "bnb",
+    "tether",
+    "usdt",
+    "usd coin",
+    "usdc",
+}
 
 
-@dataclass(frozen=True)
-class PurchaseRecord:
-    total_spent: Optional[Decimal]
-    currency: str
+class PurchaseRecord(BaseModel):
+    model_config = ConfigDict(
+        frozen=True,
+        coerce_numbers_to_str=True,
+        validate_default=True,
+    )
+
+    total_spent: Optional[Decimal] = None
+    currency: str = ""
     amount: Decimal
-    item_name: str
-    vendor: str
-    purchase_date: str
+    item_name: str = ""
+    vendor: str = ""
+    purchase_date: str = ""
     transaction_type: str = "buy"
     transaction_id: Optional[str] = None
     fee_amount: Optional[Decimal] = None
@@ -24,47 +59,112 @@ class PurchaseRecord:
     extraction_method: Optional[str] = None
     asset_id: Optional[str] = None
 
+    @field_validator("total_spent", "amount", "fee_amount", mode="before")
     @classmethod
-    def from_raw(cls, data):
+    def parse_decimal_fields(cls, v: Any) -> Any:
+        if v is None:
+            return None
+        s = str(v).strip().lower()
+        if s == "" or s == "none" or s == "null":
+            return None
+        return v
+
+    @field_validator(
+        "currency",
+        "item_name",
+        "vendor",
+        "purchase_date",
+        "transaction_type",
+        "transaction_id",
+        "fee_currency",
+        "extraction_notes",
+        "asset_id",
+        mode="before",
+    )
+    @classmethod
+    def parse_string_fields(cls, v: Any) -> str:
+        if v is None:
+            return ""
+        s = str(v).strip()
+        if s.lower() == "none" or s.lower() == "null":
+            return ""
+        return s
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def parse_confidence(cls, v: Any) -> Optional[float]:
+        if v is None:
+            return None
+        s = str(v).strip().lower()
+        if s == "" or s == "none" or s == "null":
+            return None
         try:
-            total_spent_raw = data.get("total_spent")
-            total_spent = (
-                Decimal(str(total_spent_raw)) if total_spent_raw is not None and str(total_spent_raw).strip() != "" and str(total_spent_raw).lower() != "none" and str(total_spent_raw).lower() != "null" else None
-            )
+            return float(v)
+        except (ValueError, TypeError):
+            return None
 
-            amount_raw = data.get("amount")
-            amount = Decimal(str(amount_raw)) if amount_raw is not None and str(amount_raw).strip() != "" and str(amount_raw).lower() != "none" and str(amount_raw).lower() != "null" else None
+    @field_validator("total_spent")
+    @classmethod
+    def validate_total_spent(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        if v is not None and v < Decimal("0"):
+            raise ValueError("must be non-negative")
+        return v
 
-            fee_amount_raw = data.get("fee_amount")
-            fee_amount = (
-                Decimal(str(fee_amount_raw)) if fee_amount_raw is not None and str(fee_amount_raw).strip() != "" and str(fee_amount_raw).lower() != "none" and str(fee_amount_raw).lower() != "null" else None
-            )
-        except (InvalidOperation, TypeError, ValueError):
-            raise ValueError("Invalid numeric value")
+    @field_validator("amount")
+    @classmethod
+    def validate_amount(cls, v: Decimal) -> Decimal:
+        if v <= Decimal("0"):
+            raise ValueError("must be greater than zero")
+        return v
 
-        confidence_val = data.get("confidence")
-        if confidence_val is not None:
-            try:
-                confidence = float(confidence_val)
-            except (ValueError, TypeError):
-                confidence = None
-        else:
-            confidence = None
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, v: str) -> str:
+        if v and not ISO_CURRENCY_PATTERN.match(v.upper()):
+            raise ValueError("must be ISO 4217 uppercase code")
+        return v
 
-        currency_val = data.get("currency")
-        return cls(
-            total_spent=total_spent,
-            currency=str(currency_val) if currency_val is not None and str(currency_val).lower() != "none" and str(currency_val).lower() != "null" else "",
-            amount=amount,
-            item_name=str(data.get("item_name", "")),
-            vendor=str(data.get("vendor", "")),
-            purchase_date=str(data.get("purchase_date", "")),
-            transaction_type=str(data.get("transaction_type", "buy")),
-            transaction_id=str(data.get("transaction_id", "")) or None,
-            fee_amount=fee_amount,
-            fee_currency=str(data.get("fee_currency", "")) or None,
-            extraction_notes=str(data.get("extraction_notes", "")) or None,
-            confidence=confidence,
-            extraction_method=data.get("extraction_method"),
-            asset_id=str(data.get("asset_id", "")) or None,
-        )
+    @field_validator("item_name")
+    @classmethod
+    def validate_item_name(cls, v: str, info: ValidationInfo) -> str:
+        if not v.strip():
+            raise ValueError("is required")
+
+        # Optional check for known cryptos via context
+        if info.context:
+            allow_unknown = info.context.get("allow_unknown_crypto", True)
+            if not allow_unknown and v.lower() not in KNOWN_CRYPTO_NAMES:
+                raise ValueError("unknown cryptocurrency")
+
+        return v
+
+    @field_validator("vendor")
+    @classmethod
+    def validate_vendor(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("is required")
+        return v
+
+    @field_validator("purchase_date")
+    @classmethod
+    def validate_purchase_date(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("is required")
+        return v
+
+    @field_validator("fee_amount")
+    @classmethod
+    def validate_fee_amount(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        if v is not None and v < Decimal("0"):
+            raise ValueError("must be non-negative")
+        return v
+
+    @field_validator("fee_currency")
+    @classmethod
+    def validate_fee_currency(cls, v: Optional[str]) -> Optional[str]:
+        if v:
+            if not ISO_CURRENCY_PATTERN.match(
+                v.upper()
+            ) and not CRYPTO_SYMBOL_PATTERN.match(v.upper()):
+                raise ValueError("must be valid currency code or symbol")
+        return v
