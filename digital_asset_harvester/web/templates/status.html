@@ -147,6 +147,7 @@
             row.querySelector('.edit-tid').value = row.querySelector('.view-tid').textContent;
             row.querySelector('.edit-cc').value = row.querySelector('.view-cc').textContent;
             row.querySelector('.edit-ca').value = row.querySelector('.view-ca').textContent;
+            row.querySelector('.edit-fbase').value = row.querySelector('.view-fbase').textContent;
             row.querySelector('.edit-fa').value = row.querySelector('.view-fa').textContent;
             row.querySelector('.edit-fc').value = row.querySelector('.view-fc').textContent;
             row.querySelector('.edit-aid').value = row.querySelector('.view-aid').textContent;
@@ -162,6 +163,7 @@
                 transaction_id: row.querySelector('.edit-tid').value,
                 crypto_currency: row.querySelector('.edit-cc').value,
                 crypto_amount: row.querySelector('.edit-ca').value,
+                fiat_amount_base: row.querySelector('.edit-fbase').value,
                 fee_amount: row.querySelector('.edit-fa').value,
                 fee_currency: row.querySelector('.edit-fc').value,
                 asset_id: row.querySelector('.edit-aid').value
@@ -333,6 +335,7 @@
             row.querySelector('.view-tid').textContent = record.transaction_id || '';
             row.querySelector('.view-cc').textContent = record.crypto_currency || '';
             row.querySelector('.view-ca').textContent = record.crypto_amount || '';
+            row.querySelector('.view-fbase').textContent = record.fiat_amount_base || '';
             row.querySelector('.view-fa').textContent = record.fee_amount || '';
             row.querySelector('.view-fc').textContent = record.fee_currency || '';
             row.querySelector('.view-aid').textContent = record.asset_id || '';
@@ -447,13 +450,14 @@
                         <th onclick="sortTable(4)">Currency</th>
                         <th onclick="sortTable(5)">Crypto Amount</th>
                         <th onclick="sortTable(6)">Crypto Currency</th>
-                        <th onclick="sortTable(7)">Fee Amount</th>
-                        <th onclick="sortTable(8)">Fee Currency</th>
-                        <th onclick="sortTable(9)">Asset ID</th>
-                        <th onclick="sortTable(10)">Date</th>
-                        <th onclick="sortTable(11)">Transaction ID</th>
-                        <th onclick="sortTable(12)">Confidence</th>
-                        <th onclick="sortTable(13)">Status</th>
+                        <th onclick="sortTable(7)">Base Fiat Amount</th>
+                        <th onclick="sortTable(8)">Fee Amount</th>
+                        <th onclick="sortTable(9)">Fee Currency</th>
+                        <th onclick="sortTable(10)">Asset ID</th>
+                        <th onclick="sortTable(11)">Date</th>
+                        <th onclick="sortTable(12)">Transaction ID</th>
+                        <th onclick="sortTable(13)">Confidence</th>
+                        <th onclick="sortTable(14)">Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -670,6 +674,10 @@
                     <td>
                         <span class="view-mode view-cc">${purchase.crypto_currency || ''}</span>
                         <input type="text" class="edit-mode edit-cc editable-input" value="${purchase.crypto_currency || ''}" style="display:none">
+                    </td>
+                    <td>
+                        <span class="view-mode view-fbase">${purchase.fiat_amount_base || ''}</span>
+                        <input type="text" class="edit-mode edit-fbase editable-input" value="${purchase.fiat_amount_base || ''}" style="display:none">
                     </td>
                     <td>
                         <span class="view-mode view-fa">${purchase.fee_amount || ''}</span>

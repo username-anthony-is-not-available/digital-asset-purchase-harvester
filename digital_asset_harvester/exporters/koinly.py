@@ -15,17 +15,27 @@ class KoinlyReportGenerator:
         if not date_str:
             return ""
         try:
-            if " " in date_str:
-                dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-            else:
-                dt = datetime.strptime(date_str, "%Y-%m-%d")
+            from dateutil import parser
+            dt = parser.parse(date_str)
             return dt.strftime("%Y-%m-%d %H:%M:%S")
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, ImportError):
+            # Fallback to original logic if dateutil not available or parsing fails
             try:
-                dt = datetime.strptime(date_str, "%Y/%m/%d")
+                if " " in date_str:
+                    # Strip timezone name if present (e.g. UTC)
+                    parts = date_str.split()
+                    if len(parts) > 2:
+                        date_str = " ".join(parts[:2])
+                    dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+                else:
+                    dt = datetime.strptime(date_str, "%Y-%m-%d")
                 return dt.strftime("%Y-%m-%d %H:%M:%S")
             except (ValueError, TypeError):
-                return date_str
+                try:
+                    dt = datetime.strptime(date_str, "%Y/%m/%d")
+                    return dt.strftime("%Y-%m-%d %H:%M:%S")
+                except (ValueError, TypeError):
+                    return date_str
 
     def _convert_purchase_to_koinly_row(self, purchase: Dict[str, Any]) -> Dict[str, Any]:
         """Convert a single purchase record to a Koinly CSV row."""

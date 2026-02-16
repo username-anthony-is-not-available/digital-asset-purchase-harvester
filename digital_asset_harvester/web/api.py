@@ -123,7 +123,7 @@ DEFAULT_CSV_HEADERS = [
     "transaction_id",
     "crypto_currency",
     "crypto_amount",
-    "fiat_amount_cad",
+    "fiat_amount_base",
     "confidence_score",
 ]
 

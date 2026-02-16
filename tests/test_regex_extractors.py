@@ -112,6 +112,48 @@ def test_staking_rewards_regex():
     assert results[0]["item_name"] == "SOL"
     assert results[0]["transaction_type"] == "staking_reward"
 
+def test_coinspot_multi_extractor():
+    from digital_asset_harvester.processing.extractors import registry
+    body = """
+    You have successfully purchased 50 ADA for $25.00 AUD. Reference: CS-1
+    You have successfully purchased 100 DOT for $150.00 AUD. Reference: CS-2
+    """
+    results = registry.extract("Purchase Confirmation", "CoinSpot <support@coinspot.com.au>", body)
+    assert results is not None
+    assert len(results) == 2
+    assert results[0]["amount"] == "50"
+    assert results[0]["item_name"] == "ADA"
+    assert results[1]["amount"] == "100"
+    assert results[1]["item_name"] == "DOT"
+
+def test_swyftx_multi_extractor():
+    from digital_asset_harvester.processing.extractors import registry
+    body = """
+    You've successfully bought 1.5 ETH for $4,500.00 AUD. Receipt: SWY-1
+    You've successfully bought 0.1 BTC for $8,000.00 AUD. Receipt: SWY-2
+    """
+    results = registry.extract("Trade Confirmation", "Swyftx <noreply@swyftx.com.au>", body)
+    assert results is not None
+    assert len(results) == 2
+    assert results[0]["amount"] == "1.5"
+    assert results[0]["item_name"] == "ETH"
+    assert results[1]["amount"] == "0.1"
+    assert results[1]["item_name"] == "BTC"
+
+def test_newton_multi_extractor():
+    from digital_asset_harvester.processing.extractors import registry
+    body = """
+    You bought 0.1 BTC for $5,000.00 CAD. Reference: NEWT-1
+    You bought 10.0 SOL for $1,200.00 CAD. Reference: NEWT-2
+    """
+    results = registry.extract("Trade Confirmation", "Newton <support@newton.co>", body)
+    assert results is not None
+    assert len(results) == 2
+    assert results[0]["amount"] == "0.1"
+    assert results[0]["item_name"] == "BTC"
+    assert results[1]["amount"] == "10.0"
+    assert results[1]["item_name"] == "SOL"
+
     # Kraken Staking
     kr_ext = KrakenExtractor()
     kr_body = "We've credited your account with 10.5 ADA in staking rewards."
