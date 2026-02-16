@@ -68,9 +68,7 @@ class ImapClient:
             return []
         return [uid.decode() for uid in message_ids[0].split()]
 
-    def fetch_emails_by_uids(
-        self, uids: list[str], folder: str = "INBOX", raw: bool = False
-    ) -> Iterator[Any]:
+    def fetch_emails_by_uids(self, uids: list[str], folder: str = "INBOX", raw: bool = False) -> Iterator[Any]:
         """
         Fetches emails for the given UIDs.
         """
@@ -97,9 +95,7 @@ class ImapClient:
             email_dict["uid"] = uid
             yield email_dict
 
-    def search_emails(
-        self, query: str, folder: str = "INBOX", raw: bool = False
-    ) -> Iterator[Any]:
+    def search_emails(self, query: str, folder: str = "INBOX", raw: bool = False) -> Iterator[Any]:
         """
         Searches for emails matching the given query.
         """

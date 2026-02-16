@@ -1,5 +1,6 @@
 """Mock for blockchain_core library for testing purposes."""
 
+
 class WalletClient:
     """Mock implementation of the WalletClient from blockchain_core."""
 
@@ -12,7 +13,7 @@ class WalletClient:
         self.balances = balances or {
             ("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", "BTC"): 1.5,
             ("0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe", "ETH"): 10.0,
-            ("LR987654321", "LTC"): 5.0
+            ("LR987654321", "LTC"): 5.0,
         }
 
     def get_balance(self, address: str, asset: str) -> float:

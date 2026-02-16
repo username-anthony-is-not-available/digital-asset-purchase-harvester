@@ -37,9 +37,7 @@ class CachingLLMClient(LLMProvider):
             )
 
         # Call inner provider
-        result = self.inner.generate_json(
-            prompt, model=model, retries=retries, temperature=temperature
-        )
+        result = self.inner.generate_json(prompt, model=model, retries=retries, temperature=temperature)
 
         # Cache the result
         self.cache.set(

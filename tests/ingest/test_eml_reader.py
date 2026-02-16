@@ -3,16 +3,19 @@ import pytest
 from pathlib import Path
 from digital_asset_harvester.ingest.eml_reader import EmlDataExtractor
 
+
 def test_eml_reader_initialization():
     """Tests that the EmlDataExtractor can be initialized."""
     reader = EmlDataExtractor("non_existent_dir")
     assert reader is not None
+
 
 def test_eml_reader_extract_emails_dir_not_found():
     """Tests that extract_emails returns an empty generator if the directory does not exist."""
     reader = EmlDataExtractor("non_existent_dir")
     emails = reader.extract_emails()
     assert list(emails) == []
+
 
 def test_eml_reader_extract_emails_from_fixtures():
     """Tests that extract_emails can extract emails from the fixtures directory."""
@@ -33,6 +36,7 @@ def test_eml_reader_extract_emails_from_fixtures():
     binance_email = next(e for e in emails if "0.1 ETH" in e["subject"])
     assert "0.1 ETH for 200.00 USD" in binance_email["body"]
 
+
 def test_eml_reader_raw_output():
     """Tests that extract_emails can return raw message strings."""
     fixtures_dir = os.path.join("tests", "fixtures", "emls")
@@ -42,6 +46,7 @@ def test_eml_reader_raw_output():
     assert len(emails) >= 2
     assert isinstance(emails[0], str)
     assert "Subject:" in emails[0]
+
 
 def test_eml_reader_nested_directories(tmp_path):
     """Tests that the reader can walk through nested directories."""
@@ -60,6 +65,7 @@ This is a nested email.
 
     assert len(emails) == 1
     assert emails[0]["subject"] == "Nested Email"
+
 
 def test_eml_reader_ignores_non_eml_files(tmp_path):
     """Tests that the reader ignores files that do not have a .eml extension."""

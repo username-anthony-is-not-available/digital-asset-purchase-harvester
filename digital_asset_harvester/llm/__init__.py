@@ -14,9 +14,7 @@ if TYPE_CHECKING:
     from .provider import LLMProvider
 
 
-def get_llm_client(
-    provider: str | None = None, settings: HarvesterSettings | None = None
-) -> LLMProvider:
+def get_llm_client(provider: str | None = None, settings: HarvesterSettings | None = None) -> LLMProvider:
     """Get the configured LLM client.
 
     This factory function is the single point of entry for creating LLM clients.
@@ -42,14 +40,11 @@ def get_llm_client(
                 "Only local Ollama is permitted in privacy mode."
             )
         if settings.enable_ollama_fallback:
-            raise ValueError(
-                "Privacy mode is enabled. Ollama fallback to cloud LLM is not allowed."
-            )
+            raise ValueError("Privacy mode is enabled. Ollama fallback to cloud LLM is not allowed.")
 
     if not settings.enable_cloud_llm and provider_name != "ollama":
         raise ValueError(
-            "Cloud LLM providers are not enabled. "
-            "Set `enable_cloud_llm` to True in settings to use them."
+            "Cloud LLM providers are not enabled. " "Set `enable_cloud_llm` to True in settings to use them."
         )
 
     if provider_name == "ollama":
@@ -67,9 +62,7 @@ def get_llm_client(
             primary = OllamaLLMClient(settings=primary_settings)
 
             # Secondary client using configured fallback provider
-            secondary = get_llm_client(
-                provider=settings.fallback_cloud_provider, settings=settings
-            )
+            secondary = get_llm_client(provider=settings.fallback_cloud_provider, settings=settings)
             client = FallbackLLMClient(primary, secondary)
         else:
             client = OllamaLLMClient(settings=settings)

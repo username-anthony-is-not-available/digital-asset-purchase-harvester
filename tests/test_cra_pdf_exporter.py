@@ -2,6 +2,7 @@ import os
 import tempfile
 from digital_asset_harvester.exporters.cra import write_purchase_data_to_cra_pdf
 
+
 def test_write_purchase_data_to_cra_pdf():
     purchases = [
         {
@@ -11,7 +12,7 @@ def test_write_purchase_data_to_cra_pdf():
             "total_spent": 30000.0,
             "currency": "CAD",
             "purchase_date": "2023-01-01",
-            "transaction_type": "buy"
+            "transaction_type": "buy",
         },
         {
             "vendor": "Binance",
@@ -20,7 +21,7 @@ def test_write_purchase_data_to_cra_pdf():
             "total_spent": 6000.0,
             "currency": "CAD",
             "purchase_date": "2023-02-01",
-            "transaction_type": "buy"
+            "transaction_type": "buy",
         },
         {
             "vendor": "Coinbase",
@@ -29,8 +30,8 @@ def test_write_purchase_data_to_cra_pdf():
             "total_spent": 5000.0,
             "currency": "CAD",
             "purchase_date": "2023-03-01",
-            "transaction_type": "buy"
-        }
+            "transaction_type": "buy",
+        },
     ]
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
@@ -43,6 +44,7 @@ def test_write_purchase_data_to_cra_pdf():
     finally:
         if os.path.exists(output_file):
             os.remove(output_file)
+
 
 def test_write_purchase_data_to_cra_pdf_empty():
     purchases = []

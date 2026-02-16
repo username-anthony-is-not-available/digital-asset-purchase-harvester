@@ -26,27 +26,6 @@
         .low-confidence {
             border-left: 5px solid #dc3545;
         }
-        .progress-bar-container {
-            margin-bottom: 20px;
-            background-color: #e9ecef;
-            border-radius: 5px;
-            height: 25px;
-            position: relative;
-        }
-        .progress-bar-fill {
-            background-color: #28a745;
-            height: 100%;
-            border-radius: 5px;
-            transition: width 0.3s ease;
-        }
-        .progress-text {
-            position: absolute;
-            width: 100%;
-            text-align: center;
-            line-height: 25px;
-            font-weight: bold;
-            color: #333;
-        }
         .batch-actions {
             margin-bottom: 10px;
         }
@@ -389,6 +368,14 @@
             <h1>Processing your file...</h1>
             <p>Task ID: <span id="task-id">{{ task_id }}</span></p>
             <p>Status: <span id="status">processing</span></p>
+
+            <div id="parsing-progress-container" style="margin-top: 20px;">
+                <p>Parsing Emails...</p>
+                <div class="progress-bar-container">
+                    <div id="parsing-progress-fill" class="progress-bar-fill" style="width: 0%"></div>
+                    <div id="parsing-progress-text" class="progress-text">0%</div>
+                </div>
+            </div>
         </div>
 
         <div id="results-section" style="display: none;">
@@ -471,6 +458,14 @@
                 .then(response => response.json())
                 .then(data => {
                     statusElement.textContent = data.status;
+
+                    if (data.progress) {
+                        const percent = data.progress.percentage;
+                        document.getElementById('parsing-progress-fill').style.width = percent + '%';
+                        document.getElementById('parsing-progress-text').textContent =
+                            `${percent}% (${data.progress.current} / ${data.progress.total})`;
+                    }
+
                     if (data.status === 'complete') {
                         clearInterval(interval);
                         processingSection.style.display = 'none';

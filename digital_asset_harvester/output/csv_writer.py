@@ -1,11 +1,14 @@
 """CSV output helpers."""
+
 from __future__ import annotations
 
 import csv
 from typing import Any, Dict, Iterable, Union
 
 
-def write_purchase_data_to_csv(filepath: str, records: Iterable[Union[object, Dict[str, Any]]], include_header: bool = True) -> None:
+def write_purchase_data_to_csv(
+    filepath: str, records: Iterable[Union[object, Dict[str, Any]]], include_header: bool = True
+) -> None:
     """Write purchase records to a CSV file.
 
     - `records` can be an iterable of objects or dictionaries with the keys:

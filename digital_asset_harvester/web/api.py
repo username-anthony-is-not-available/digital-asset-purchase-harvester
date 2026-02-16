@@ -35,6 +35,7 @@ TASKS_DB = "tasks_db.json"
 tasks = {}
 tasks_lock = threading.Lock()
 
+
 def _save_tasks():
     """Save tasks to a JSON file atomically."""
     with tasks_lock:
@@ -42,7 +43,7 @@ def _save_tasks():
             # Use a temporary file for atomic write
             fd, temp_path = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(TASKS_DB)) or ".", suffix=".tmp")
             try:
-                with os.fdopen(fd, 'w') as f:
+                with os.fdopen(fd, "w") as f:
                     json.dump(tasks, f, indent=2)
                 # Atomic replacement
                 os.replace(temp_path, TASKS_DB)
@@ -52,6 +53,7 @@ def _save_tasks():
                 raise
         except Exception as e:
             logger.error(f"Failed to save tasks: {e}")
+
 
 def _load_tasks():
     """Load tasks from a JSON file."""
@@ -65,11 +67,19 @@ def _load_tasks():
                 logger.error(f"Failed to load tasks: {e}")
                 tasks = {}
 
+
 _load_tasks()
 
 DEFAULT_CSV_HEADERS = [
-    "email_subject", "vendor", "currency", "amount", "purchase_date",
-    "transaction_id", "crypto_currency", "crypto_amount", "confidence_score"
+    "email_subject",
+    "vendor",
+    "currency",
+    "amount",
+    "purchase_date",
+    "transaction_id",
+    "crypto_currency",
+    "crypto_amount",
+    "confidence_score",
 ]
 
 
@@ -77,13 +87,30 @@ def get_logger_factory():
     settings = get_settings()
     return configure_logging(settings)
 
+
+def _create_progress_callback(task_id: str):
+    def progress_callback(current: int, total: int):
+        with tasks_lock:
+            if task_id in tasks:
+                tasks[task_id]["progress"] = {
+                    "current": current,
+                    "total": total,
+                    "percentage": round((current / total) * 100, 2) if total > 0 else 0,
+                }
+        # We don't call _save_tasks() here to avoid excessive I/O,
+        # but the in-memory state will be updated for the status endpoint.
+
+    return progress_callback
+
+
 def process_eml_files(task_id: str, temp_dir: str, logger_factory: StructuredLoggerFactory):
     """Processes a directory of eml files and stores the result."""
     with tasks_lock:
         tasks[task_id] = {
             "status": "processing",
             "result": None,
-            "created_at": datetime.now().isoformat()
+            "progress": {"current": 0, "total": 0, "percentage": 0},
+            "created_at": datetime.now().isoformat(),
         }
     _save_tasks()
 
@@ -99,7 +126,9 @@ def process_eml_files(task_id: str, temp_dir: str, logger_factory: StructuredLog
         eml_reader = EmlDataExtractor(temp_dir)
         emails = eml_reader.extract_emails(raw=settings.enable_multiprocessing)
 
-        purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
+        purchases, _ = process_emails(
+            emails, extractor, logger_factory, show_progress=False, progress_callback=_create_progress_callback(task_id)
+        )
 
         # Initialize review status and map fields for frontend
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
@@ -110,6 +139,7 @@ def process_eml_files(task_id: str, temp_dir: str, logger_factory: StructuredLog
         _save_tasks()
     except Exception as e:
         import traceback
+
         tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
         _save_tasks()
     finally:
@@ -123,7 +153,8 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
         tasks[task_id] = {
             "status": "processing",
             "result": None,
-            "created_at": datetime.now().isoformat()
+            "progress": {"current": 0, "total": 0, "percentage": 0},
+            "created_at": datetime.now().isoformat(),
         }
     _save_tasks()
 
@@ -139,7 +170,9 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
         mbox_reader = MboxDataExtractor(temp_path)
         emails = mbox_reader.extract_emails(raw=settings.enable_multiprocessing)
 
-        purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
+        purchases, _ = process_emails(
+            emails, extractor, logger_factory, show_progress=False, progress_callback=_create_progress_callback(task_id)
+        )
 
         # Initialize review status and map fields for frontend
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
@@ -150,11 +183,13 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
         _save_tasks()
     except Exception as e:
         import traceback
+
         tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
         _save_tasks()
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
+
 
 def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
     """Synchronizes emails from IMAP and stores the result."""
@@ -162,7 +197,8 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
         tasks[task_id] = {
             "status": "processing",
             "result": None,
-            "created_at": datetime.now().isoformat()
+            "progress": {"current": 0, "total": 0, "percentage": 0},
+            "created_at": datetime.now().isoformat(),
         }
     _save_tasks()
     settings = get_settings()
@@ -203,8 +239,16 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
                 _save_tasks()
                 return
 
-            emails = list(imap_client.fetch_emails_by_uids(uids, settings.imap_folder, raw=settings.enable_multiprocessing))
-            purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
+            emails = list(
+                imap_client.fetch_emails_by_uids(uids, settings.imap_folder, raw=settings.enable_multiprocessing)
+            )
+            purchases, _ = process_emails(
+                emails,
+                extractor,
+                logger_factory,
+                show_progress=False,
+                progress_callback=_create_progress_callback(task_id),
+            )
 
             if emails:
                 max_uid = max(int(email["uid"]) for email in emails)
@@ -218,8 +262,10 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
 
     except Exception as e:
         import traceback
+
         tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
         _save_tasks()
+
 
 def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
     """Synchronizes emails from Gmail API and stores the result."""
@@ -227,7 +273,8 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
         tasks[task_id] = {
             "status": "processing",
             "result": None,
-            "created_at": datetime.now().isoformat()
+            "progress": {"current": 0, "total": 0, "percentage": 0},
+            "created_at": datetime.now().isoformat(),
         }
     _save_tasks()
     settings = get_settings()
@@ -243,7 +290,9 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
         gmail_client = GmailClient()
         query = settings.gmail_query
         emails = gmail_client.search_emails(query, raw=settings.enable_multiprocessing)
-        purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
+        purchases, _ = process_emails(
+            emails, extractor, logger_factory, show_progress=False, progress_callback=_create_progress_callback(task_id)
+        )
 
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
         tasks[task_id]["status"] = "complete"
@@ -252,8 +301,10 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
         _save_tasks()
     except Exception as e:
         import traceback
+
         tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
         _save_tasks()
+
 
 def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_factory: StructuredLoggerFactory):
     """Synchronizes emails from Outlook API and stores the result."""
@@ -261,7 +312,8 @@ def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_fa
         tasks[task_id] = {
             "status": "processing",
             "result": None,
-            "created_at": datetime.now().isoformat()
+            "progress": {"current": 0, "total": 0, "percentage": 0},
+            "created_at": datetime.now().isoformat(),
         }
     _save_tasks()
     settings = get_settings()
@@ -277,7 +329,9 @@ def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_fa
         outlook_client = OutlookClient(client_id, authority)
         query = settings.outlook_query
         emails = outlook_client.search_emails(query, raw=settings.enable_multiprocessing)
-        purchases, _ = process_emails(emails, extractor, logger_factory, show_progress=False)
+        purchases, _ = process_emails(
+            emails, extractor, logger_factory, show_progress=False, progress_callback=_create_progress_callback(task_id)
+        )
 
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
         tasks[task_id]["status"] = "complete"
@@ -286,8 +340,10 @@ def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_fa
         _save_tasks()
     except Exception as e:
         import traceback
+
         tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
         _save_tasks()
+
 
 @router.get("/export/koinly/{task_id}")
 async def export_koinly(task_id: str):
@@ -310,19 +366,27 @@ async def export_koinly(task_id: str):
     else:
         # Standard Koinly headers if no data
         headers = [
-            "Date", "Sent Amount", "Sent Currency", "Received Amount", "Received Currency",
-            "Fee Amount", "Fee Currency", "Net Worth Amount", "Net Worth Currency",
-            "Label", "Description", "TxHash"
+            "Date",
+            "Sent Amount",
+            "Sent Currency",
+            "Received Amount",
+            "Received Currency",
+            "Fee Amount",
+            "Fee Currency",
+            "Net Worth Amount",
+            "Net Worth Currency",
+            "Label",
+            "Description",
+            "TxHash",
         ]
         writer = csv.writer(output)
         writer.writerow(headers)
 
     output.seek(0)
     return StreamingResponse(
-        output,
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=koinly_{task_id}.csv"}
+        output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=koinly_{task_id}.csv"}
     )
+
 
 @router.get("/export/ctc/{task_id}")
 async def export_ctc(task_id: str):
@@ -343,18 +407,27 @@ async def export_ctc(task_id: str):
         writer.writerows(rows)
     else:
         headers = [
-            "Timestamp (UTC)", "Type", "Base Currency", "Base Amount", "Quote Currency",
-            "Quote Amount", "Fee Currency", "Fee Amount", "From", "To", "ID", "Description"
+            "Timestamp (UTC)",
+            "Type",
+            "Base Currency",
+            "Base Amount",
+            "Quote Currency",
+            "Quote Amount",
+            "Fee Currency",
+            "Fee Amount",
+            "From",
+            "To",
+            "ID",
+            "Description",
         ]
         writer = csv.writer(output)
         writer.writerow(headers)
 
     output.seek(0)
     return StreamingResponse(
-        output,
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=ctc_{task_id}.csv"}
+        output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=ctc_{task_id}.csv"}
     )
+
 
 @router.get("/export/cra/{task_id}")
 async def export_cra(task_id: str):
@@ -375,17 +448,22 @@ async def export_cra(task_id: str):
         writer.writerows(rows)
     else:
         headers = [
-            "Date", "Type", "Received Quantity", "Received Currency", "Sent Quantity",
-            "Sent Currency", "Fee Quantity", "Fee Currency", "Description"
+            "Date",
+            "Type",
+            "Received Quantity",
+            "Received Currency",
+            "Sent Quantity",
+            "Sent Currency",
+            "Fee Quantity",
+            "Fee Currency",
+            "Description",
         ]
         writer = csv.writer(output)
         writer.writerow(headers)
 
     output.seek(0)
     return StreamingResponse(
-        output,
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=cra_{task_id}.csv"}
+        output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=cra_{task_id}.csv"}
     )
 
 
@@ -413,11 +491,12 @@ async def export_cra_pdf(task_id: str):
         headers={"Content-Disposition": f"attachment; filename=cra_report_{task_id}.pdf"},
     )
 
+
 @router.post("/upload")
 async def upload_files(
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
-    logger_factory: StructuredLoggerFactory = Depends(get_logger_factory)
+    logger_factory: StructuredLoggerFactory = Depends(get_logger_factory),
 ):
     task_id = str(uuid.uuid4())
 
@@ -440,10 +519,10 @@ async def upload_files(
 
     return RedirectResponse(url=f"/status/{task_id}", status_code=303)
 
+
 @router.post("/sync/imap")
 async def sync_imap(
-    background_tasks: BackgroundTasks,
-    logger_factory: StructuredLoggerFactory = Depends(get_logger_factory)
+    background_tasks: BackgroundTasks, logger_factory: StructuredLoggerFactory = Depends(get_logger_factory)
 ):
     settings = get_settings()
     if not settings.enable_imap:
@@ -454,20 +533,20 @@ async def sync_imap(
 
     return RedirectResponse(url=f"/status/{task_id}", status_code=303)
 
+
 @router.post("/sync/gmail")
 async def sync_gmail(
-    background_tasks: BackgroundTasks,
-    logger_factory: StructuredLoggerFactory = Depends(get_logger_factory)
+    background_tasks: BackgroundTasks, logger_factory: StructuredLoggerFactory = Depends(get_logger_factory)
 ):
     task_id = str(uuid.uuid4())
     background_tasks.add_task(process_gmail_sync, task_id, logger_factory)
 
     return RedirectResponse(url=f"/status/{task_id}", status_code=303)
 
+
 @router.post("/sync/outlook")
 async def sync_outlook(
-    background_tasks: BackgroundTasks,
-    logger_factory: StructuredLoggerFactory = Depends(get_logger_factory)
+    background_tasks: BackgroundTasks, logger_factory: StructuredLoggerFactory = Depends(get_logger_factory)
 ):
     settings = get_settings()
     # Support both new and legacy setting names
@@ -475,16 +554,20 @@ async def sync_outlook(
     authority = settings.outlook_authority or settings.imap_authority
 
     if not client_id or not authority:
-        raise HTTPException(status_code=400, detail="Outlook API requires outlook_client_id and outlook_authority in settings")
+        raise HTTPException(
+            status_code=400, detail="Outlook API requires outlook_client_id and outlook_authority in settings"
+        )
 
     task_id = str(uuid.uuid4())
     background_tasks.add_task(process_outlook_sync, task_id, client_id, authority, logger_factory)
 
     return RedirectResponse(url=f"/status/{task_id}", status_code=303)
 
+
 @router.get("/status/{task_id}")
 async def get_status(task_id: str):
     return tasks.get(task_id, {"status": "not_found"})
+
 
 @router.get("/export/csv/{task_id}")
 async def export_csv(task_id: str):
@@ -505,7 +588,10 @@ async def export_csv(task_id: str):
 
     output.seek(0)
 
-    return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=purchases_{task_id}.csv"})
+    return StreamingResponse(
+        output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=purchases_{task_id}.csv"}
+    )
+
 
 @router.get("/export/json/{task_id}")
 async def export_json(task_id: str):
@@ -520,6 +606,7 @@ async def export_json(task_id: str):
         headers={"Content-Disposition": f"attachment; filename=purchases_{task_id}.json"},
     )
 
+
 @router.put("/task/{task_id}/records/{index}")
 async def update_record(task_id: str, index: int, updated_record: dict):
     task = tasks.get(task_id)
@@ -532,6 +619,7 @@ async def update_record(task_id: str, index: int, updated_record: dict):
 
     # Check if crypto_currency changed and we need to update asset_id
     from ..utils.asset_mapping import mapper
+
     old_currency = results[index].get("crypto_currency")
     new_currency = updated_record.get("crypto_currency")
 
@@ -634,7 +722,7 @@ async def add_record(task_id: str):
         "fee_currency": "",
         "asset_id": "",
         "confidence_score": 1.0,
-        "review_status": "pending"
+        "review_status": "pending",
     }
     results.append(new_record)
     _save_tasks()

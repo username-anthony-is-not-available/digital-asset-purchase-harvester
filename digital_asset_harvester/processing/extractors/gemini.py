@@ -47,7 +47,9 @@ class GeminiExtractor(BaseExtractor):
 
         return purchases
 
-    def _create_purchase_dict(self, amount: str, crypto: str, total_spent: str | None, currency: str, body: str) -> Dict[str, Any]:
+    def _create_purchase_dict(
+        self, amount: str, crypto: str, total_spent: str | None, currency: str, body: str
+    ) -> Dict[str, Any]:
         # Extract transaction ID
         txn_id = self._find_match(r"Transaction ID:\s*([A-Z0-9\-]+)", body)
 
