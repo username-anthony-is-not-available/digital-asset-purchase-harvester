@@ -8,6 +8,9 @@ from digital_asset_harvester.processing.extractors.gemini import GeminiExtractor
 from digital_asset_harvester.processing.extractors.cryptocom import CryptocomExtractor
 from digital_asset_harvester.processing.extractors.ftx import FTXExtractor
 from digital_asset_harvester.processing.extractors.coinspot import CoinSpotExtractor
+from digital_asset_harvester.processing.extractors.newton import NewtonExtractor
+from digital_asset_harvester.processing.extractors.swyftx import SwyftxExtractor
+from digital_asset_harvester.processing.extractors.btcmarkets import BTCMarketsExtractor
 
 # Test data mapping: (ExtractorClass, Subject, Sender, Body, ExpectedResults)
 TEST_CASES = [
@@ -143,6 +146,57 @@ TEST_CASES = [
                 "currency": "AUD",
                 "vendor": "CoinSpot",
                 "transaction_id": "CS-20240115-001",
+            }
+        ],
+    ),
+    # Newton Cases
+    (
+        NewtonExtractor,
+        "Trade Confirmation",
+        "Newton <support@newton.co>",
+        "You bought 0.1 BTC for $5,000.00 CAD.\nReference: NEWT-12345",
+        [
+            {
+                "amount": "0.1",
+                "item_name": "BTC",
+                "total_spent": "5000.00",
+                "currency": "CAD",
+                "vendor": "Newton",
+                "transaction_id": "NEWT-12345",
+            }
+        ],
+    ),
+    # Swyftx Cases
+    (
+        SwyftxExtractor,
+        "Trade Confirmation",
+        "Swyftx <noreply@swyftx.com.au>",
+        "You've successfully bought 1.5 ETH for $4,500.00 AUD.\nReceipt: SWY-998877",
+        [
+            {
+                "amount": "1.5",
+                "item_name": "ETH",
+                "total_spent": "4500.00",
+                "currency": "AUD",
+                "vendor": "Swyftx",
+                "transaction_id": "SWY-998877",
+            }
+        ],
+    ),
+    # BTCMarkets Cases
+    (
+        BTCMarketsExtractor,
+        "Buy Order Filled",
+        "BTC Markets <noreply@btcmarkets.net>",
+        "Your buy order for 0.05 BTC has been filled at $60,000.00 AUD.\nOrder ID: BTCM-554433",
+        [
+            {
+                "amount": "0.05",
+                "item_name": "BTC",
+                "total_spent": "60000.00",
+                "currency": "AUD",
+                "vendor": "BTCMarkets",
+                "transaction_id": "BTCM-554433",
             }
         ],
     ),

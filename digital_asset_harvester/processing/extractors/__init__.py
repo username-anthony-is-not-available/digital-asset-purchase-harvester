@@ -12,6 +12,9 @@ from .gemini import GeminiExtractor
 from .cryptocom import CryptocomExtractor
 from .ftx import FTXExtractor
 from .coinspot import CoinSpotExtractor
+from .newton import NewtonExtractor
+from .swyftx import SwyftxExtractor
+from .btcmarkets import BTCMarketsExtractor
 
 
 class ExtractorRegistry:
@@ -26,6 +29,9 @@ class ExtractorRegistry:
             CryptocomExtractor(),
             FTXExtractor(),
             CoinSpotExtractor(),
+            NewtonExtractor(),
+            SwyftxExtractor(),
+            BTCMarketsExtractor(),
         ]
 
     def extract(self, subject: str, sender: str, body: str) -> Optional[List[Dict[str, Any]]]:
