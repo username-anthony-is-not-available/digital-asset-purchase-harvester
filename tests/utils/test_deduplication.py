@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from digital_asset_harvester.utils.deduplication import DuplicateDetector, generate_record_hash, generate_email_hash
 
+
 class TestDeduplication(unittest.TestCase):
     def setUp(self):
         self.temp_file = tempfile.NamedTemporaryFile(delete=False)
@@ -20,14 +21,14 @@ class TestDeduplication(unittest.TestCase):
             "item_name": "BTC",
             "amount": 0.1,
             "purchase_date": "2023-01-01",
-            "total_spent": 2000
+            "total_spent": 2000,
         }
         record2 = {
             "vendor": " Coinbase ",
             "item_name": "btc",
             "amount": "0.1",
             "purchase_date": "2023-01-01",
-            "total_spent": 2000
+            "total_spent": 2000,
         }
         hash1 = generate_record_hash(record1)
         hash2 = generate_record_hash(record2)
@@ -43,13 +44,13 @@ class TestDeduplication(unittest.TestCase):
             "subject": "Your Purchase",
             "sender": "no-reply@coinbase.com",
             "date": "Mon, 1 Jan 2023",
-            "body": "You bought 0.1 BTC"
+            "body": "You bought 0.1 BTC",
         }
         email2 = {
             "subject": " Your Purchase ",
             "sender": "no-reply@coinbase.com",
             "date": "Mon, 1 Jan 2023",
-            "body": "You bought 0.1 BTC"
+            "body": "You bought 0.1 BTC",
         }
         hash1 = generate_email_hash(email1)
         hash2 = generate_email_hash(email2)
@@ -98,6 +99,7 @@ class TestDeduplication(unittest.TestCase):
         detector.reset()
         self.assertFalse(os.path.exists(self.temp_path))
         self.assertFalse(detector.is_email_duplicate(email, auto_save=False))
+
 
 if __name__ == "__main__":
     unittest.main()
