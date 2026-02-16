@@ -42,8 +42,8 @@ def normalize_for_frontend(purchase: Dict[str, Any]) -> Dict[str, Any]:
     if "asset_id" not in normalized:
         normalized["asset_id"] = None
 
-    if "fiat_amount_cad" not in normalized:
-        normalized["fiat_amount_cad"] = None
+    if "fiat_amount_base" not in normalized:
+        normalized["fiat_amount_base"] = None
 
     return normalized
 

@@ -32,9 +32,8 @@ class NewtonExtractor(BaseExtractor):
         # Pattern: "You bought 0.1 BTC for $5,000.00 CAD"
         # Also handles variations without CAD
         pattern = r"bought\s+([\d,.]+)\s+([A-Z]{3,5})\s+for\s+([$€£¥])?([\d,.]+)\s*([A-Z]{3})?"
-        match = re.search(pattern, body, re.IGNORECASE)
 
-        if match:
+        for match in re.finditer(pattern, body, re.IGNORECASE):
             amount = match.group(1).replace(",", "")
             crypto = match.group(2).upper()
             total_spent = match.group(4).replace(",", "")

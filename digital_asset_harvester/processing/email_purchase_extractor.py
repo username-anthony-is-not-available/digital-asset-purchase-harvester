@@ -527,9 +527,9 @@ class EmailPurchaseExtractor:
                     rate = fx_service.get_rate(p_date, from_curr, to_curr)
                     if rate:
                         # Use Decimal for calculation
-                        cad_amount = Decimal(str(purchase_info["total_spent"])) * rate
-                        purchase_info["fiat_amount_cad"] = cad_amount
-                        logger.info(f"Converted {purchase_info['total_spent']} {from_curr} to {cad_amount} {to_curr}")
+                        base_amount = Decimal(str(purchase_info["total_spent"])) * rate
+                        purchase_info["fiat_amount_base"] = base_amount
+                        logger.info(f"Converted {purchase_info['total_spent']} {from_curr} to {base_amount} {to_curr}")
 
                 # 3. Validate the extracted data (includes Pydantic validation)
                 is_valid, validation_issues = self._validate_purchase_data(purchase_info)
@@ -554,8 +554,8 @@ class EmailPurchaseExtractor:
                     purchase_info["total_spent"] = float(purchase_record.total_spent)
                 if purchase_record.fee_amount is not None:
                     purchase_info["fee_amount"] = float(purchase_record.fee_amount)
-                if purchase_record.fiat_amount_cad is not None:
-                    purchase_info["fiat_amount_cad"] = float(purchase_record.fiat_amount_cad)
+                if purchase_record.fiat_amount_base is not None:
+                    purchase_info["fiat_amount_base"] = float(purchase_record.fiat_amount_base)
 
                 purchase_info["transaction_type"] = purchase_record.transaction_type
                 validated_purchases.append(purchase_info)
