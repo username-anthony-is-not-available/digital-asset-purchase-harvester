@@ -491,3 +491,48 @@ def test_process_email_with_kraken_staking_reward(mocker, monkeypatch):
     assert result["purchases"][0]["transaction_type"] == "staking_reward"
     assert result["purchases"][0]["amount"] == 10.5
     assert result["purchases"][0]["transaction_id"] == "KR-STAKE-2025-999"
+
+
+def test_process_email_with_currency_conversion(mocker, monkeypatch):
+    email_content = "Subject: Coinbase\nBody: You bought 0.05 BTC for 1000 USD"
+    mock_llm_client = mocker.Mock()
+    mock_llm_client.generate_json.side_effect = [
+        mocker.Mock(data={"is_crypto_purchase": True, "confidence": 1.0}),
+        mocker.Mock(
+            data={
+                "transactions": [
+                    {
+                        "total_spent": 1000.0,
+                        "currency": "USD",
+                        "amount": 0.05,
+                        "item_name": "BTC",
+                        "vendor": "Coinbase",
+                        "purchase_date": "2024-01-01 12:00:00",
+                        "confidence": 1.0,
+                    }
+                ]
+            }
+        ),
+    ]
+
+    mock_fx_service = mocker.patch("digital_asset_harvester.processing.email_purchase_extractor.fx_service")
+    from decimal import Decimal
+
+    mock_fx_service.get_rate.return_value = Decimal("1.35")
+
+    from digital_asset_harvester.processing.email_purchase_extractor import (
+        EmailPurchaseExtractor,
+    )
+
+    settings = get_settings_with_overrides(
+        enable_regex_extractors=False, enable_currency_conversion=True, base_fiat_currency="CAD"
+    )
+    extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
+    monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
+    monkeypatch.setattr(extractor, "_is_likely_crypto_related", lambda x: True)
+    monkeypatch.setattr(extractor, "_is_likely_purchase_related", lambda x: True)
+
+    result = extractor.process_email(email_content)
+    assert result["has_purchase"] is True
+    assert result["purchases"][0]["fiat_amount_cad"] == 1350.0
+    mock_fx_service.get_rate.assert_called_once_with("2024-01-01 12:00:00 UTC", "USD", "CAD")

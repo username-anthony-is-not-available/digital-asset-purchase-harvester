@@ -79,6 +79,7 @@ DEFAULT_CSV_HEADERS = [
     "transaction_id",
     "crypto_currency",
     "crypto_amount",
+    "fiat_amount_cad",
     "confidence_score",
 ]
 
@@ -435,10 +436,11 @@ async def export_cra(task_id: str):
     if not task or task["status"] != "complete":
         raise HTTPException(status_code=404, detail="Task not found or not complete")
 
+    settings = get_settings()
     results = task.get("result", [])
     denormalized_results = [denormalize_from_frontend(p) for p in results]
 
-    generator = CRAReportGenerator()
+    generator = CRAReportGenerator(base_fiat_currency=settings.base_fiat_currency)
     rows = generator.generate_csv_rows(denormalized_results)
 
     output = StringIO()
@@ -454,6 +456,7 @@ async def export_cra(task_id: str):
             "Received Currency",
             "Sent Quantity",
             "Sent Currency",
+            f"Sent Quantity ({settings.base_fiat_currency})",
             "Fee Quantity",
             "Fee Currency",
             "Description",
@@ -473,11 +476,14 @@ async def export_cra_pdf(task_id: str):
     if not task or task["status"] != "complete":
         raise HTTPException(status_code=404, detail="Task not found or not complete")
 
+    settings = get_settings()
     results = task.get("result", [])
     denormalized_results = [denormalize_from_frontend(p) for p in results]
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        write_purchase_data_to_cra_pdf(denormalized_results, tmp.name)
+        write_purchase_data_to_cra_pdf(
+            denormalized_results, tmp.name, base_fiat_currency=settings.base_fiat_currency
+        )
         tmp_path = tmp.name
 
     def iterfile():

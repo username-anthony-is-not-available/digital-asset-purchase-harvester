@@ -14,6 +14,9 @@ from fpdf.enums import XPos, YPos
 class CRAReportGenerator:
     """Generator for CRA-ready CSV reports (e.g., for Wealthsimple Tax)."""
 
+    def __init__(self, base_fiat_currency: str = "CAD"):
+        self.base_fiat_currency = base_fiat_currency
+
     def _convert_purchase_to_cra_row(self, purchase: Dict[str, Any]) -> Dict[str, Any]:
         """Convert a single purchase record to a CRA-ready CSV row."""
         tx_type = purchase.get("transaction_type", "buy")
@@ -33,6 +36,9 @@ class CRAReportGenerator:
             "Received Currency": purchase.get("item_name", ""),
             "Sent Quantity": str(purchase.get("total_spent", "")),
             "Sent Currency": purchase.get("currency", ""),
+            f"Sent Quantity ({self.base_fiat_currency})": str(purchase.get("fiat_amount_cad", ""))
+            if purchase.get("fiat_amount_cad")
+            else "",
             "Fee Quantity": str(purchase.get("fee_amount", "")) if purchase.get("fee_amount") is not None else "",
             "Fee Currency": purchase.get("fee_currency", ""),
             "Description": f"Transaction at {purchase.get('vendor', 'Unknown')}"
@@ -45,7 +51,9 @@ class CRAReportGenerator:
         return [self._convert_purchase_to_cra_row(p) for p in purchases]
 
 
-def write_purchase_data_to_cra_csv(purchases: List[Dict[str, Any]], output_file: str) -> None:
+def write_purchase_data_to_cra_csv(
+    purchases: List[Dict[str, Any]], output_file: str, base_fiat_currency: str = "CAD"
+) -> None:
     """Write purchase data to a CRA-ready CSV file."""
     if not purchases:
         return
@@ -57,6 +65,7 @@ def write_purchase_data_to_cra_csv(purchases: List[Dict[str, Any]], output_file:
         "Received Currency",
         "Sent Quantity",
         "Sent Currency",
+        f"Sent Quantity ({base_fiat_currency})",
         "Fee Quantity",
         "Fee Currency",
         "Description",
@@ -65,7 +74,7 @@ def write_purchase_data_to_cra_csv(purchases: List[Dict[str, Any]], output_file:
     with open(output_file, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
-        generator = CRAReportGenerator()
+        generator = CRAReportGenerator(base_fiat_currency=base_fiat_currency)
 
         purchase_dicts = []
         for p in purchases:
@@ -96,7 +105,9 @@ class CRAPDFGenerator(FPDF):
         self.cell(0, 10, f"Page {self.page_no()}/{{nb}}", align="C")
 
 
-def write_purchase_data_to_cra_pdf(purchases: List[Dict[str, Any]], output_file: str) -> None:
+def write_purchase_data_to_cra_pdf(
+    purchases: List[Dict[str, Any]], output_file: str, base_fiat_currency: str = "CAD"
+) -> None:
     """Write purchase data to a CRA-ready PDF file."""
     pdf = CRAPDFGenerator()
     pdf.alias_nb_pages()
@@ -118,7 +129,8 @@ def write_purchase_data_to_cra_pdf(purchases: List[Dict[str, Any]], output_file:
             purchase_dicts.append(vars(p))
 
     # Grouping logic
-    summary = defaultdict(lambda: defaultdict(lambda: {"quantity": 0.0, "total_spent": 0.0, "currency": "CAD"}))
+    # Key: (vendor, asset, currency)
+    summary = defaultdict(lambda: {"quantity": 0.0, "total_spent": 0.0})
 
     for p in purchase_dicts:
         vendor = p.get("vendor") or "Unknown"
@@ -128,16 +140,19 @@ def write_purchase_data_to_cra_pdf(purchases: List[Dict[str, Any]], output_file:
         except (ValueError, TypeError):
             amount = 0.0
 
-        try:
-            spent = float(p.get("total_spent") or 0)
-        except (ValueError, TypeError):
-            spent = 0.0
+        if p.get("fiat_amount_cad"):
+            spent = float(p["fiat_amount_cad"])
+            currency = base_fiat_currency
+        else:
+            try:
+                spent = float(p.get("total_spent") or 0)
+            except (ValueError, TypeError):
+                spent = 0.0
+            currency = p.get("currency") or "CAD"
 
-        currency = p.get("currency") or "CAD"
-
-        summary[vendor][asset]["quantity"] += amount
-        summary[vendor][asset]["total_spent"] += spent
-        summary[vendor][asset]["currency"] = currency
+        key = (vendor, asset, currency)
+        summary[key]["quantity"] += amount
+        summary[key]["total_spent"] += spent
 
     pdf.add_page()
     pdf.set_font("helvetica", size=12)
@@ -146,7 +161,12 @@ def write_purchase_data_to_cra_pdf(purchases: List[Dict[str, Any]], output_file:
     pdf.cell(0, 10, "Summary by Exchange and Asset", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(5)
 
-    for vendor, assets in summary.items():
+    # Group summary by vendor for display
+    vendor_groups = defaultdict(list)
+    for (vendor, asset, currency), data in summary.items():
+        vendor_groups[vendor].append({"asset": asset, "currency": currency, **data})
+
+    for vendor, items in vendor_groups.items():
         pdf.set_font("helvetica", "B", 12)
         pdf.cell(0, 10, f"Exchange: {vendor}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_font("helvetica", size=10)
@@ -157,10 +177,10 @@ def write_purchase_data_to_cra_pdf(purchases: List[Dict[str, Any]], output_file:
         pdf.cell(50, 8, "Total Spent", border=1)
         pdf.ln()
 
-        for asset, data in assets.items():
-            pdf.cell(40, 8, str(asset), border=1)
-            pdf.cell(50, 8, f"{data['quantity']:.8f}", border=1)
-            pdf.cell(50, 8, f"{data['total_spent']:.2f} {data['currency']}", border=1)
+        for item in items:
+            pdf.cell(40, 8, str(item["asset"]), border=1)
+            pdf.cell(50, 8, f"{item['quantity']:.8f}", border=1)
+            pdf.cell(50, 8, f"{item['total_spent']:.2f} {item['currency']}", border=1)
             pdf.ln()
         pdf.ln(5)
 
@@ -176,9 +196,10 @@ def write_purchase_data_to_cra_pdf(purchases: List[Dict[str, Any]], output_file:
     pdf.cell(25, 8, "Exchange", border=1)
     pdf.cell(20, 8, "Type", border=1)
     pdf.cell(20, 8, "Asset", border=1)
-    pdf.cell(35, 8, "Asset ID", border=1)
-    pdf.cell(25, 8, "Quantity", border=1)
-    pdf.cell(30, 8, "Spent", border=1)
+    pdf.cell(30, 8, "Asset ID", border=1)
+    pdf.cell(20, 8, "Quantity", border=1)
+    pdf.cell(25, 8, "Spent", border=1)
+    pdf.cell(25, 8, f"Spent ({base_fiat_currency})", border=1)
     pdf.ln()
 
     for p in purchase_dicts:
@@ -186,9 +207,10 @@ def write_purchase_data_to_cra_pdf(purchases: List[Dict[str, Any]], output_file:
         pdf.cell(25, 8, str(p.get("vendor") or "Unknown"), border=1)
         pdf.cell(20, 8, str(p.get("transaction_type") or "buy"), border=1)
         pdf.cell(20, 8, str(p.get("item_name") or ""), border=1)
-        pdf.cell(35, 8, str(p.get("asset_id") or ""), border=1)
-        pdf.cell(25, 8, str(p.get("amount") or ""), border=1)
-        pdf.cell(30, 8, f"{p.get('total_spent') or ''} {p.get('currency') or ''}", border=1)
+        pdf.cell(30, 8, str(p.get("asset_id") or ""), border=1)
+        pdf.cell(20, 8, str(p.get("amount") or ""), border=1)
+        pdf.cell(25, 8, f"{p.get('total_spent') or ''} {p.get('currency') or ''}", border=1)
+        pdf.cell(25, 8, f"{p.get('fiat_amount_cad') or ''}", border=1)
         pdf.ln()
 
     pdf.output(output_file)

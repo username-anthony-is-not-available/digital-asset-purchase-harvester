@@ -58,8 +58,9 @@ class PurchaseRecord(BaseModel):
     confidence: Optional[float] = None
     extraction_method: Optional[str] = None
     asset_id: Optional[str] = None
+    fiat_amount_cad: Optional[Decimal] = None
 
-    @field_validator("total_spent", "amount", "fee_amount", mode="before")
+    @field_validator("total_spent", "amount", "fee_amount", "fiat_amount_cad", mode="before")
     @classmethod
     def parse_decimal_fields(cls, v: Any) -> Any:
         if v is None:
@@ -103,9 +104,9 @@ class PurchaseRecord(BaseModel):
         except (ValueError, TypeError):
             return None
 
-    @field_validator("total_spent")
+    @field_validator("total_spent", "fiat_amount_cad")
     @classmethod
-    def validate_total_spent(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+    def validate_non_negative_fiat(cls, v: Optional[Decimal]) -> Optional[Decimal]:
         if v is not None and v < Decimal("0"):
             raise ValueError("must be non-negative")
         return v
