@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from digital_asset_harvester import get_settings_with_overrides
 from tests.fixtures.emails import EMAIL_FIXTURES
 
@@ -534,5 +532,5 @@ def test_process_email_with_currency_conversion(mocker, monkeypatch):
 
     result = extractor.process_email(email_content)
     assert result["has_purchase"] is True
-    assert result["purchases"][0]["fiat_amount_cad"] == 1350.0
+    assert result["purchases"][0]["fiat_amount_base"] == 1350.0
     mock_fx_service.get_rate.assert_called_once_with("2024-01-01 12:00:00 UTC", "USD", "CAD")

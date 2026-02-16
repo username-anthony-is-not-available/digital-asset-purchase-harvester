@@ -1,16 +1,22 @@
-from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
+
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from .api import router as api_router, tasks, _save_tasks
+
+from .api import _save_tasks
+from .api import router as api_router
+from .api import tasks
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Cleanup stale and old tasks on startup."""
     import asyncio
+
     from . import api
+
     api.main_loop = asyncio.get_running_loop()
 
     modified = False

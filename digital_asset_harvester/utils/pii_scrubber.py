@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
+from typing import Optional, Set
+
 import regex as re
-from typing import Set, Optional
 
 logger = logging.getLogger(__name__)
 

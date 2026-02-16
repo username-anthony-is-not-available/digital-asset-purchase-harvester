@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Generalize Fiat Currency Support**: Renamed 'fiat_amount_cad' to 'fiat_amount_base' to support non-CAD base currencies (e.g., USD, AUD, EUR).
+- **Multi-Transaction Regex Extraction**: Refactored specialized regex extractors for CoinSpot, Swyftx, and Newton to capture multiple transactions listed in a single email.
+- **Robust Date Parsing in Exporters**: Integrated `dateutil.parser` in Koinly and CryptoTaxCalculator exporters for more reliable handling of timezone-aware dates.
+- **Web UI Enhancements**: Added 'Base Fiat Amount' column to the status page and improved real-time table management.
 - **Token Balance Verification**: Cross-reference harvested purchases with actual on-chain balances.
   - New `BlockchainVerifier` integration using `blockchain-core`.
   - Configurable wallet addresses via `DAP_BLOCKCHAIN_WALLETS`.

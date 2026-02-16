@@ -1,6 +1,7 @@
 """Unit tests for the PIIScrubber utility."""
 
 import pytest
+
 from digital_asset_harvester.utils.pii_scrubber import PIIScrubber
 
 

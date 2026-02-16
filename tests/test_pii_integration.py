@@ -1,8 +1,9 @@
 """Integration tests for PII scrubbing in EmailPurchaseExtractor."""
 
 import pytest
-from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
+
 from digital_asset_harvester.config import get_settings_with_overrides
+from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
 
 def test_pii_scrubbing_integration(mocker):

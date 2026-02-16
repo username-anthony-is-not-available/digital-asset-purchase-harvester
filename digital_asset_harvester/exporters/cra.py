@@ -36,9 +36,9 @@ class CRAReportGenerator:
             "Received Currency": purchase.get("item_name", ""),
             "Sent Quantity": str(purchase.get("total_spent", "")),
             "Sent Currency": purchase.get("currency", ""),
-            f"Sent Quantity ({self.base_fiat_currency})": str(purchase.get("fiat_amount_cad", ""))
-            if purchase.get("fiat_amount_cad")
-            else "",
+            f"Sent Quantity ({self.base_fiat_currency})": (
+                str(purchase.get("fiat_amount_base", "")) if purchase.get("fiat_amount_base") else ""
+            ),
             "Fee Quantity": str(purchase.get("fee_amount", "")) if purchase.get("fee_amount") is not None else "",
             "Fee Currency": purchase.get("fee_currency", ""),
             "Description": f"Transaction at {purchase.get('vendor', 'Unknown')}"
@@ -140,8 +140,8 @@ def write_purchase_data_to_cra_pdf(
         except (ValueError, TypeError):
             amount = 0.0
 
-        if p.get("fiat_amount_cad"):
-            spent = float(p["fiat_amount_cad"])
+        if p.get("fiat_amount_base"):
+            spent = float(p["fiat_amount_base"])
             currency = base_fiat_currency
         else:
             try:
@@ -210,7 +210,7 @@ def write_purchase_data_to_cra_pdf(
         pdf.cell(30, 8, str(p.get("asset_id") or ""), border=1)
         pdf.cell(20, 8, str(p.get("amount") or ""), border=1)
         pdf.cell(25, 8, f"{p.get('total_spent') or ''} {p.get('currency') or ''}", border=1)
-        pdf.cell(25, 8, f"{p.get('fiat_amount_cad') or ''}", border=1)
+        pdf.cell(25, 8, f"{p.get('fiat_amount_base') or ''}", border=1)
         pdf.ln()
 
     pdf.output(output_file)

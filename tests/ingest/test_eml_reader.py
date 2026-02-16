@@ -1,6 +1,8 @@
 import os
-import pytest
 from pathlib import Path
+
+import pytest
+
 from digital_asset_harvester.ingest.eml_reader import EmlDataExtractor
 
 

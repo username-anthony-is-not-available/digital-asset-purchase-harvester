@@ -24,9 +24,8 @@ class CoinSpotExtractor(BaseExtractor):
         # CoinSpot pattern: "You have successfully purchased 50 ADA for $25.00 AUD."
         # Pattern: purchased ([\d,.]+) ([A-Z0-9]+) for ([$€£¥])?([\d,.]+) ([A-Z]{3})?
         pattern = r"purchased\s+([\d,.]+)\s+([A-Z0-9]+)\s+for\s+([$€£¥])?([\d,.]+)\s*([A-Z]{3})?"
-        match = re.search(pattern, body, re.IGNORECASE)
 
-        if match:
+        for match in re.finditer(pattern, body, re.IGNORECASE):
             amount = match.group(1).replace(",", "")
             crypto = match.group(2).upper()
             total_spent = match.group(4).replace(",", "")

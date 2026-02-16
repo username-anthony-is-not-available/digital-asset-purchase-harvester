@@ -52,6 +52,7 @@ def get_llm_client(provider: str | None = None, settings: HarvesterSettings | No
 
         if settings.enable_ollama_fallback and not provider:
             from digital_asset_harvester.config import get_settings_with_overrides
+
             from .fallback_client import FallbackLLMClient
 
             # Primary client with threshold as timeout

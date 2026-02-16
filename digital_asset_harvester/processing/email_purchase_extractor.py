@@ -3,25 +3,20 @@
 import email
 import logging
 import time
-from decimal import Decimal
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any, Dict, List, Optional, Set
 
 from pydantic import ValidationError
 
-from digital_asset_harvester.config import HarvesterSettings, get_settings
 from digital_asset_harvester.confidence import calculate_confidence
-from digital_asset_harvester.utils.pii_scrubber import PIIScrubber
-from digital_asset_harvester.utils.asset_mapping import mapper as asset_mapper
-from digital_asset_harvester.utils.fx_rates import fx_service
+from digital_asset_harvester.config import HarvesterSettings, get_settings
+from digital_asset_harvester.ingest.email_parser import decode_header_value, extract_body
 from digital_asset_harvester.llm import get_llm_client
 from digital_asset_harvester.llm.ollama_client import LLMError
 from digital_asset_harvester.llm.provider import LLMProvider
-from digital_asset_harvester.prompts import DEFAULT_PROMPTS, PromptManager
-from digital_asset_harvester.ingest.email_parser import decode_header_value, extract_body
-from digital_asset_harvester.processing.extractors import registry
 from digital_asset_harvester.processing.constants import (
     CRYPTO_EXCHANGES,
     CRYPTO_EXCHANGES_PATTERN,
@@ -32,13 +27,18 @@ from digital_asset_harvester.processing.constants import (
     PURCHASE_KEYWORDS,
     PURCHASE_KEYWORDS_PATTERN,
 )
-from digital_asset_harvester.validation import PurchaseRecord, PurchaseValidator
+from digital_asset_harvester.processing.extractors import registry
+from digital_asset_harvester.prompts import DEFAULT_PROMPTS, PromptManager
 from digital_asset_harvester.telemetry import (
     MetricsTracker,
     StructuredLoggerAdapter,
     StructuredLoggerFactory,
     log_event,
 )
+from digital_asset_harvester.utils.asset_mapping import mapper as asset_mapper
+from digital_asset_harvester.utils.fx_rates import fx_service
+from digital_asset_harvester.utils.pii_scrubber import PIIScrubber
+from digital_asset_harvester.validation import PurchaseRecord, PurchaseValidator
 
 logger = logging.getLogger(__name__)
 
@@ -527,9 +527,9 @@ class EmailPurchaseExtractor:
                     rate = fx_service.get_rate(p_date, from_curr, to_curr)
                     if rate:
                         # Use Decimal for calculation
-                        cad_amount = Decimal(str(purchase_info["total_spent"])) * rate
-                        purchase_info["fiat_amount_cad"] = cad_amount
-                        logger.info(f"Converted {purchase_info['total_spent']} {from_curr} to {cad_amount} {to_curr}")
+                        base_amount = Decimal(str(purchase_info["total_spent"])) * rate
+                        purchase_info["fiat_amount_base"] = base_amount
+                        logger.info(f"Converted {purchase_info['total_spent']} {from_curr} to {base_amount} {to_curr}")
 
                 # 3. Validate the extracted data (includes Pydantic validation)
                 is_valid, validation_issues = self._validate_purchase_data(purchase_info)
@@ -554,8 +554,8 @@ class EmailPurchaseExtractor:
                     purchase_info["total_spent"] = float(purchase_record.total_spent)
                 if purchase_record.fee_amount is not None:
                     purchase_info["fee_amount"] = float(purchase_record.fee_amount)
-                if purchase_record.fiat_amount_cad is not None:
-                    purchase_info["fiat_amount_cad"] = float(purchase_record.fiat_amount_cad)
+                if purchase_record.fiat_amount_base is not None:
+                    purchase_info["fiat_amount_base"] = float(purchase_record.fiat_amount_base)
 
                 purchase_info["transaction_type"] = purchase_record.transaction_type
                 validated_purchases.append(purchase_info)

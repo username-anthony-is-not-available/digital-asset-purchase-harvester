@@ -6,9 +6,7 @@ Run with: pytest tests/performance/ --benchmark-only
 import pytest
 
 from digital_asset_harvester import get_settings
-from digital_asset_harvester.processing.email_purchase_extractor import (
-    EmailPurchaseExtractor as ExtractorClass,
-)
+from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor as ExtractorClass
 from digital_asset_harvester.telemetry import StructuredLoggerFactory
 
 # Sample email for benchmarking

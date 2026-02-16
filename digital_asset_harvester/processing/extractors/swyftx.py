@@ -31,9 +31,8 @@ class SwyftxExtractor(BaseExtractor):
 
         # Pattern: "You've successfully bought 1.5 ETH for $4,500.00 AUD"
         pattern = r"bought\s+([\d,.]+)\s+([A-Z]{3,5})\s+for\s+([$€£¥])?([\d,.]+)\s*([A-Z]{3})?"
-        match = re.search(pattern, body, re.IGNORECASE)
 
-        if match:
+        for match in re.finditer(pattern, body, re.IGNORECASE):
             amount = match.group(1).replace(",", "")
             crypto = match.group(2).upper()
             total_spent = match.group(4).replace(",", "")

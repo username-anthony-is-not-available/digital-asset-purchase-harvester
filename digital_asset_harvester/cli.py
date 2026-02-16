@@ -4,37 +4,37 @@ from __future__ import annotations
 
 import argparse
 import logging
-from typing import Iterable, Optional, Callable
+from typing import Callable, Iterable, Optional
 
 from tqdm import tqdm
 
 from digital_asset_harvester import (
     EmailPurchaseExtractor,
+    EmlDataExtractor,
     HarvesterSettings,
     MboxDataExtractor,
-    EmlDataExtractor,
     get_llm_client,
     get_settings,
     log_event,
     write_purchase_data_to_csv,
 )
-from digital_asset_harvester.ingest.gmail_client import GmailClient
-from digital_asset_harvester.ingest.outlook_client import OutlookClient
-from digital_asset_harvester.ingest.imap_client import ImapClient
-from digital_asset_harvester.integrations.koinly_api_client import (
-    KoinlyApiClient,
-    KoinlyApiError,
-)
-from digital_asset_harvester.integrations.blockchain_verifier import BlockchainVerifier
-from digital_asset_harvester.exporters.koinly import (
-    write_purchase_data_to_koinly_csv,
+from digital_asset_harvester.exporters.cra import (
+    write_purchase_data_to_cra_csv,
+    write_purchase_data_to_cra_pdf,
 )
 from digital_asset_harvester.exporters.cryptotaxcalculator import (
     write_purchase_data_to_ctc_csv,
 )
-from digital_asset_harvester.exporters.cra import (
-    write_purchase_data_to_cra_csv,
-    write_purchase_data_to_cra_pdf,
+from digital_asset_harvester.exporters.koinly import (
+    write_purchase_data_to_koinly_csv,
+)
+from digital_asset_harvester.ingest.gmail_client import GmailClient
+from digital_asset_harvester.ingest.imap_client import ImapClient
+from digital_asset_harvester.ingest.outlook_client import OutlookClient
+from digital_asset_harvester.integrations.blockchain_verifier import BlockchainVerifier
+from digital_asset_harvester.integrations.koinly_api_client import (
+    KoinlyApiClient,
+    KoinlyApiError,
 )
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
@@ -189,6 +189,7 @@ def _process_email_worker(
 ) -> tuple[dict, int, dict]:
     """Worker function for multiprocessing."""
     from email import message_from_bytes, message_from_string
+
     from digital_asset_harvester import EmailPurchaseExtractor, get_llm_client
     from digital_asset_harvester.ingest.email_parser import message_to_dict
     from digital_asset_harvester.telemetry import StructuredLoggerFactory
@@ -311,7 +312,8 @@ def process_emails(
     email_list = []
     for email in raw_email_list:
         if duplicate_detector.is_email_duplicate(email, auto_save=False):
-            _safe_log(f"Skipping already processed email: {email.get('subject', 'No Subject')}", level=logging.DEBUG)
+            subject = email.get("subject", "No Subject") if isinstance(email, dict) else "Raw Content"
+            _safe_log(f"Skipping already processed email: {subject}", level=logging.DEBUG)
             metrics.increment("email_duplicates_skipped")
             continue
         email_list.append(email)
@@ -375,12 +377,17 @@ def process_emails(
         if enable_multiprocessing:
             _safe_log(f"Starting multiprocessing with {max_workers} workers")
             executor_class = ProcessPoolExecutor
+
             # In multiprocessing, we pass the worker function and settings
-            submit_fn = lambda exc, email, idx: exc.submit(_process_email_worker, email, idx, settings)
+            def submit_fn(exc, email, idx):
+                return exc.submit(_process_email_worker, email, idx, settings)
+
         else:
             _safe_log(f"Starting parallel processing with {max_workers} workers")
             executor_class = ThreadPoolExecutor
-            submit_fn = lambda exc, email, idx: exc.submit(_process_single_email, email, idx, extractor)
+
+            def submit_fn(exc, email, idx):
+                return exc.submit(_process_single_email, email, idx, extractor)
 
         with executor_class(max_workers=max_workers) as executor:
             futures = {submit_fn(executor, email, idx): (email, idx) for idx, email in enumerate(email_list, 1)}
@@ -632,7 +639,7 @@ def run(argv: Optional[list[str]] = None) -> int:
             overrides["max_workers"] = args.max_workers
 
         if overrides:
-            from dataclasses import replace, is_dataclass
+            from dataclasses import is_dataclass, replace
 
             if is_dataclass(settings) and not hasattr(settings, "assert_called"):
                 settings = replace(settings, **overrides)
@@ -673,12 +680,13 @@ def run(argv: Optional[list[str]] = None) -> int:
             logger.info("Fetching emails from Outlook...")
 
             # Priority: CLI arg > outlook_client_id > imap_client_id (legacy fallback)
-            client_id = (
-                args.client_id or getattr(settings, "outlook_client_id", "") or getattr(settings, "imap_client_id", "")
-            )
-            authority = (
-                args.authority or getattr(settings, "outlook_authority", "") or getattr(settings, "imap_authority", "")
-            )
+            client_id = args.client_id or getattr(settings, "outlook_client_id", "")
+            if not client_id:
+                client_id = getattr(settings, "imap_client_id", "")
+
+            authority = args.authority or getattr(settings, "outlook_authority", "")
+            if not authority:
+                authority = getattr(settings, "imap_authority", "")
 
             if not all([client_id, authority]):
                 logger.error(

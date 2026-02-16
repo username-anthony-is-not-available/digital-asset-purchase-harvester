@@ -1,10 +1,12 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from digital_asset_harvester.llm.fallback_client import FallbackLLMClient
-from digital_asset_harvester.llm.provider import LLMResult
-from digital_asset_harvester.llm.ollama_client import LLMError
-from digital_asset_harvester.llm import get_llm_client
+
+import pytest
+
 from digital_asset_harvester.config import HarvesterSettings
+from digital_asset_harvester.llm import get_llm_client
+from digital_asset_harvester.llm.fallback_client import FallbackLLMClient
+from digital_asset_harvester.llm.ollama_client import LLMError
+from digital_asset_harvester.llm.provider import LLMResult
 
 
 def test_fallback_client_success_primary():
