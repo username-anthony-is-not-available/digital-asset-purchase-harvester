@@ -7,11 +7,11 @@ from typing import Any, Dict, List, Optional
 from .base import BaseExtractor
 from .binance import BinanceExtractor
 from .coinbase import CoinbaseExtractor
-from .kraken import KrakenExtractor
-from .gemini import GeminiExtractor
+from .coinspot import CoinSpotExtractor
 from .cryptocom import CryptocomExtractor
 from .ftx import FTXExtractor
-from .coinspot import CoinSpotExtractor
+from .gemini import GeminiExtractor
+from .kraken import KrakenExtractor
 
 
 class ExtractorRegistry:

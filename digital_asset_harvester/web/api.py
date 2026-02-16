@@ -1,31 +1,33 @@
-import os
-import logging
-import shutil
-import uuid
 import csv
 import json
+import logging
+import os
+import shutil
 import tempfile
 import threading
+import uuid
 from datetime import datetime
-from typing import List
-from fastapi import APIRouter, File, UploadFile, Depends, BackgroundTasks, HTTPException
-from fastapi.responses import RedirectResponse, StreamingResponse
 from io import StringIO
+from typing import List
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from fastapi.responses import RedirectResponse, StreamingResponse
+
 from .. import (
     EmailPurchaseExtractor,
-    MboxDataExtractor,
     EmlDataExtractor,
+    MboxDataExtractor,
     get_llm_client,
     get_settings,
 )
-from ..ingest import ImapClient, GmailClient, OutlookClient
-from ..utils.sync_state import SyncState
-from ..telemetry import StructuredLoggerFactory
-from ..cli import process_emails, configure_logging
-from ..utils.data_utils import normalize_for_frontend, denormalize_from_frontend
-from ..exporters.koinly import KoinlyReportGenerator
-from ..exporters.cryptotaxcalculator import CryptoTaxCalculatorReportGenerator
+from ..cli import configure_logging, process_emails
 from ..exporters.cra import CRAReportGenerator, write_purchase_data_to_cra_pdf
+from ..exporters.cryptotaxcalculator import CryptoTaxCalculatorReportGenerator
+from ..exporters.koinly import KoinlyReportGenerator
+from ..ingest import GmailClient, ImapClient, OutlookClient
+from ..telemetry import StructuredLoggerFactory
+from ..utils.data_utils import denormalize_from_frontend, normalize_for_frontend
+from ..utils.sync_state import SyncState
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

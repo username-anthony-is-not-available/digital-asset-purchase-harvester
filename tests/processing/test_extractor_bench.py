@@ -1,13 +1,14 @@
 """Standardized test bench for exchange extractors using synthetic email templates."""
 
 import pytest
-from digital_asset_harvester.processing.extractors.coinbase import CoinbaseExtractor
+
 from digital_asset_harvester.processing.extractors.binance import BinanceExtractor
-from digital_asset_harvester.processing.extractors.kraken import KrakenExtractor
-from digital_asset_harvester.processing.extractors.gemini import GeminiExtractor
+from digital_asset_harvester.processing.extractors.coinbase import CoinbaseExtractor
+from digital_asset_harvester.processing.extractors.coinspot import CoinSpotExtractor
 from digital_asset_harvester.processing.extractors.cryptocom import CryptocomExtractor
 from digital_asset_harvester.processing.extractors.ftx import FTXExtractor
-from digital_asset_harvester.processing.extractors.coinspot import CoinSpotExtractor
+from digital_asset_harvester.processing.extractors.gemini import GeminiExtractor
+from digital_asset_harvester.processing.extractors.kraken import KrakenExtractor
 
 # Test data mapping: (ExtractorClass, Subject, Sender, Body, ExpectedResults)
 TEST_CASES = [

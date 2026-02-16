@@ -7,7 +7,6 @@ Run with: pytest tests/integration/ -v --timeout=300
 import csv
 import mailbox
 
-
 import pytest
 
 from digital_asset_harvester import (

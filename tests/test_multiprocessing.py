@@ -1,8 +1,10 @@
+from unittest.mock import MagicMock
+
 import pytest
-from digital_asset_harvester.cli import process_emails, HarvesterSettings
+
+from digital_asset_harvester.cli import HarvesterSettings, process_emails
 from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 from digital_asset_harvester.telemetry import StructuredLoggerFactory
-from unittest.mock import MagicMock
 
 
 def test_process_emails_uses_multiprocessing(mocker):

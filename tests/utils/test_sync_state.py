@@ -1,7 +1,9 @@
-import os
 import json
+import os
 import tempfile
+
 import pytest
+
 from digital_asset_harvester.utils.sync_state import SyncState
 
 

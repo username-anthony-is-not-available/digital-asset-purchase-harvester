@@ -1,7 +1,8 @@
 import pytest
-from digital_asset_harvester.processing.extractors.gemini import GeminiExtractor
+
 from digital_asset_harvester.processing.extractors.cryptocom import CryptocomExtractor
 from digital_asset_harvester.processing.extractors.ftx import FTXExtractor
+from digital_asset_harvester.processing.extractors.gemini import GeminiExtractor
 from tests.fixtures.emails import EMAIL_FIXTURES
 
 

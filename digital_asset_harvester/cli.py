@@ -4,37 +4,37 @@ from __future__ import annotations
 
 import argparse
 import logging
-from typing import Iterable, Optional, Callable
+from typing import Callable, Iterable, Optional
 
 from tqdm import tqdm
 
 from digital_asset_harvester import (
     EmailPurchaseExtractor,
+    EmlDataExtractor,
     HarvesterSettings,
     MboxDataExtractor,
-    EmlDataExtractor,
     get_llm_client,
     get_settings,
     log_event,
     write_purchase_data_to_csv,
 )
-from digital_asset_harvester.ingest.gmail_client import GmailClient
-from digital_asset_harvester.ingest.outlook_client import OutlookClient
-from digital_asset_harvester.ingest.imap_client import ImapClient
-from digital_asset_harvester.integrations.koinly_api_client import (
-    KoinlyApiClient,
-    KoinlyApiError,
-)
-from digital_asset_harvester.integrations.blockchain_verifier import BlockchainVerifier
-from digital_asset_harvester.exporters.koinly import (
-    write_purchase_data_to_koinly_csv,
+from digital_asset_harvester.exporters.cra import (
+    write_purchase_data_to_cra_csv,
+    write_purchase_data_to_cra_pdf,
 )
 from digital_asset_harvester.exporters.cryptotaxcalculator import (
     write_purchase_data_to_ctc_csv,
 )
-from digital_asset_harvester.exporters.cra import (
-    write_purchase_data_to_cra_csv,
-    write_purchase_data_to_cra_pdf,
+from digital_asset_harvester.exporters.koinly import (
+    write_purchase_data_to_koinly_csv,
+)
+from digital_asset_harvester.ingest.gmail_client import GmailClient
+from digital_asset_harvester.ingest.imap_client import ImapClient
+from digital_asset_harvester.ingest.outlook_client import OutlookClient
+from digital_asset_harvester.integrations.blockchain_verifier import BlockchainVerifier
+from digital_asset_harvester.integrations.koinly_api_client import (
+    KoinlyApiClient,
+    KoinlyApiError,
 )
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
@@ -189,6 +189,7 @@ def _process_email_worker(
 ) -> tuple[dict, int, dict]:
     """Worker function for multiprocessing."""
     from email import message_from_bytes, message_from_string
+
     from digital_asset_harvester import EmailPurchaseExtractor, get_llm_client
     from digital_asset_harvester.ingest.email_parser import message_to_dict
     from digital_asset_harvester.telemetry import StructuredLoggerFactory
@@ -584,7 +585,7 @@ def run(argv: Optional[list[str]] = None) -> int:
             overrides["max_workers"] = args.max_workers
 
         if overrides:
-            from dataclasses import replace, is_dataclass
+            from dataclasses import is_dataclass, replace
 
             if is_dataclass(settings) and not hasattr(settings, "assert_called"):
                 settings = replace(settings, **overrides)

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from digital_asset_harvester.utils.data_utils import normalize_for_frontend, denormalize_from_frontend
+
+from digital_asset_harvester.utils.data_utils import denormalize_from_frontend, normalize_for_frontend
 
 
 def test_normalize_for_frontend_basic():

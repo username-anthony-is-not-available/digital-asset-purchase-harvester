@@ -10,16 +10,12 @@ from typing import Any, Dict, List, Optional, Set
 
 from pydantic import ValidationError
 
-from digital_asset_harvester.config import HarvesterSettings, get_settings
 from digital_asset_harvester.confidence import calculate_confidence
-from digital_asset_harvester.utils.pii_scrubber import PIIScrubber
-from digital_asset_harvester.utils.asset_mapping import mapper as asset_mapper
+from digital_asset_harvester.config import HarvesterSettings, get_settings
+from digital_asset_harvester.ingest.email_parser import decode_header_value, extract_body
 from digital_asset_harvester.llm import get_llm_client
 from digital_asset_harvester.llm.ollama_client import LLMError
 from digital_asset_harvester.llm.provider import LLMProvider
-from digital_asset_harvester.prompts import DEFAULT_PROMPTS, PromptManager
-from digital_asset_harvester.ingest.email_parser import decode_header_value, extract_body
-from digital_asset_harvester.processing.extractors import registry
 from digital_asset_harvester.processing.constants import (
     CRYPTO_EXCHANGES,
     CRYPTO_EXCHANGES_PATTERN,
@@ -30,13 +26,17 @@ from digital_asset_harvester.processing.constants import (
     PURCHASE_KEYWORDS,
     PURCHASE_KEYWORDS_PATTERN,
 )
-from digital_asset_harvester.validation import PurchaseRecord, PurchaseValidator
+from digital_asset_harvester.processing.extractors import registry
+from digital_asset_harvester.prompts import DEFAULT_PROMPTS, PromptManager
 from digital_asset_harvester.telemetry import (
     MetricsTracker,
     StructuredLoggerAdapter,
     StructuredLoggerFactory,
     log_event,
 )
+from digital_asset_harvester.utils.asset_mapping import mapper as asset_mapper
+from digital_asset_harvester.utils.pii_scrubber import PIIScrubber
+from digital_asset_harvester.validation import PurchaseRecord, PurchaseValidator
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,7 @@
 """Tests for Kraken staking rewards extraction."""
 
 import pytest
+
 from digital_asset_harvester.processing.extractors.kraken import KrakenExtractor
 
 

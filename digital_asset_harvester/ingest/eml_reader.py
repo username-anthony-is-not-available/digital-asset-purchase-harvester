@@ -1,7 +1,7 @@
-import os
 import email
-from typing import Any, Dict, Generator
+import os
 from pathlib import Path
+from typing import Any, Dict, Generator
 
 from .email_parser import message_to_dict
 
