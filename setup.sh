@@ -109,50 +109,47 @@ build_docker_image() {
     fi
     
     print_info "Building image: $DOCKER_IMAGE_NAME"
-    docker build -t "$DOCKER_IMAGE_NAME:latest" .
+    docker build --build-arg OLLAMA_MODEL="$OLLAMA_MODEL" -t "$DOCKER_IMAGE_NAME:latest" .
     print_success "Docker image built successfully"
 }
 
 # Create Dockerfile if it doesn't exist
 create_dockerfile() {
     cat > Dockerfile <<'EOF'
-# Digital Asset Purchase Harvester - Dockerfile
-FROM python:3.11-slim
+# Digital Asset Purchase Harvester - Multi-stage Dockerfile
+# Stage 1: Model Cache
+FROM ollama/ollama:latest AS model-cache
+ARG OLLAMA_MODEL=llama3.2:3b
+RUN ollama serve & sleep 5 && ollama pull ${OLLAMA_MODEL}
 
-# Set working directory
+# Stage 2: Builder
+FROM python:3.11-slim AS builder
 WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements files
+RUN apt-get update && apt-get install -y git curl && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt requirements-dev.txt ./
-
-# Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt && \
     pip install --no-cache-dir -r requirements-dev.txt
-
-# Copy application code
 COPY . .
+RUN pip install --no-cache-dir .
 
-# Install package in editable mode
-RUN pip install -e .
-
-# Create directory for output
-RUN mkdir -p /app/output
-
-# Set environment variables
+# Stage 3: Final
+FROM python:3.11-slim AS final
+WORKDIR /app
+RUN apt-get update && apt-get install -y curl git && rm -rf /var/lib/apt/lists/*
+RUN curl -L https://ollama.com/download/ollama-linux-amd64 -o /usr/bin/ollama && chmod +x /usr/bin/ollama
+COPY --from=model-cache /root/.ollama /root/.ollama
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY . .
 ENV PYTHONUNBUFFERED=1
 ENV DAP_LOG_LEVEL=INFO
-
-# Expose port for web interface if needed
-EXPOSE 8000
-
-# Default command
+ENV OLLAMA_HOST=http://localhost:11434
+RUN mkdir -p /app/output
+EXPOSE 8000 11434
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["digital-asset-harvester", "--help"]
 EOF
     print_success "Dockerfile created"
@@ -185,7 +182,8 @@ services:
     command: ["tail", "-f", "/dev/null"]  # Keep container running
 
   ollama:
-    image: ollama/ollama:latest
+    build: .
+    image: digital-asset-harvester:latest
     container_name: ollama-service
     ports:
       - "11434:11434"
@@ -193,6 +191,7 @@ services:
       - ollama-data:/root/.ollama
     networks:
       - harvester-network
+    command: ["ollama", "serve"]
 
 networks:
   harvester-network:
@@ -204,6 +203,58 @@ EOF
         print_success "docker-compose.yml created"
     else
         print_info "docker-compose.yml already exists"
+    fi
+}
+
+# Create docker-entrypoint.sh if it doesn't exist
+create_entrypoint() {
+    if [ ! -f "docker-entrypoint.sh" ]; then
+        print_info "Creating docker-entrypoint.sh..."
+        cat > docker-entrypoint.sh <<'EOF'
+#!/bin/bash
+# Digital Asset Purchase Harvester - Docker Entrypoint Script
+set -e
+
+# Function to start Ollama server in the background
+start_ollama() {
+    echo "Starting Ollama server in background..."
+    # Start ollama and redirect its output to a log file
+    ollama serve > /app/ollama.log 2>&1 &
+
+    # Wait for Ollama to be ready (up to 60 seconds)
+    local retries=0
+    local max_retries=60
+    until curl -s http://localhost:11434/api/tags > /dev/null || [ $retries -eq $max_retries ]; do
+        echo "Waiting for Ollama to start... ($retries/$max_retries)"
+        sleep 1
+        ((retries++))
+    done
+
+    if [ $retries -eq $max_retries ]; then
+        echo "❌ Ollama failed to start within $max_retries seconds"
+        # Print logs to help debugging
+        cat /app/ollama.log
+        exit 1
+    fi
+    echo "✅ Ollama is ready."
+}
+
+# Check if we should start local Ollama
+# We start it if OLLAMA_HOST is targeting localhost/127.0.0.1
+# AND if the command is not 'ollama serve' itself (to avoid port conflicts)
+if [[ "$OLLAMA_HOST" == *"localhost"* ]] || [[ "$OLLAMA_HOST" == *"127.0.0.1"* ]]; then
+    if [[ "$1" == *"ollama"* ]] && [[ "$2" == "serve" ]]; then
+        echo "Ollama serve detected in command, skipping background startup."
+    else
+        start_ollama
+    fi
+fi
+
+# Execute the main command
+exec "$@"
+EOF
+        chmod +x docker-entrypoint.sh
+        print_success "docker-entrypoint.sh created"
     fi
 }
 
@@ -273,6 +324,7 @@ EOF
 setup_ollama_model() {
     print_header "Setting up Ollama Model"
     
+    print_info "The Docker image now includes pre-cached model weights for $OLLAMA_MODEL."
     print_info "Starting Ollama service..."
     docker compose up -d ollama
     
@@ -280,13 +332,17 @@ setup_ollama_model() {
     print_info "Waiting for Ollama service to be ready..."
     sleep 5
     
-    # Pull the model
-    print_info "Pulling Ollama model: $OLLAMA_MODEL"
-    print_warning "This may take several minutes depending on your internet connection..."
-    docker compose exec -T ollama ollama pull "$OLLAMA_MODEL" || {
-        print_warning "Failed to pull model automatically"
-        print_info "You can pull it manually later with: docker compose exec ollama ollama pull $OLLAMA_MODEL"
-    }
+    # Verify the model is present
+    print_info "Verifying model availability..."
+    if docker compose exec -T ollama ollama list | grep -q "$(echo $OLLAMA_MODEL | cut -d: -f1)"; then
+        print_success "Verified $OLLAMA_MODEL is available (pre-cached or already pulled)."
+    else
+        print_warning "Model $OLLAMA_MODEL not found in image, pulling now..."
+        docker compose exec -T ollama ollama pull "$OLLAMA_MODEL" || {
+            print_warning "Failed to pull model automatically"
+            print_info "You can pull it manually later with: docker compose exec ollama ollama pull $OLLAMA_MODEL"
+        }
+    fi
     
     print_success "Ollama setup complete"
 }
@@ -339,6 +395,7 @@ main() {
     
     # Create necessary files
     create_dockerignore
+    create_entrypoint
     create_docker_compose
     
     # Build and setup
