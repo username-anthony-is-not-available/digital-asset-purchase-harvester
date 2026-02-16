@@ -264,7 +264,17 @@ def process_emails(
         enable_multiprocessing = False
 
     is_parallel = enable_parallel or enable_multiprocessing
-    email_list = list(emails)
+
+    # Pre-filter duplicates to save processing time and LLM costs
+    raw_email_list = list(emails)
+    email_list = []
+    for email in raw_email_list:
+        if duplicate_detector.is_email_duplicate(email, auto_save=False):
+            logger.info("Skipping already processed email: %s", email.get("subject", "No Subject"))
+            metrics.increment("email_duplicates_skipped")
+            continue
+        email_list.append(email)
+
     total_emails = len(email_list)
 
     iterator = tqdm(
@@ -450,7 +460,8 @@ def _process_and_save_results(
                 logger.info("  Regex extractions: %d", metrics.get("purchases_extracted_regex"))
                 logger.info("  LLM extractions: %d", metrics.get("purchases_extracted_llm"))
                 logger.info("  Emails skipped by preprocessing: %d", metrics.get("emails_skipped_preprocessing"))
-                logger.info("  Duplicates skipped: %d", metrics.get("duplicate_purchases_skipped"))
+                logger.info("  Email duplicates skipped: %d", metrics.get("email_duplicates_skipped"))
+                logger.info("  Purchase duplicates skipped: %d", metrics.get("duplicate_purchases_skipped"))
 
                 # New detailed metrics
                 logger.info("  LLM calls total: %d", metrics.get("llm_calls_total"))
@@ -543,7 +554,8 @@ def _process_and_save_results(
     logger.info("  Regex extractions: %d", metrics.get("purchases_extracted_regex"))
     logger.info("  LLM extractions: %d", metrics.get("purchases_extracted_llm"))
     logger.info("  Emails skipped by preprocessing: %d", metrics.get("emails_skipped_preprocessing"))
-    logger.info("  Duplicates skipped: %d", metrics.get("duplicate_purchases_skipped"))
+    logger.info("  Email duplicates skipped: %d", metrics.get("email_duplicates_skipped"))
+    logger.info("  Purchase duplicates skipped: %d", metrics.get("duplicate_purchases_skipped"))
 
     # New detailed metrics
     logger.info("  LLM calls total: %d", metrics.get("llm_calls_total"))
