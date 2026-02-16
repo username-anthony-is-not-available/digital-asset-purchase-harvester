@@ -481,9 +481,7 @@ async def export_cra_pdf(task_id: str):
     denormalized_results = [denormalize_from_frontend(p) for p in results]
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        write_purchase_data_to_cra_pdf(
-            denormalized_results, tmp.name, base_fiat_currency=settings.base_fiat_currency
-        )
+        write_purchase_data_to_cra_pdf(denormalized_results, tmp.name, base_fiat_currency=settings.base_fiat_currency)
         tmp_path = tmp.name
 
     def iterfile():

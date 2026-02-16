@@ -25,7 +25,9 @@ def test_process_emails_progress_callback():
         progress_updates.append((current, total))
 
     # Execute
-    process_emails(emails, extractor, logger_factory, show_progress=False, progress_callback=callback)
+    process_emails(
+        emails, extractor, logger_factory, show_progress=False, progress_callback=callback, history_path=None
+    )
 
     # Verify
     assert len(progress_updates) == 3
@@ -54,7 +56,9 @@ def test_process_emails_progress_callback_parallel():
         progress_updates.append((current, total))
 
     # Execute
-    process_emails(emails, extractor, logger_factory, show_progress=False, progress_callback=callback)
+    process_emails(
+        emails, extractor, logger_factory, show_progress=False, progress_callback=callback, history_path=None
+    )
 
     # Verify
     assert len(progress_updates) == 3
