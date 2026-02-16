@@ -3,6 +3,7 @@
 import email
 import logging
 import time
+from decimal import Decimal
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -14,6 +15,7 @@ from digital_asset_harvester.config import HarvesterSettings, get_settings
 from digital_asset_harvester.confidence import calculate_confidence
 from digital_asset_harvester.utils.pii_scrubber import PIIScrubber
 from digital_asset_harvester.utils.asset_mapping import mapper as asset_mapper
+from digital_asset_harvester.utils.fx_rates import fx_service
 from digital_asset_harvester.llm import get_llm_client
 from digital_asset_harvester.llm.ollama_client import LLMError
 from digital_asset_harvester.llm.provider import LLMProvider
@@ -507,37 +509,56 @@ class EmailPurchaseExtractor:
 
         validated_purchases = []
         for purchase_info in extracted_purchases:
-            # Create a PurchaseRecord to pass to calculate_confidence
             try:
-                purchase_record = PurchaseRecord.model_validate(purchase_info)
+                # 1. Populate asset_id if not already present
+                if not purchase_info.get("asset_id") and purchase_info.get("item_name"):
+                    purchase_info["asset_id"] = asset_mapper.get_asset_id(purchase_info["item_name"])
 
-                # Calculate and update the confidence score
-                purchase_info["confidence"] = calculate_confidence(purchase_record)
+                # 2. Perform currency conversion if enabled
+                if (
+                    self.settings.enable_currency_conversion
+                    and purchase_info.get("total_spent")
+                    and purchase_info.get("currency")
+                ):
+                    from_curr = purchase_info["currency"]
+                    to_curr = self.settings.base_fiat_currency
+                    p_date = purchase_info.get("purchase_date", "")
 
-                # Validate the extracted data
+                    rate = fx_service.get_rate(p_date, from_curr, to_curr)
+                    if rate:
+                        # Use Decimal for calculation
+                        cad_amount = Decimal(str(purchase_info["total_spent"])) * rate
+                        purchase_info["fiat_amount_cad"] = cad_amount
+                        logger.info(f"Converted {purchase_info['total_spent']} {from_curr} to {cad_amount} {to_curr}")
+
+                # 3. Validate the extracted data (includes Pydantic validation)
                 is_valid, validation_issues = self._validate_purchase_data(purchase_info)
-                if is_valid:
-                    # Normalize types for consistency (especially for regex extractors)
-                    if purchase_record.amount is not None:
-                        purchase_info["amount"] = float(purchase_record.amount)
-                    if purchase_record.total_spent is not None:
-                        purchase_info["total_spent"] = float(purchase_record.total_spent)
-                    if purchase_record.fee_amount is not None:
-                        purchase_info["fee_amount"] = float(purchase_record.fee_amount)
-
-                    purchase_info["transaction_type"] = purchase_record.transaction_type
-
-                    # Populate asset_id if not already present
-                    if not purchase_info.get("asset_id") and purchase_info.get("item_name"):
-                        purchase_info["asset_id"] = asset_mapper.get_asset_id(purchase_info["item_name"])
-
-                    validated_purchases.append(purchase_info)
-                else:
+                if not is_valid:
                     logger.warning("Extracted purchase data failed validation")
                     reason = "; ".join(validation_issues)
                     processing_notes.append(
                         f"Extracted data for {purchase_info.get('item_name')} failed validation: {reason}"
                     )
+                    continue
+
+                # 4. Create a PurchaseRecord for confidence calculation and type normalization
+                purchase_record = PurchaseRecord.model_validate(purchase_info)
+
+                # Calculate and update the confidence score
+                purchase_info["confidence"] = calculate_confidence(purchase_record)
+
+                # Normalize types for consistency in the output dictionary
+                if purchase_record.amount is not None:
+                    purchase_info["amount"] = float(purchase_record.amount)
+                if purchase_record.total_spent is not None:
+                    purchase_info["total_spent"] = float(purchase_record.total_spent)
+                if purchase_record.fee_amount is not None:
+                    purchase_info["fee_amount"] = float(purchase_record.fee_amount)
+                if purchase_record.fiat_amount_cad is not None:
+                    purchase_info["fiat_amount_cad"] = float(purchase_record.fiat_amount_cad)
+
+                purchase_info["transaction_type"] = purchase_record.transaction_type
+                validated_purchases.append(purchase_info)
             except Exception as e:
                 logger.warning("Error processing extracted purchase: %s", e)
                 processing_notes.append(f"Error processing extracted purchase: {e}")

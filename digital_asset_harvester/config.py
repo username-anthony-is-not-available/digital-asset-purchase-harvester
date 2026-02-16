@@ -91,6 +91,9 @@ class HarvesterSettings:
     enable_blockchain_verification: bool = False
     blockchain_wallets: str = ""
 
+    enable_currency_conversion: bool = False
+    base_fiat_currency: str = "CAD"
+
 
 def _coerce_value(value: str, expected_type: Type[Any], *, field_name: str) -> Any:
     """Convert string environment values to the expected type."""
