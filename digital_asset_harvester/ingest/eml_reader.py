@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .email_parser import message_to_dict
 
+
 class EmlDataExtractor:
     """Extracts data from a directory of .eml files."""
 
@@ -24,10 +25,10 @@ class EmlDataExtractor:
 
         for root, _, files in os.walk(self.eml_dir):
             for file in files:
-                if file.lower().endswith('.eml'):
+                if file.lower().endswith(".eml"):
                     file_path = os.path.join(root, file)
                     try:
-                        with open(file_path, 'rb') as f:
+                        with open(file_path, "rb") as f:
                             msg = email.message_from_binary_file(f)
 
                         if raw:

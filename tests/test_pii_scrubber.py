@@ -3,11 +3,13 @@
 import pytest
 from digital_asset_harvester.utils.pii_scrubber import PIIScrubber
 
+
 def test_scrub_email():
     scrubber = PIIScrubber()
     text = "Contact me at john.doe@example.com for more info."
     expected = "Contact me at [EMAIL] for more info."
     assert scrubber.scrub(text) == expected
+
 
 def test_scrub_phone():
     scrubber = PIIScrubber()
@@ -15,17 +17,20 @@ def test_scrub_phone():
     expected = "My phone number is [PHONE]."
     assert scrubber.scrub(text) == expected
 
+
 def test_scrub_ip():
     scrubber = PIIScrubber()
     text = "Login from IP 192.168.1.1 detected."
     expected = "Login from IP [IP_ADDRESS] detected."
     assert scrubber.scrub(text) == expected
 
+
 def test_scrub_credit_card():
     scrubber = PIIScrubber()
     text = "Card number: 1234-5678-9012-3456."
     expected = "Card number: [CREDIT_CARD]."
     assert scrubber.scrub(text) == expected
+
 
 def test_scrub_address():
     scrubber = PIIScrubber()
@@ -37,6 +42,7 @@ def test_scrub_address():
     expected = "Visit us at [ADDRESS]."
     assert scrubber.scrub(text) == expected
 
+
 def test_scrub_name_greeting():
     scrubber = PIIScrubber()
     text = "Hi John Doe,\nYour order is ready."
@@ -46,6 +52,7 @@ def test_scrub_name_greeting():
     text = "Dear Alice Smith,\nWelcome back."
     expected = "Dear [NAME],\nWelcome back."
     assert scrubber.scrub(text) == expected
+
 
 def test_skip_terms():
     # Test that terms in skip_terms are NOT masked
@@ -65,10 +72,12 @@ def test_skip_terms():
     scrubber = PIIScrubber(skip_terms={"support@coinbase.com"})
     assert scrubber.scrub(text) == "Contact support@coinbase.com"
 
+
 def test_scrub_empty_text():
     scrubber = PIIScrubber()
     assert scrubber.scrub("") == ""
     assert scrubber.scrub(None) is None
+
 
 def test_multiple_pii():
     scrubber = PIIScrubber()

@@ -2,6 +2,7 @@ import pytest
 import re
 from playwright.sync_api import Page, expect
 
+
 def test_auto_asset_id_update(page: Page, live_server_url):
     page.goto(live_server_url)
 
@@ -32,6 +33,7 @@ def test_auto_asset_id_update(page: Page, live_server_url):
     # Verify asset_id changed to ethereum
     expect(coinbase_row.locator(".view-aid")).to_have_text("ethereum")
 
+
 def test_reject_record(page: Page, live_server_url):
     page.goto(live_server_url)
 
@@ -54,6 +56,7 @@ def test_reject_record(page: Page, live_server_url):
     # Check progress bar - should be 0/1 because 1 out of 2 is rejected
     expect(page.locator("#progress-text")).to_contain_text("0 / 1 Approved (excluding rejected)")
 
+
 def test_batch_reject(page: Page, live_server_url):
     page.goto(live_server_url)
 
@@ -75,6 +78,7 @@ def test_batch_reject(page: Page, live_server_url):
 
     # Check progress bar - 0/0 Approved
     expect(page.locator("#progress-text")).to_contain_text("0 / 0 Approved (excluding rejected)")
+
 
 def test_hide_rejected_filter(page: Page, live_server_url):
     page.goto(live_server_url)
@@ -105,6 +109,7 @@ def test_hide_rejected_filter(page: Page, live_server_url):
     expect(page.locator("#row-0")).to_be_visible()
     expect(page.locator("#row-1")).to_be_visible()
 
+
 def test_take_screenshots(page: Page, live_server_url):
     page.goto(live_server_url)
     test_mbox_path = "tests/fixtures/test_emails.mbox"
@@ -121,7 +126,7 @@ def test_take_screenshots(page: Page, live_server_url):
     page.screenshot(path="/home/jules/verification/hidden_rejected.png")
 
     # 3. Auto Asset ID
-    page.locator("#hide-rejected").click() # show it again
+    page.locator("#hide-rejected").click()  # show it again
     binance_row = page.locator("#row-1")
     binance_row.get_by_role("button", name="Edit").click()
     binance_row.locator(".edit-cc").fill("Solana")

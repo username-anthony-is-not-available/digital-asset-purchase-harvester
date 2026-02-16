@@ -30,9 +30,7 @@ def test_imap_client_gmail_oauth2(mock_get_gmail_credentials, mock_imaplib):
     mock_creds.token = "gmail_token"
     mock_get_gmail_credentials.return_value = mock_creds
 
-    with ImapClient(
-        "imap.gmail.com", "user", auth_type="gmail_oauth2"
-    ) as client:
+    with ImapClient("imap.gmail.com", "user", auth_type="gmail_oauth2") as client:
         client.search_emails("ALL")
 
     mock_imap_client.authenticate.assert_called_once()

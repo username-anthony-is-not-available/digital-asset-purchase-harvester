@@ -2,6 +2,7 @@ import pytest
 from digital_asset_harvester.processing.extractors.coinspot import CoinSpotExtractor
 from tests.fixtures.emails import EMAIL_FIXTURES
 
+
 def test_coinspot_extractor():
     extractor = CoinSpotExtractor()
     email = EMAIL_FIXTURES["coinspot_purchase"]

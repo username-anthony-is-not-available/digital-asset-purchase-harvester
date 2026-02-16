@@ -17,14 +17,14 @@ TEST_CASES = [
         "Your Coinbase purchase of 0.001 BTC",
         "Coinbase <no-reply@coinbase.com>",
         "You successfully purchased 0.001 BTC for $100.00 USD.",
-        [{"amount": "0.001", "item_name": "BTC", "total_spent": "100.00", "currency": "USD", "vendor": "Coinbase"}]
+        [{"amount": "0.001", "item_name": "BTC", "total_spent": "100.00", "currency": "USD", "vendor": "Coinbase"}],
     ),
     (
         CoinbaseExtractor,
         "You've earned a staking reward",
         "no-reply@coinbase.com",
         "You just earned 0.00001234 ETH in staking rewards!",
-        [{"amount": "0.00001234", "item_name": "ETH", "transaction_type": "staking_reward", "vendor": "Coinbase"}]
+        [{"amount": "0.00001234", "item_name": "ETH", "transaction_type": "staking_reward", "vendor": "Coinbase"}],
     ),
     # Binance Cases
     (
@@ -32,14 +32,14 @@ TEST_CASES = [
         "Your order to buy 0.1 ETH has been filled",
         "Binance <do-not-reply@binance.com>",
         "Your order to buy 0.1 ETH for 200.00 USD has been filled.",
-        [{"amount": "0.1", "item_name": "ETH", "total_spent": "200.00", "currency": "USD"}]
+        [{"amount": "0.1", "item_name": "ETH", "total_spent": "200.00", "currency": "USD"}],
     ),
     (
         BinanceExtractor,
         "Distribution Confirmation",
         "do-not-reply@binance.com",
         "Your account has been credited with 0.5 SOL for SOL Staking.",
-        [{"amount": "0.5", "item_name": "SOL", "transaction_type": "staking_reward"}]
+        [{"amount": "0.5", "item_name": "SOL", "transaction_type": "staking_reward"}],
     ),
     (
         BinanceExtractor,
@@ -54,7 +54,16 @@ TEST_CASES = [
         - Total: 130.00 USDT
         - Fee: 0.000002 BTC
         """,
-        [{"amount": "0.002", "item_name": "BTC", "total_spent": "130.00", "currency": "USDT", "fee_amount": "0.000002", "fee_currency": "BTC"}]
+        [
+            {
+                "amount": "0.002",
+                "item_name": "BTC",
+                "total_spent": "130.00",
+                "currency": "USDT",
+                "fee_amount": "0.000002",
+                "fee_currency": "BTC",
+            }
+        ],
     ),
     # Kraken Cases
     (
@@ -62,21 +71,21 @@ TEST_CASES = [
         "Trade Confirmation: Buy 0.5 XMR",
         "Kraken <noreply@kraken.com>",
         "You have successfully bought 0.5 XMR for 50.00 EUR.",
-        [{"amount": "0.5", "item_name": "XMR", "total_spent": "50.00", "currency": "EUR"}]
+        [{"amount": "0.5", "item_name": "XMR", "total_spent": "50.00", "currency": "EUR"}],
     ),
     (
         KrakenExtractor,
         "Staking Reward Received",
         "noreply@kraken.com",
         "We've credited your account with 10.5 ADA in staking rewards.",
-        [{"amount": "10.5", "item_name": "ADA", "transaction_type": "staking_reward"}]
+        [{"amount": "10.5", "item_name": "ADA", "transaction_type": "staking_reward"}],
     ),
     (
         KrakenExtractor,
         "Kraken - Trade Confirmation",
         "noreply@kraken.com",
         "You bought 0.75 XBT (BTC) for $35,000.00 USD.\nCost: $35,000.00 USD\nFee: $105.00 USD",
-        [{"amount": "0.75", "item_name": "BTC", "total_spent": "35000.00", "currency": "USD", "fee_amount": "105.00"}]
+        [{"amount": "0.75", "item_name": "BTC", "total_spent": "35000.00", "currency": "USD", "fee_amount": "105.00"}],
     ),
     # Gemini Cases
     (
@@ -84,7 +93,16 @@ TEST_CASES = [
         "Order Confirmation - Buy BTC",
         "Gemini <orders@gemini.com>",
         "Your order to purchase 0.005 BTC for $150.00 has been completed.\nTransaction ID: GEM-2024-001",
-        [{"amount": "0.005", "item_name": "BTC", "total_spent": "150.00", "currency": "USD", "vendor": "Gemini", "transaction_id": "GEM-2024-001"}]
+        [
+            {
+                "amount": "0.005",
+                "item_name": "BTC",
+                "total_spent": "150.00",
+                "currency": "USD",
+                "vendor": "Gemini",
+                "transaction_id": "GEM-2024-001",
+            }
+        ],
     ),
     # Crypto.com Cases
     (
@@ -92,7 +110,16 @@ TEST_CASES = [
         "Your order #12345 has been executed",
         "Crypto Exchange <noreply@crypto.com>",
         "Your market order #12345 to buy 2.5 SOL has been filled at a price of $25.00 per SOL.\nTotal cost: $62.50 USD.",
-        [{"amount": "2.5", "item_name": "SOL", "total_spent": "62.50", "currency": "USD", "vendor": "Crypto.com", "transaction_id": "12345"}]
+        [
+            {
+                "amount": "2.5",
+                "item_name": "SOL",
+                "total_spent": "62.50",
+                "currency": "USD",
+                "vendor": "Crypto.com",
+                "transaction_id": "12345",
+            }
+        ],
     ),
     # FTX Cases
     (
@@ -100,7 +127,7 @@ TEST_CASES = [
         "Trade Executed: BUY 10 MATIC",
         "FTX <noreply@ftx.com>",
         "Trade Details:\nAmount: 10 MATIC\nPrice per unit: $0.85\nTotal: $8.50 USD",
-        [{"amount": "10", "item_name": "MATIC", "total_spent": "8.50", "currency": "USD", "vendor": "FTX"}]
+        [{"amount": "10", "item_name": "MATIC", "total_spent": "8.50", "currency": "USD", "vendor": "FTX"}],
     ),
     # CoinSpot Cases
     (
@@ -108,7 +135,16 @@ TEST_CASES = [
         "Purchase Confirmation",
         "CoinSpot <support@coinspot.com.au>",
         "You have successfully purchased 50 ADA for $25.00 AUD.\nReference: CS-20240115-001",
-        [{"amount": "50", "item_name": "ADA", "total_spent": "25.00", "currency": "AUD", "vendor": "CoinSpot", "transaction_id": "CS-20240115-001"}]
+        [
+            {
+                "amount": "50",
+                "item_name": "ADA",
+                "total_spent": "25.00",
+                "currency": "AUD",
+                "vendor": "CoinSpot",
+                "transaction_id": "CS-20240115-001",
+            }
+        ],
     ),
     # Edge Case: Thousands separator and different currency
     (
@@ -116,7 +152,7 @@ TEST_CASES = [
         "Your Coinbase purchase of 1.234 BTC",
         "Coinbase <no-reply@coinbase.com>",
         "You successfully purchased 1.234 BTC for €50,000.00 EUR.",
-        [{"amount": "1.234", "item_name": "BTC", "total_spent": "50000.00", "currency": "EUR", "vendor": "Coinbase"}]
+        [{"amount": "1.234", "item_name": "BTC", "total_spent": "50000.00", "currency": "EUR", "vendor": "Coinbase"}],
     ),
     # Edge Case: Ticker mapping for Kraken (XDG -> DOGE)
     (
@@ -124,9 +160,10 @@ TEST_CASES = [
         "Trade Confirmation: Buy 1000 XDG",
         "Kraken <noreply@kraken.com>",
         "You have successfully bought 1,000 XDG for $100.00 USD.",
-        [{"amount": "1000", "item_name": "DOGE", "total_spent": "100.00", "currency": "USD"}]
+        [{"amount": "1000", "item_name": "DOGE", "total_spent": "100.00", "currency": "USD"}],
     ),
 ]
+
 
 @pytest.mark.parametrize("extractor_class, subject, sender, body, expected_list", TEST_CASES)
 def test_extractor_positive(extractor_class, subject, sender, body, expected_list):
@@ -145,6 +182,7 @@ def test_extractor_positive(extractor_class, subject, sender, body, expected_lis
         for key, value in expected.items():
             assert actual.get(key) == value, f"Mismatch in {key}: expected {value}, got {actual.get(key)}"
 
+
 NEGATIVE_TEST_CASES = [
     (CoinbaseExtractor, "Security Alert", "security@coinbase.com", "New login detected"),
     (BinanceExtractor, "Price Alert", "alerts@binance.com", "BTC is up 10%"),
@@ -153,6 +191,7 @@ NEGATIVE_TEST_CASES = [
     (CryptocomExtractor, "Price Alert", "no-reply@crypto.com", "BTC is at $50,000"),
     (FTXExtractor, "Newsletter", "noreply@ftx.com", "Read our latest updates"),
 ]
+
 
 @pytest.mark.parametrize("extractor_class, subject, sender, body", NEGATIVE_TEST_CASES)
 def test_extractor_negative(extractor_class, subject, sender, body):

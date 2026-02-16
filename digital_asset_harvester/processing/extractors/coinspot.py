@@ -36,13 +36,15 @@ class CoinSpotExtractor(BaseExtractor):
                 symbol_map = {"$": "USD", "€": "EUR", "£": "GBP", "¥": "JPY", "A$": "AUD"}
                 currency = symbol_map.get(match.group(3), "USD")
             if not currency:
-                currency = "AUD" # CoinSpot is Australian
+                currency = "AUD"  # CoinSpot is Australian
 
             purchases.append(self._create_purchase_dict(amount, crypto, total_spent, currency, body))
 
         return purchases
 
-    def _create_purchase_dict(self, amount: str, crypto: str, total_spent: str | None, currency: str, body: str) -> Dict[str, Any]:
+    def _create_purchase_dict(
+        self, amount: str, crypto: str, total_spent: str | None, currency: str, body: str
+    ) -> Dict[str, Any]:
         # Extract Reference: CS-20240115-001
         txn_id = self._find_match(r"Reference:\s*([A-Z0-9\-]+)", body)
 

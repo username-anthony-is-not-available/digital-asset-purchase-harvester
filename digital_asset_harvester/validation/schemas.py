@@ -163,8 +163,6 @@ class PurchaseRecord(BaseModel):
     @classmethod
     def validate_fee_currency(cls, v: Optional[str]) -> Optional[str]:
         if v:
-            if not ISO_CURRENCY_PATTERN.match(
-                v.upper()
-            ) and not CRYPTO_SYMBOL_PATTERN.match(v.upper()):
+            if not ISO_CURRENCY_PATTERN.match(v.upper()) and not CRYPTO_SYMBOL_PATTERN.match(v.upper()):
                 raise ValueError("must be valid currency code or symbol")
         return v

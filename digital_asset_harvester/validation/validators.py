@@ -46,9 +46,7 @@ class PurchaseValidator:
         issues: List[ValidationIssue] = []
         try:
             # Use Pydantic to validate, passing allow_unknown_crypto in context
-            PurchaseRecord.model_validate(
-                data, context={"allow_unknown_crypto": allow_unknown_crypto}
-            )
+            PurchaseRecord.model_validate(data, context={"allow_unknown_crypto": allow_unknown_crypto})
             # We don't need to call validator.validate() here because Pydantic
             # now handles the unknown crypto check if context is provided.
         except ValidationError as e:

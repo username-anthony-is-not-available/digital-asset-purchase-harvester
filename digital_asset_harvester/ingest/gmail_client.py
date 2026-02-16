@@ -34,23 +34,15 @@ class GmailClient:
             next_page_token = None
             while True:
                 response = (
-                    self.service.users()
-                    .messages()
-                    .list(userId="me", q=query, pageToken=next_page_token)
-                    .execute()
+                    self.service.users().messages().list(userId="me", q=query, pageToken=next_page_token).execute()
                 )
                 messages = response.get("messages", [])
 
                 for message in messages:
                     raw_message = (
-                        self.service.users()
-                        .messages()
-                        .get(userId="me", id=message["id"], format="raw")
-                        .execute()
+                        self.service.users().messages().get(userId="me", id=message["id"], format="raw").execute()
                     )
-                    msg_bytes = base64.urlsafe_b64decode(
-                        raw_message["raw"].encode("ASCII")
-                    )
+                    msg_bytes = base64.urlsafe_b64decode(raw_message["raw"].encode("ASCII"))
 
                     if raw:
                         yield {"raw": msg_bytes, "id": message["id"]}

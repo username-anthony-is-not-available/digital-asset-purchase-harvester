@@ -10,11 +10,7 @@ from digital_asset_harvester.processing.email_purchase_extractor import EmailPur
 
 def test_privacy_mode_restricts_cloud_providers():
     """Verify that privacy mode prevents using cloud providers."""
-    settings = HarvesterSettings(
-        enable_privacy_mode=True,
-        enable_cloud_llm=True,
-        llm_provider="openai"
-    )
+    settings = HarvesterSettings(enable_privacy_mode=True, enable_cloud_llm=True, llm_provider="openai")
 
     with pytest.raises(ValueError, match="Privacy mode is enabled. LLM provider 'openai' is not allowed"):
         get_llm_client(settings=settings)
@@ -22,11 +18,7 @@ def test_privacy_mode_restricts_cloud_providers():
 
 def test_privacy_mode_restricts_ollama_fallback():
     """Verify that privacy mode prevents Ollama fallback to cloud."""
-    settings = HarvesterSettings(
-        enable_privacy_mode=True,
-        enable_ollama_fallback=True,
-        llm_provider="ollama"
-    )
+    settings = HarvesterSettings(enable_privacy_mode=True, enable_ollama_fallback=True, llm_provider="ollama")
 
     with pytest.raises(ValueError, match="Privacy mode is enabled. Ollama fallback to cloud LLM is not allowed"):
         get_llm_client(settings=settings)
@@ -36,10 +28,7 @@ def test_privacy_mode_restricts_ollama_fallback():
 def test_ollama_client_uses_configured_base_url(mock_client_class):
     """Verify that OllamaLLMClient uses the configured base URL."""
     custom_url = "http://secure-ollama:11434"
-    settings = HarvesterSettings(
-        ollama_base_url=custom_url,
-        llm_provider="ollama"
-    )
+    settings = HarvesterSettings(ollama_base_url=custom_url, llm_provider="ollama")
 
     get_llm_client(settings=settings)
 
@@ -52,9 +41,7 @@ def test_ollama_client_uses_configured_base_url(mock_client_class):
 def test_privacy_mode_enables_pii_scrubbing():
     """Verify that privacy mode automatically enables PII scrubbing in the extractor."""
     settings = HarvesterSettings(
-        enable_privacy_mode=True,
-        enable_pii_scrubbing=False,  # Explicitly disabled
-        llm_provider="ollama"
+        enable_privacy_mode=True, enable_pii_scrubbing=False, llm_provider="ollama"  # Explicitly disabled
     )
 
     # Mock LLM client to avoid initialization issues
@@ -71,11 +58,7 @@ def test_privacy_mode_enables_pii_scrubbing():
 def test_no_privacy_mode_respects_pii_settings():
     """Verify that when privacy mode is off, PII scrubbing respects the setting."""
     # Case 1: Privacy mode OFF, PII scrubbing OFF
-    settings_off = HarvesterSettings(
-        enable_privacy_mode=False,
-        enable_pii_scrubbing=False,
-        llm_provider="ollama"
-    )
+    settings_off = HarvesterSettings(enable_privacy_mode=False, enable_pii_scrubbing=False, llm_provider="ollama")
     mock_llm = MagicMock()
     extractor_off = EmailPurchaseExtractor(settings=settings_off, llm_client=mock_llm)
 
@@ -85,11 +68,7 @@ def test_no_privacy_mode_respects_pii_settings():
         assert result == "content"
 
     # Case 2: Privacy mode OFF, PII scrubbing ON
-    settings_on = HarvesterSettings(
-        enable_privacy_mode=False,
-        enable_pii_scrubbing=True,
-        llm_provider="ollama"
-    )
+    settings_on = HarvesterSettings(enable_privacy_mode=False, enable_pii_scrubbing=True, llm_provider="ollama")
     extractor_on = EmailPurchaseExtractor(settings=settings_on, llm_client=mock_llm)
 
     with patch.object(extractor_on.pii_scrubber, "scrub", return_value="SCRUBBED") as mock_scrub:

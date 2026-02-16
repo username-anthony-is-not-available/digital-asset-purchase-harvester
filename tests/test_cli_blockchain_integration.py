@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 from digital_asset_harvester.cli import run
 from tests.mock_blockchain_core import WalletClient
 
+
 @patch("digital_asset_harvester.cli.BlockchainVerifier")
 @patch("digital_asset_harvester.cli.process_emails")
 @patch("digital_asset_harvester.cli.MboxDataExtractor")
@@ -15,21 +16,13 @@ from tests.mock_blockchain_core import WalletClient
 def test_cli_verify_flag_enabled(mock_write_csv, mock_mbox, mock_process, mock_verifier_class, caplog):
     """Test that the --verify flag triggers verification in the CLI."""
     mock_mbox.return_value.extract_emails.return_value = []
-    mock_process.return_value = ([
-        {"item_name": "BTC", "amount": 1.0}
-    ], MagicMock())
+    mock_process.return_value = ([{"item_name": "BTC", "amount": 1.0}], MagicMock())
 
     mock_verifier = MagicMock()
     mock_verifier_class.return_value = mock_verifier
     mock_verifier.verify.return_value = {
         "success": True,
-        "results": {
-            "BTC": {
-                "status": "match",
-                "harvested_total": 1.0,
-                "on_chain_balance": 1.0
-            }
-        }
+        "results": {"BTC": {"status": "match", "harvested_total": 1.0, "on_chain_balance": 1.0}},
     }
 
     with patch("digital_asset_harvester.cli.get_settings") as mock_settings:

@@ -102,5 +102,6 @@ class CoinGeckoMapper:
         logger.debug("Could not map asset name '%s' to a CoinGecko ID", item_name)
         return None
 
+
 # Singleton instance
 mapper = CoinGeckoMapper()

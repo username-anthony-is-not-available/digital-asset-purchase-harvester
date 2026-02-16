@@ -37,10 +37,17 @@
         <div class="card">
             <h2>Email File Upload</h2>
             <p>Upload your .mbox file or multiple .eml files.</p>
-            <form action="/api/upload" method="post" enctype="multipart/form-data" class="upload-form">
-                <input type="file" name="files" multiple>
+            <form id="upload-form" class="upload-form">
+                <input type="file" id="file-input" name="files" multiple>
                 <input type="submit" value="Upload and Process">
             </form>
+            <div id="upload-progress-container" style="display: none; margin-top: 20px;">
+                <p id="upload-status-text">Uploading...</p>
+                <div class="progress-bar-container">
+                    <div id="upload-progress-fill" class="progress-bar-fill" style="width: 0%"></div>
+                    <div id="upload-progress-text" class="progress-text">0%</div>
+                </div>
+            </div>
         </div>
 
         <div class="card">
@@ -75,6 +82,55 @@
     </div>
 
     <script>
+        document.getElementById('upload-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('file-input');
+            if (fileInput.files.length === 0) {
+                alert('Please select at least one file.');
+                return;
+            }
+
+            const formData = new FormData();
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append('files', fileInput.files[i]);
+            }
+
+            const xhr = new XMLHttpRequest();
+            const progressContainer = document.getElementById('upload-progress-container');
+            const progressFill = document.getElementById('upload-progress-fill');
+            const progressText = document.getElementById('upload-progress-text');
+            const statusText = document.getElementById('upload-status-text');
+
+            progressContainer.style.display = 'block';
+
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    progressFill.style.width = percent + '%';
+                    progressText.textContent = percent + '%';
+                }
+            });
+
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if (xhr.status === 200 || xhr.status === 303) {
+                        // Redirect or handle response
+                        // FastAPI RedirectResponse might return the new URL in the response or handle it if we follow it.
+                        // But since we are using XHR, we might need to manually redirect if it didn't already.
+                        // The /api/upload endpoint returns a RedirectResponse which browser might follow automatically
+                        // but for XHR it sets responseURL.
+                        window.location.href = xhr.responseURL;
+                    } else {
+                        alert('Upload failed: ' + xhr.statusText);
+                        progressContainer.style.display = 'none';
+                    }
+                }
+            };
+
+            xhr.open('POST', '/api/upload', true);
+            xhr.send(formData);
+        });
+
         async function clearAllTasks() {
             if (!confirm('Are you sure you want to clear ALL task history? This cannot be undone.')) {
                 return;
