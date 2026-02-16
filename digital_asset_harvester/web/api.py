@@ -6,9 +6,10 @@ import csv
 import json
 import tempfile
 import threading
+import asyncio
 from datetime import datetime
-from typing import List
-from fastapi import APIRouter, File, UploadFile, Depends, BackgroundTasks, HTTPException
+from typing import List, Optional
+from fastapi import APIRouter, File, UploadFile, Depends, BackgroundTasks, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import RedirectResponse, StreamingResponse
 from io import StringIO
 from .. import (
@@ -34,6 +35,49 @@ logger = logging.getLogger(__name__)
 TASKS_DB = "tasks_db.json"
 tasks = {}
 tasks_lock = threading.Lock()
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: dict[str, list[WebSocket]] = {}
+
+    async def connect(self, task_id: str, websocket: WebSocket):
+        await websocket.accept()
+        if task_id not in self.active_connections:
+            self.active_connections[task_id] = []
+        self.active_connections[task_id].append(websocket)
+
+    def disconnect(self, task_id: str, websocket: WebSocket):
+        if task_id in self.active_connections:
+            if websocket in self.active_connections[task_id]:
+                self.active_connections[task_id].remove(websocket)
+            if not self.active_connections[task_id]:
+                del self.active_connections[task_id]
+
+    async def broadcast(self, task_id: str, message: dict):
+        if task_id in self.active_connections:
+            for connection in list(self.active_connections[task_id]):
+                try:
+                    await connection.send_json(message)
+                except Exception:
+                    if connection in self.active_connections[task_id]:
+                        self.active_connections[task_id].remove(connection)
+
+manager = ConnectionManager()
+main_loop: Optional[asyncio.AbstractEventLoop] = None
+
+def broadcast_sync(task_id: str, message: dict):
+    """Thread-safe way to broadcast from synchronous background tasks."""
+    global main_loop
+    if main_loop is None:
+        try:
+            main_loop = asyncio.get_event_loop()
+        except RuntimeError:
+            return
+
+    if main_loop and main_loop.is_running():
+        main_loop.call_soon_threadsafe(
+            lambda: asyncio.create_task(manager.broadcast(task_id, message))
+        )
 
 
 def _save_tasks():
@@ -98,10 +142,30 @@ def _create_progress_callback(task_id: str):
                     "total": total,
                     "percentage": round((current / total) * 100, 2) if total > 0 else 0,
                 }
-        # We don't call _save_tasks() here to avoid excessive I/O,
-        # but the in-memory state will be updated for the status endpoint.
+                broadcast_sync(task_id, {"type": "progress", "data": tasks[task_id]["progress"]})
 
     return progress_callback
+
+def _create_log_callback(task_id: str):
+    def log_callback(message: str):
+        with tasks_lock:
+            if task_id in tasks:
+                if "logs" not in tasks[task_id]:
+                    tasks[task_id]["logs"] = []
+
+                log_entry = {
+                    "timestamp": datetime.now().isoformat(),
+                    "message": message
+                }
+                tasks[task_id]["logs"].append(log_entry)
+
+                # Keep only last 100 logs
+                if len(tasks[task_id]["logs"]) > 100:
+                    tasks[task_id]["logs"].pop(0)
+
+                broadcast_sync(task_id, {"type": "log", "data": log_entry})
+
+    return log_callback
 
 
 def process_eml_files(task_id: str, temp_dir: str, logger_factory: StructuredLoggerFactory):
@@ -111,6 +175,7 @@ def process_eml_files(task_id: str, temp_dir: str, logger_factory: StructuredLog
             "status": "processing",
             "result": None,
             "progress": {"current": 0, "total": 0, "percentage": 0},
+            "logs": [],
             "created_at": datetime.now().isoformat(),
         }
     _save_tasks()
@@ -128,7 +193,13 @@ def process_eml_files(task_id: str, temp_dir: str, logger_factory: StructuredLog
         emails = eml_reader.extract_emails(raw=settings.enable_multiprocessing)
 
         purchases, _ = process_emails(
-            emails, extractor, logger_factory, show_progress=False, progress_callback=_create_progress_callback(task_id)
+            emails,
+            extractor,
+            logger_factory,
+            show_progress=False,
+            progress_callback=_create_progress_callback(task_id),
+            loading_callback=_create_progress_callback(task_id),
+            log_callback=_create_log_callback(task_id)
         )
 
         # Initialize review status and map fields for frontend
@@ -137,11 +208,13 @@ def process_eml_files(task_id: str, temp_dir: str, logger_factory: StructuredLog
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
         tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+        broadcast_sync(task_id, {"type": "status", "data": "complete"})
         _save_tasks()
     except Exception as e:
         import traceback
 
         tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
+        broadcast_sync(task_id, {"type": "status", "data": "error", "error": str(e)})
         _save_tasks()
     finally:
         if os.path.exists(temp_dir):
@@ -155,6 +228,7 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
             "status": "processing",
             "result": None,
             "progress": {"current": 0, "total": 0, "percentage": 0},
+            "logs": [],
             "created_at": datetime.now().isoformat(),
         }
     _save_tasks()
@@ -172,7 +246,13 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
         emails = mbox_reader.extract_emails(raw=settings.enable_multiprocessing)
 
         purchases, _ = process_emails(
-            emails, extractor, logger_factory, show_progress=False, progress_callback=_create_progress_callback(task_id)
+            emails,
+            extractor,
+            logger_factory,
+            show_progress=False,
+            progress_callback=_create_progress_callback(task_id),
+            loading_callback=_create_progress_callback(task_id),
+            log_callback=_create_log_callback(task_id)
         )
 
         # Initialize review status and map fields for frontend
@@ -181,11 +261,13 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
         tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+        broadcast_sync(task_id, {"type": "status", "data": "complete"})
         _save_tasks()
     except Exception as e:
         import traceback
 
         tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
+        broadcast_sync(task_id, {"type": "status", "data": "error", "error": str(e)})
         _save_tasks()
     finally:
         if os.path.exists(temp_path):
@@ -199,6 +281,7 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
             "status": "processing",
             "result": None,
             "progress": {"current": 0, "total": 0, "percentage": 0},
+            "logs": [],
             "created_at": datetime.now().isoformat(),
         }
     _save_tasks()
@@ -237,6 +320,7 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
 
             if not uids:
                 tasks[task_id].update({"status": "complete", "result": []})
+                broadcast_sync(task_id, {"type": "status", "data": "complete"})
                 _save_tasks()
                 return
 
@@ -249,6 +333,8 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
                 logger_factory,
                 show_progress=False,
                 progress_callback=_create_progress_callback(task_id),
+                loading_callback=_create_progress_callback(task_id),
+                log_callback=_create_log_callback(task_id),
             )
 
             if emails:
@@ -259,12 +345,14 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
             tasks[task_id]["status"] = "complete"
             tasks[task_id]["result"] = normalized_purchases
             tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+            broadcast_sync(task_id, {"type": "status", "data": "complete"})
             _save_tasks()
 
     except Exception as e:
         import traceback
 
         tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
+        broadcast_sync(task_id, {"type": "status", "data": "error", "error": str(e)})
         _save_tasks()
 
 
@@ -275,6 +363,7 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
             "status": "processing",
             "result": None,
             "progress": {"current": 0, "total": 0, "percentage": 0},
+            "logs": [],
             "created_at": datetime.now().isoformat(),
         }
     _save_tasks()
@@ -292,18 +381,26 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
         query = settings.gmail_query
         emails = gmail_client.search_emails(query, raw=settings.enable_multiprocessing)
         purchases, _ = process_emails(
-            emails, extractor, logger_factory, show_progress=False, progress_callback=_create_progress_callback(task_id)
+            emails,
+            extractor,
+            logger_factory,
+            show_progress=False,
+            progress_callback=_create_progress_callback(task_id),
+            loading_callback=_create_progress_callback(task_id),
+            log_callback=_create_log_callback(task_id)
         )
 
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
         tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+        broadcast_sync(task_id, {"type": "status", "data": "complete"})
         _save_tasks()
     except Exception as e:
         import traceback
 
         tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
+        broadcast_sync(task_id, {"type": "status", "data": "error", "error": str(e)})
         _save_tasks()
 
 
@@ -314,6 +411,7 @@ def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_fa
             "status": "processing",
             "result": None,
             "progress": {"current": 0, "total": 0, "percentage": 0},
+            "logs": [],
             "created_at": datetime.now().isoformat(),
         }
     _save_tasks()
@@ -331,18 +429,26 @@ def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_fa
         query = settings.outlook_query
         emails = outlook_client.search_emails(query, raw=settings.enable_multiprocessing)
         purchases, _ = process_emails(
-            emails, extractor, logger_factory, show_progress=False, progress_callback=_create_progress_callback(task_id)
+            emails,
+            extractor,
+            logger_factory,
+            show_progress=False,
+            progress_callback=_create_progress_callback(task_id),
+            loading_callback=_create_progress_callback(task_id),
+            log_callback=_create_log_callback(task_id)
         )
 
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
         tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+        broadcast_sync(task_id, {"type": "status", "data": "complete"})
         _save_tasks()
     except Exception as e:
         import traceback
 
         tasks[task_id].update({"status": "error", "error": str(e), "traceback": traceback.format_exc()})
+        broadcast_sync(task_id, {"type": "status", "data": "error", "error": str(e)})
         _save_tasks()
 
 
@@ -573,6 +679,31 @@ async def sync_outlook(
 @router.get("/status/{task_id}")
 async def get_status(task_id: str):
     return tasks.get(task_id, {"status": "not_found"})
+
+
+@router.websocket("/ws/{task_id}")
+async def websocket_endpoint(websocket: WebSocket, task_id: str):
+    await manager.connect(task_id, websocket)
+    try:
+        # Send initial state
+        with tasks_lock:
+            if task_id in tasks:
+                await websocket.send_json({
+                    "type": "init",
+                    "data": {
+                        "progress": tasks[task_id].get("progress"),
+                        "logs": tasks[task_id].get("logs", []),
+                        "status": tasks[task_id].get("status")
+                    }
+                })
+
+        while True:
+            # Keep connection alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(task_id, websocket)
+    except Exception:
+        manager.disconnect(task_id, websocket)
 
 
 @router.get("/export/csv/{task_id}")

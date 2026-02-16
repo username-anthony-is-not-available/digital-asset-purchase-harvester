@@ -241,6 +241,8 @@ def process_emails(
     show_progress: bool = True,
     history_path: Optional[str] = ".processed_hashes.json",
     progress_callback: Optional[Callable[[int, int], None]] = None,
+    loading_callback: Optional[Callable[[int, int], None]] = None,
+    log_callback: Optional[Callable[[str], None]] = None,
 ) -> tuple[list[dict], MetricsTracker]:
     logger = logging.getLogger(__name__)
     settings = extractor.settings
@@ -250,6 +252,23 @@ def process_emails(
         default_fields={"component": "cli"},
     )
     duplicate_detector = DuplicateDetector(persistence_path=history_path)
+
+    def _safe_log(msg: str, level: int = logging.INFO):
+        """Helper to log to multiple destinations safely."""
+        if log_callback:
+            log_callback(msg)
+
+        if level == logging.DEBUG:
+            logger.debug(msg)
+        elif level == logging.WARNING:
+            logger.warning(msg)
+        elif level == logging.ERROR:
+            logger.error(msg)
+        else:
+            logger.info(msg)
+
+        if show_progress:
+            tqdm.write(msg)
 
     results: list[dict] = []
 
@@ -266,16 +285,39 @@ def process_emails(
     is_parallel = enable_parallel or enable_multiprocessing
 
     # Pre-filter duplicates to save processing time and LLM costs
-    raw_email_list = list(emails)
+    _safe_log("Loading and pre-filtering emails...")
+    raw_email_list = []
+    total_to_load = len(emails) if hasattr(emails, "__len__") else None
+
+    if show_progress:
+        load_iterator = tqdm(
+            emails,
+            total=total_to_load,
+            desc="Loading emails",
+            unit="email",
+            leave=False,
+            disable=not show_progress,
+        )
+        for idx, email in enumerate(load_iterator, 1):
+            raw_email_list.append(email)
+            if loading_callback and total_to_load:
+                loading_callback(idx, total_to_load)
+    else:
+        for idx, email in enumerate(emails, 1):
+            raw_email_list.append(email)
+            if loading_callback and total_to_load:
+                loading_callback(idx, total_to_load)
+
     email_list = []
     for email in raw_email_list:
         if duplicate_detector.is_email_duplicate(email, auto_save=False):
-            logger.info("Skipping already processed email: %s", email.get("subject", "No Subject"))
+            _safe_log(f"Skipping already processed email: {email.get('subject', 'No Subject')}", level=logging.DEBUG)
             metrics.increment("email_duplicates_skipped")
             continue
         email_list.append(email)
 
     total_emails = len(email_list)
+    _safe_log(f"Starting processing of {total_emails} emails")
 
     iterator = tqdm(
         email_list,
@@ -288,7 +330,7 @@ def process_emails(
     def handle_result(email, idx, result):
         if "processing_notes" in result:
             for note in result["processing_notes"]:
-                logger.debug("Email %d: %s", idx, note)
+                _safe_log(f"Email {idx}: {note}", level=logging.DEBUG)
 
         # Merge metrics from processing
         if "metrics" in result:
@@ -297,10 +339,8 @@ def process_emails(
         if result.get("has_purchase"):
             for purchase_info in result.get("purchases", []):
                 if duplicate_detector.is_duplicate(purchase_info, auto_save=False):
-                    logger.info(
-                        "Skipping duplicate purchase: %s %s",
-                        purchase_info.get("item_name"),
-                        purchase_info.get("amount"),
+                    _safe_log(
+                        f"Skipping duplicate purchase: {purchase_info.get('item_name')} {purchase_info.get('amount')}"
                     )
                     metrics.increment("duplicate_purchases_skipped")
                     continue
@@ -333,12 +373,12 @@ def process_emails(
         max_workers = int(getattr(settings, "max_workers", 5))
 
         if enable_multiprocessing:
-            logger.info("Starting multiprocessing with %d workers", max_workers)
+            _safe_log(f"Starting multiprocessing with {max_workers} workers")
             executor_class = ProcessPoolExecutor
             # In multiprocessing, we pass the worker function and settings
             submit_fn = lambda exc, email, idx: exc.submit(_process_email_worker, email, idx, settings)
         else:
-            logger.info("Starting parallel processing with %d workers", max_workers)
+            _safe_log(f"Starting parallel processing with {max_workers} workers")
             executor_class = ThreadPoolExecutor
             submit_fn = lambda exc, email, idx: exc.submit(_process_single_email, email, idx, extractor)
 
@@ -353,7 +393,7 @@ def process_emails(
                     metrics.increment("emails_processed")
                     handle_result(email_dict, idx, result)
                 except Exception as exc:
-                    logger.error("Email %d failed with error: %s", idx, exc)
+                    _safe_log(f"Email {idx} failed with error: {exc}", level=logging.ERROR)
                     metrics.increment("llm_calls_failed")
 
                 processed_count += 1
@@ -368,11 +408,7 @@ def process_emails(
                 subject_preview = email.get("subject", "")[:40]
                 iterator.set_postfix_str(f"Current: {subject_preview}...")
 
-            logger.info(
-                "Processing email %d: %s",
-                idx,
-                email.get("subject", "")[:50],
-            )
+            _safe_log(f"Processing email {idx}: {email.get('subject', '')[:50]}")
             metrics.increment("emails_processed")
 
             _, _, result = _process_single_email(email, idx, extractor)

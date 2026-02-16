@@ -9,6 +9,10 @@ from .api import router as api_router, tasks, _save_tasks
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Cleanup stale and old tasks on startup."""
+    import asyncio
+    from . import api
+    api.main_loop = asyncio.get_running_loop()
+
     modified = False
     now = datetime.now()
     cutoff = now - timedelta(hours=24)

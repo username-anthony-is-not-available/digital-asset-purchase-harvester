@@ -29,3 +29,4 @@ anthropic
 fpdf2>=2.8.0
 rapidfuzz
 toml
+tqdm>=4.66.0
