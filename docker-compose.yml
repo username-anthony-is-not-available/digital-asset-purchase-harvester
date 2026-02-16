@@ -18,7 +18,8 @@ services:
     command: ["tail", "-f", "/dev/null"]  # Keep container running
 
   ollama:
-    image: ollama/ollama:latest
+    build: .
+    image: digital-asset-harvester:latest
     container_name: ollama-service
     ports:
       - "11434:11434"
@@ -26,6 +27,7 @@ services:
       - ollama-data:/root/.ollama
     networks:
       - harvester-network
+    command: ["ollama", "serve"]
 
 networks:
   harvester-network:
