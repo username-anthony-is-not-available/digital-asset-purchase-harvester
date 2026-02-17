@@ -62,6 +62,10 @@ def mock_llm_client():
             email_id = "ftx_purchase"
         elif "coinspot" in email_content or "50 ada" in email_content:
             email_id = "coinspot_purchase"
+        elif "newton" in email_content or "0.1 btc" in email_content:
+            email_id = "newton_purchase"
+        elif "btcmarkets" in email_content or "0.05 btc" in email_content:
+            email_id = "btcmarkets_purchase"
 
         if not is_extraction:
             # Classification

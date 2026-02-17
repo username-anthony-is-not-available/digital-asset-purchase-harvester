@@ -11,6 +11,7 @@ async def lifespan(app: FastAPI):
     """Cleanup stale and old tasks on startup."""
     import asyncio
     from . import api
+
     api.main_loop = asyncio.get_running_loop()
 
     modified = False
@@ -64,6 +65,11 @@ async def root(request: Request):
 @app.get("/status/{task_id}")
 async def status_page(request: Request, task_id: str):
     return templates.TemplateResponse(request, "status.html", {"task_id": task_id})
+
+
+@app.get("/metrics")
+async def metrics_page(request: Request):
+    return templates.TemplateResponse(request, "metrics.html")
 
 
 def run():

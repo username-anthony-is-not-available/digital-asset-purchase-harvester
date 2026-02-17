@@ -112,3 +112,21 @@ Date: Fri, 12 Jan 2024 21:00:00 +0000
 Message-ID: <security_alert@golden-test.local>
 
 We detected a login from a new device in London.
+
+From MAILER-DAEMON Sun Feb 15 17:30:04 2026
+From: Newton <support@newton.co>
+Subject: Newton Trade Confirmation
+Date: Sat, 13 Jan 2024 22:00:00 +0000
+Message-ID: <newton_purchase@golden-test.local>
+
+You bought 0.1 BTC for $5,000.00 CAD.
+Reference #NT-123
+
+From MAILER-DAEMON Sun Feb 15 17:30:04 2026
+From: BTCMarkets <noreply@btcmarkets.net>
+Subject: BTCMarkets Trade Confirmation
+Date: Sun, 14 Jan 2024 23:00:00 +0000
+Message-ID: <btcmarkets_purchase@golden-test.local>
+
+Bought 0.05 BTC for 3,000 AUD.
+Order ID: BTC-456

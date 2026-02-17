@@ -111,5 +111,27 @@
         }
     ],
     "newsletter": [],
-    "security_alert": []
+    "security_alert": [],
+    "newton_purchase": [
+        {
+            "amount": 0.1,
+            "item_name": "BTC",
+            "total_spent": 5000.0,
+            "currency": "CAD",
+            "vendor": "Newton",
+            "transaction_id": "NT-123",
+            "extraction_method": "regex"
+        }
+    ],
+    "btcmarkets_purchase": [
+        {
+            "amount": 0.05,
+            "item_name": "BTC",
+            "total_spent": 3000.0,
+            "currency": "AUD",
+            "vendor": "BTCMarkets",
+            "transaction_id": "BTC-456",
+            "extraction_method": "regex"
+        }
+    ]
 }

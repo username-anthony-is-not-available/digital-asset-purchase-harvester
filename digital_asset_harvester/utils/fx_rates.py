@@ -9,6 +9,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+
 class FXRateService:
     """Service to fetch historical FX rates from a reliable external API."""
 
@@ -46,7 +47,7 @@ class FXRateService:
         except (ValueError, IndexError):
             try:
                 # Try parsing ISO format
-                dt = datetime.fromisoformat(purchase_date_str.split('T')[0])
+                dt = datetime.fromisoformat(purchase_date_str.split("T")[0])
                 date_key = dt.strftime("%Y-%m-%d")
             except (ValueError, TypeError):
                 logger.warning(f"Could not parse date: {purchase_date_str}")
@@ -76,6 +77,7 @@ class FXRateService:
         except Exception as e:
             logger.error(f"Failed to fetch FX rate: {e}")
             return None
+
 
 # Singleton instance
 fx_service = FXRateService()

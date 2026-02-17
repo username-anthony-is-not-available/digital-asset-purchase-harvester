@@ -21,7 +21,8 @@ from .. import (
 )
 from ..ingest import ImapClient, GmailClient, OutlookClient
 from ..utils.sync_state import SyncState
-from ..telemetry import StructuredLoggerFactory
+from ..utils.fx_rates import fx_service
+from ..telemetry import MetricsTracker, StructuredLoggerFactory
 from ..cli import process_emails, configure_logging
 from ..utils.data_utils import normalize_for_frontend, denormalize_from_frontend
 from ..exporters.koinly import KoinlyReportGenerator
@@ -36,6 +37,7 @@ logger = logging.getLogger(__name__)
 TASKS_DB = "tasks_db.json"
 tasks = {}
 tasks_lock = threading.Lock()
+
 
 class ConnectionManager:
     def __init__(self):
@@ -63,8 +65,10 @@ class ConnectionManager:
                     if connection in self.active_connections[task_id]:
                         self.active_connections[task_id].remove(connection)
 
+
 manager = ConnectionManager()
 main_loop: Optional[asyncio.AbstractEventLoop] = None
+
 
 def broadcast_sync(task_id: str, message: dict):
     """Thread-safe way to broadcast from synchronous background tasks."""
@@ -76,9 +80,7 @@ def broadcast_sync(task_id: str, message: dict):
             return
 
     if main_loop and main_loop.is_running():
-        main_loop.call_soon_threadsafe(
-            lambda: asyncio.create_task(manager.broadcast(task_id, message))
-        )
+        main_loop.call_soon_threadsafe(lambda: asyncio.create_task(manager.broadcast(task_id, message)))
 
 
 def _save_tasks():
@@ -147,6 +149,7 @@ def _create_progress_callback(task_id: str):
 
     return progress_callback
 
+
 def _create_log_callback(task_id: str):
     def log_callback(message: str):
         with tasks_lock:
@@ -154,10 +157,7 @@ def _create_log_callback(task_id: str):
                 if "logs" not in tasks[task_id]:
                     tasks[task_id]["logs"] = []
 
-                log_entry = {
-                    "timestamp": datetime.now().isoformat(),
-                    "message": message
-                }
+                log_entry = {"timestamp": datetime.now().isoformat(), "message": message}
                 tasks[task_id]["logs"].append(log_entry)
 
                 # Keep only last 100 logs
@@ -200,7 +200,7 @@ def process_eml_files(task_id: str, temp_dir: str, logger_factory: StructuredLog
             show_progress=False,
             progress_callback=_create_progress_callback(task_id),
             loading_callback=_create_progress_callback(task_id),
-            log_callback=_create_log_callback(task_id)
+            log_callback=_create_log_callback(task_id),
         )
 
         # Initialize review status and map fields for frontend
@@ -253,7 +253,7 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
             show_progress=False,
             progress_callback=_create_progress_callback(task_id),
             loading_callback=_create_progress_callback(task_id),
-            log_callback=_create_log_callback(task_id)
+            log_callback=_create_log_callback(task_id),
         )
 
         # Initialize review status and map fields for frontend
@@ -388,7 +388,7 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
             show_progress=False,
             progress_callback=_create_progress_callback(task_id),
             loading_callback=_create_progress_callback(task_id),
-            log_callback=_create_log_callback(task_id)
+            log_callback=_create_log_callback(task_id),
         )
 
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
@@ -436,7 +436,7 @@ def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_fa
             show_progress=False,
             progress_callback=_create_progress_callback(task_id),
             loading_callback=_create_progress_callback(task_id),
-            log_callback=_create_log_callback(task_id)
+            log_callback=_create_log_callback(task_id),
         )
 
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
@@ -529,7 +529,9 @@ async def export_cointracker(task_id: str):
 
     output.seek(0)
     return StreamingResponse(
-        output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=cointracker_{task_id}.csv"}
+        output,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=cointracker_{task_id}.csv"},
     )
 
 
@@ -625,9 +627,7 @@ async def export_cra_pdf(task_id: str):
     denormalized_results = [denormalize_from_frontend(p) for p in results]
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        write_purchase_data_to_cra_pdf(
-            denormalized_results, tmp.name, base_fiat_currency=settings.base_fiat_currency
-        )
+        write_purchase_data_to_cra_pdf(denormalized_results, tmp.name, base_fiat_currency=settings.base_fiat_currency)
         tmp_path = tmp.name
 
     def iterfile():
@@ -726,14 +726,16 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str):
         # Send initial state
         with tasks_lock:
             if task_id in tasks:
-                await websocket.send_json({
-                    "type": "init",
-                    "data": {
-                        "progress": tasks[task_id].get("progress"),
-                        "logs": tasks[task_id].get("logs", []),
-                        "status": tasks[task_id].get("status")
+                await websocket.send_json(
+                    {
+                        "type": "init",
+                        "data": {
+                            "progress": tasks[task_id].get("progress"),
+                            "logs": tasks[task_id].get("logs", []),
+                            "status": tasks[task_id].get("status"),
+                        },
                     }
-                })
+                )
 
         while True:
             # Keep connection alive
@@ -792,20 +794,56 @@ async def update_record(task_id: str, index: int, updated_record: dict):
     if index < 0 or index >= len(results):
         raise HTTPException(status_code=404, detail="Record index out of bounds")
 
+    settings = get_settings()
     # Check if crypto_currency changed and we need to update asset_id
     from ..utils.asset_mapping import mapper
 
     old_currency = results[index].get("crypto_currency")
     new_currency = updated_record.get("crypto_currency")
 
+    # Fields that might trigger a fiat recalculation
+    old_total_spent = results[index].get("total_spent")
+    new_total_spent = updated_record.get("total_spent")
+    old_fiat_currency = results[index].get("currency")
+    new_fiat_currency = updated_record.get("currency")
+    old_date = results[index].get("purchase_date")
+    new_date = updated_record.get("purchase_date")
+
     results[index].update(updated_record)
 
+    # 1. Update Asset ID if crypto currency changed
     if new_currency and new_currency != old_currency:
         # Only auto-update asset_id if it wasn't explicitly provided/changed to something non-empty
         if not updated_record.get("asset_id"):
             asset_id = mapper.get_asset_id(new_currency)
             if asset_id:
                 results[index]["asset_id"] = asset_id
+
+    # 2. Recalculate base fiat if enabled and relevant fields changed
+    if settings.enable_currency_conversion:
+        # Check if any field involved in the calculation changed
+        # We use 'in' check for updated_record to see if it was part of the update
+        fiat_changed = (
+            "total_spent" in updated_record or "currency" in updated_record or "purchase_date" in updated_record
+        )
+
+        # Only recalculate if it wasn't manually overridden in this update
+        if fiat_changed and "fiat_amount_base" not in updated_record:
+            try:
+                from_curr = results[index].get("currency")
+                to_curr = settings.base_fiat_currency
+                p_date = results[index].get("purchase_date", "")
+                spent = results[index].get("total_spent")
+
+                if spent is not None:
+                    rate = fx_service.get_rate(p_date, from_curr, to_curr)
+                    if rate:
+                        from decimal import Decimal
+
+                        base_amount = Decimal(str(spent)) * rate
+                        results[index]["fiat_amount_base"] = float(base_amount)
+            except Exception as e:
+                logger.warning(f"Failed to auto-recalculate fiat_amount_base: {e}")
 
     # Reset review status on manual edit
     results[index]["review_status"] = "pending"
@@ -928,22 +966,54 @@ async def clear_tasks():
     return {"status": "success", "message": "All tasks cleared"}
 
 
+@router.get("/system-info")
+async def get_system_info():
+    """Return sanitized application settings."""
+    settings = get_settings()
+    from dataclasses import asdict
+
+    settings_dict = asdict(settings)
+
+    # Sanitize sensitive fields
+    sensitive_keywords = ["key", "password", "secret", "token", "auth"]
+    sanitized = {}
+    for k, v in settings_dict.items():
+        if any(kw in k.lower() for kw in sensitive_keywords):
+            sanitized[k] = "********" if v else ""
+        else:
+            sanitized[k] = v
+
+    return {"status": "success", "settings": sanitized}
+
+
 @router.get("/metrics")
 async def get_metrics():
     """Aggregate metrics from all completed tasks."""
-    from ..telemetry import MetricsTracker
-
     combined_metrics = MetricsTracker()
+    total_confidence = 0.0
+    confidence_count = 0
 
     for task_id, task in tasks.items():
-        if task.get("status") == "complete" and "metrics" in task:
-            task_metrics = task["metrics"]
-            for key, value in task_metrics.items():
-                if isinstance(value, (int, float)) and not key.endswith("_latency"):
-                    combined_metrics.increment(key, int(value))
+        if task.get("status") == "complete":
+            # 1. Aggregate counters
+            if "metrics" in task:
+                task_metrics = task["metrics"]
+                for key, value in task_metrics.items():
+                    if isinstance(value, (int, float)) and not key.endswith("_latency"):
+                        combined_metrics.increment(key, int(value))
 
-    # Since we are not currently storing MetricsTracker objects in tasks (we store normalized dicts)
-    # let's at least return the number of tasks as a metric
+            # 2. Aggregate confidence from records
+            for record in task.get("result", []):
+                conf = record.get("confidence")
+                if conf is not None and record.get("review_status") != "rejected":
+                    total_confidence += float(conf)
+                    confidence_count += 1
+
+    # Calculate average confidence across all valid records
+    if confidence_count > 0:
+        combined_metrics.set_metadata("avg_confidence", total_confidence / confidence_count)
+
+    # Add task summary metrics
     combined_metrics.set_metadata("total_tasks", len(tasks))
     combined_metrics.increment("completed_tasks", sum(1 for t in tasks.values() if t.get("status") == "complete"))
     combined_metrics.increment("error_tasks", sum(1 for t in tasks.values() if t.get("status") == "error"))
