@@ -55,6 +55,12 @@ class PIIScrubber:
         self.eth_re = re.compile(r"\b0x[a-fA-F0-9]{40}\b")
         # LTC
         self.ltc_re = re.compile(r"\b(?:[LM][a-km-zA-HJ-NP-Z1-9]{26,33}|ltc1[ac-hj-np-z02-9]{11,71})\b")
+        # ADA (Cardano)
+        self.ada_re = re.compile(r"\baddr1[0-9a-z]{50,}\b")
+        # XRP (Ripple)
+        self.xrp_re = re.compile(r"\br[1-9A-HJ-NP-Za-km-z]{25,35}\b")
+        # SOL (Solana)
+        self.sol_re = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 
     def _should_mask(self, match_text: str) -> bool:
         """Check if the matched text should actually be masked."""
@@ -72,6 +78,17 @@ class PIIScrubber:
         """
         if not text:
             return text
+
+        # Scrub crypto addresses
+        # Order is important: Specific prefixed patterns first, then generic Base58
+        # We do this first because crypto addresses often contain sequences that
+        # might match other PII patterns (like phone numbers or addresses)
+        text = self.ada_re.sub("[ADA_ADDRESS]", text)
+        text = self.xrp_re.sub("[XRP_ADDRESS]", text)
+        text = self.btc_re.sub("[BTC_ADDRESS]", text)
+        text = self.eth_re.sub("[ETH_ADDRESS]", text)
+        text = self.ltc_re.sub("[LTC_ADDRESS]", text)
+        text = self.sol_re.sub("[SOL_ADDRESS]", text)
 
         # Scrub emails
         text = self.email_re.sub(lambda m: "[EMAIL]" if self._should_mask(m.group(0)) else m.group(0), text)
@@ -97,10 +114,5 @@ class PIIScrubber:
             return match.group(0)
 
         text = self.name_greeting_re.sub(mask_name, text)
-
-        # Scrub crypto addresses
-        text = self.btc_re.sub("[BTC_ADDRESS]", text)
-        text = self.eth_re.sub("[ETH_ADDRESS]", text)
-        text = self.ltc_re.sub("[LTC_ADDRESS]", text)
 
         return text

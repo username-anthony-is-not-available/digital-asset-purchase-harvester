@@ -428,6 +428,7 @@
                     <a id="export-json" href="#" download><button>Export to JSON</button></a>
                     <a id="export-koinly" href="#" download><button>Export to Koinly</button></a>
                     <a id="export-ctc" href="#" download><button>Export to CTC</button></a>
+                    <a id="export-cointracker" href="#" download><button>Export to CoinTracker</button></a>
                     <a id="export-cra" href="#" download><button>Export to CRA</button></a>
                     <a id="export-cra-pdf" href="#" download><button>Export to CRA PDF</button></a>
                     <a href="/"><button>Process Another File</button></a>
@@ -484,6 +485,7 @@
         const exportJson = document.getElementById('export-json');
         const exportKoinly = document.getElementById('export-koinly');
         const exportCtc = document.getElementById('export-ctc');
+        const exportCointracker = document.getElementById('export-cointracker');
         const exportCra = document.getElementById('export-cra');
         const exportCraPdf = document.getElementById('export-cra-pdf');
 
@@ -542,6 +544,7 @@
                 exportJson.href = `/api/export/json/${taskId}`;
                 exportKoinly.href = `/api/export/koinly/${taskId}`;
                 exportCtc.href = `/api/export/ctc/${taskId}`;
+                exportCointracker.href = `/api/export/cointracker/${taskId}`;
                 exportCra.href = `/api/export/cra/${taskId}`;
                 exportCraPdf.href = `/api/export/cra-pdf/${taskId}`;
             } else if (status === 'error') {

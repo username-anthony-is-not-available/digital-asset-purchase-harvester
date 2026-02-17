@@ -56,6 +56,13 @@ __all__ = [
     "CoinbaseExtractor",
     "BinanceExtractor",
     "KrakenExtractor",
+    "GeminiExtractor",
+    "CryptocomExtractor",
+    "FTXExtractor",
+    "CoinSpotExtractor",
+    "NewtonExtractor",
+    "SwyftxExtractor",
+    "BTCMarketsExtractor",
     "ExtractorRegistry",
     "registry",
 ]

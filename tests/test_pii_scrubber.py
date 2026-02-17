@@ -92,3 +92,41 @@ def test_multiple_pii():
     assert "John" not in scrubbed
     assert "123 Main St" not in scrubbed
     assert "john@doe.com" not in scrubbed
+
+
+def test_scrub_crypto_addresses():
+    scrubber = PIIScrubber()
+
+    # BTC
+    text = "Send BTC to 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
+    assert "[BTC_ADDRESS]" in scrubber.scrub(text)
+
+    # ETH
+    text = "Send ETH to 0x32Be343B94f860124dC4fEe278FDCBD38C102D88"
+    assert "[ETH_ADDRESS]" in scrubber.scrub(text)
+
+    # LTC
+    text = "Send LTC to LQt98f79NTSX8V3X4RXP3T1P9P9P9P9P9P"
+    assert "[LTC_ADDRESS]" in scrubber.scrub(text)
+
+    # ADA
+    text = "Send ADA to addr1qxyza123456789012345678901234567890123456789012345678901234567890"
+    assert "[ADA_ADDRESS]" in scrubber.scrub(text)
+
+    # XRP
+    text = "Send XRP to rHb9CJAWyB4rj91VRWn96DkukG4bwdtyTh"
+    assert "[XRP_ADDRESS]" in scrubber.scrub(text)
+
+    # SOL
+    text = "Send SOL to 77m76qW5XbT1aY4fX2h8v9j3k4L5m6n7o8p9qAr1s2t"
+    assert "[SOL_ADDRESS]" in scrubber.scrub(text)
+
+
+def test_crypto_address_priority():
+    scrubber = PIIScrubber()
+    # Test that ADA is caught before it might match something else
+    # addr1... followed by many digits might match phone number broad pattern
+    text = "Contact addr1qxyza123456789012345678901234567890123456789012345678901234567890"
+    scrubbed = scrubber.scrub(text)
+    assert "[ADA_ADDRESS]" in scrubbed
+    assert "[PHONE]" not in scrubbed
