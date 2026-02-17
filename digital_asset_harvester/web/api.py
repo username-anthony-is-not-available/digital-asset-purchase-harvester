@@ -37,6 +37,7 @@ TASKS_DB = "tasks_db.json"
 tasks = {}
 tasks_lock = threading.Lock()
 
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: dict[str, list[WebSocket]] = {}
@@ -63,8 +64,10 @@ class ConnectionManager:
                     if connection in self.active_connections[task_id]:
                         self.active_connections[task_id].remove(connection)
 
+
 manager = ConnectionManager()
 main_loop: Optional[asyncio.AbstractEventLoop] = None
+
 
 def broadcast_sync(task_id: str, message: dict):
     """Thread-safe way to broadcast from synchronous background tasks."""
@@ -76,9 +79,7 @@ def broadcast_sync(task_id: str, message: dict):
             return
 
     if main_loop and main_loop.is_running():
-        main_loop.call_soon_threadsafe(
-            lambda: asyncio.create_task(manager.broadcast(task_id, message))
-        )
+        main_loop.call_soon_threadsafe(lambda: asyncio.create_task(manager.broadcast(task_id, message)))
 
 
 def _save_tasks():
@@ -147,6 +148,7 @@ def _create_progress_callback(task_id: str):
 
     return progress_callback
 
+
 def _create_log_callback(task_id: str):
     def log_callback(message: str):
         with tasks_lock:
@@ -154,10 +156,7 @@ def _create_log_callback(task_id: str):
                 if "logs" not in tasks[task_id]:
                     tasks[task_id]["logs"] = []
 
-                log_entry = {
-                    "timestamp": datetime.now().isoformat(),
-                    "message": message
-                }
+                log_entry = {"timestamp": datetime.now().isoformat(), "message": message}
                 tasks[task_id]["logs"].append(log_entry)
 
                 # Keep only last 100 logs
@@ -200,7 +199,7 @@ def process_eml_files(task_id: str, temp_dir: str, logger_factory: StructuredLog
             show_progress=False,
             progress_callback=_create_progress_callback(task_id),
             loading_callback=_create_progress_callback(task_id),
-            log_callback=_create_log_callback(task_id)
+            log_callback=_create_log_callback(task_id),
         )
 
         # Initialize review status and map fields for frontend
@@ -253,7 +252,7 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
             show_progress=False,
             progress_callback=_create_progress_callback(task_id),
             loading_callback=_create_progress_callback(task_id),
-            log_callback=_create_log_callback(task_id)
+            log_callback=_create_log_callback(task_id),
         )
 
         # Initialize review status and map fields for frontend
@@ -388,7 +387,7 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
             show_progress=False,
             progress_callback=_create_progress_callback(task_id),
             loading_callback=_create_progress_callback(task_id),
-            log_callback=_create_log_callback(task_id)
+            log_callback=_create_log_callback(task_id),
         )
 
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
@@ -436,7 +435,7 @@ def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_fa
             show_progress=False,
             progress_callback=_create_progress_callback(task_id),
             loading_callback=_create_progress_callback(task_id),
-            log_callback=_create_log_callback(task_id)
+            log_callback=_create_log_callback(task_id),
         )
 
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
@@ -529,7 +528,9 @@ async def export_cointracker(task_id: str):
 
     output.seek(0)
     return StreamingResponse(
-        output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=cointracker_{task_id}.csv"}
+        output,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=cointracker_{task_id}.csv"},
     )
 
 
@@ -625,9 +626,7 @@ async def export_cra_pdf(task_id: str):
     denormalized_results = [denormalize_from_frontend(p) for p in results]
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        write_purchase_data_to_cra_pdf(
-            denormalized_results, tmp.name, base_fiat_currency=settings.base_fiat_currency
-        )
+        write_purchase_data_to_cra_pdf(denormalized_results, tmp.name, base_fiat_currency=settings.base_fiat_currency)
         tmp_path = tmp.name
 
     def iterfile():
@@ -726,14 +725,16 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str):
         # Send initial state
         with tasks_lock:
             if task_id in tasks:
-                await websocket.send_json({
-                    "type": "init",
-                    "data": {
-                        "progress": tasks[task_id].get("progress"),
-                        "logs": tasks[task_id].get("logs", []),
-                        "status": tasks[task_id].get("status")
+                await websocket.send_json(
+                    {
+                        "type": "init",
+                        "data": {
+                            "progress": tasks[task_id].get("progress"),
+                            "logs": tasks[task_id].get("logs", []),
+                            "status": tasks[task_id].get("status"),
+                        },
                     }
-                })
+                )
 
         while True:
             # Keep connection alive

@@ -185,25 +185,40 @@ def _process_single_email(
     return email, idx, result
 
 
+# Global variable to store the extractor in worker processes
+_worker_extractor = None
+
+
+def _init_worker(settings: HarvesterSettings) -> None:
+    """Initialize a worker process with a shared extractor instance."""
+    global _worker_extractor
+    from digital_asset_harvester import EmailPurchaseExtractor, get_llm_client
+    from digital_asset_harvester.telemetry import StructuredLoggerFactory
+
+    logger_factory = StructuredLoggerFactory(json_output=settings.log_json_output)
+    llm_client = get_llm_client(settings=settings)
+    _worker_extractor = EmailPurchaseExtractor(
+        settings=settings,
+        llm_client=llm_client,
+        logger_factory=logger_factory,
+    )
+
+
 def _process_email_worker(
     task_data: dict | str | bytes,
     idx: int,
     settings: HarvesterSettings,
 ) -> tuple[dict, int, dict]:
     """Worker function for multiprocessing."""
+    global _worker_extractor
     from email import message_from_bytes, message_from_string
-    from digital_asset_harvester import EmailPurchaseExtractor, get_llm_client
     from digital_asset_harvester.ingest.email_parser import message_to_dict
-    from digital_asset_harvester.telemetry import StructuredLoggerFactory
 
-    # Re-initialize extractor in the worker process
-    logger_factory = StructuredLoggerFactory(json_output=settings.log_json_output)
-    llm_client = get_llm_client(settings=settings)
-    extractor = EmailPurchaseExtractor(
-        settings=settings,
-        llm_client=llm_client,
-        logger_factory=logger_factory,
-    )
+    # Initialize extractor if not already done in this process
+    if _worker_extractor is None:
+        _init_worker(settings)
+
+    extractor = _worker_extractor
 
     # Determine if we have a raw email or a pre-parsed dict
     if isinstance(task_data, (str, bytes)):
@@ -287,49 +302,8 @@ def process_emails(
 
     is_parallel = enable_parallel or enable_multiprocessing
 
-    # Pre-filter duplicates to save processing time and LLM costs
-    _safe_log("Loading and pre-filtering emails...")
-    raw_email_list = []
+    # total_to_load is for progress tracking
     total_to_load = len(emails) if hasattr(emails, "__len__") else None
-
-    if show_progress:
-        load_iterator = tqdm(
-            emails,
-            total=total_to_load,
-            desc="Loading emails",
-            unit="email",
-            leave=False,
-            disable=not show_progress,
-        )
-        for idx, email in enumerate(load_iterator, 1):
-            raw_email_list.append(email)
-            if loading_callback and total_to_load:
-                loading_callback(idx, total_to_load)
-    else:
-        for idx, email in enumerate(emails, 1):
-            raw_email_list.append(email)
-            if loading_callback and total_to_load:
-                loading_callback(idx, total_to_load)
-
-    email_list = []
-    for email in raw_email_list:
-        if duplicate_detector.is_email_duplicate(email, auto_save=False):
-            subject = email.get("subject", "No Subject") if isinstance(email, dict) else "Raw Content"
-            _safe_log(f"Skipping already processed email: {subject}", level=logging.DEBUG)
-            metrics.increment("email_duplicates_skipped")
-            continue
-        email_list.append(email)
-
-    total_emails = len(email_list)
-    _safe_log(f"Starting processing of {total_emails} emails")
-
-    iterator = tqdm(
-        email_list,
-        desc="Processing emails",
-        unit="email",
-        disable=not show_progress,
-        ncols=100,
-    )
 
     def handle_result(email, idx, result):
         if "processing_notes" in result:
@@ -371,7 +345,54 @@ def process_emails(
             if any("filtered out by preprocessing" in note for note in result.get("processing_notes", [])):
                 metrics.increment("emails_skipped_preprocessing")
 
-    if is_parallel:
+    if not is_parallel:
+        _safe_log("Processing emails sequentially (streaming mode)...")
+        iterator = tqdm(
+            emails,
+            total=total_to_load,
+            desc="Processing emails",
+            unit="email",
+            disable=not show_progress,
+            ncols=100,
+        )
+
+        for idx, email in enumerate(iterator, 1):
+            if show_progress:
+                subject_preview = email.get("subject", "")[:40] if isinstance(email, dict) else "Raw"
+                iterator.set_postfix_str(f"Current: {subject_preview}...")
+
+            if duplicate_detector.is_email_duplicate(email, auto_save=False):
+                metrics.increment("email_duplicates_skipped")
+                continue
+
+            metrics.increment("emails_processed")
+            _, _, result = _process_single_email(email, idx, extractor)
+            handle_result(email, idx, result)
+
+            if progress_callback:
+                progress_callback(idx, total_to_load or idx)
+
+    else:
+        # Parallel mode - still listify but filter in one pass
+        _safe_log("Pre-filtering emails for parallel processing...")
+        email_list = []
+        for email in emails:
+            if duplicate_detector.is_email_duplicate(email, auto_save=False):
+                metrics.increment("email_duplicates_skipped")
+                continue
+            email_list.append(email)
+
+        total_emails = len(email_list)
+        _safe_log(f"Starting parallel processing of {total_emails} emails")
+
+        iterator = tqdm(
+            email_list,
+            desc="Processing emails",
+            unit="email",
+            disable=not show_progress,
+            ncols=100,
+        )
+
         from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 
         max_workers = int(getattr(settings, "max_workers", 5))
@@ -386,7 +407,7 @@ def process_emails(
             executor_class = ThreadPoolExecutor
             submit_fn = lambda exc, email, idx: exc.submit(_process_single_email, email, idx, extractor)
 
-        with executor_class(max_workers=max_workers) as executor:
+        with executor_class(max_workers=max_workers, initializer=_init_worker, initargs=(settings,)) as executor:
             futures = {submit_fn(executor, email, idx): (email, idx) for idx, email in enumerate(email_list, 1)}
 
             processed_count = 0
@@ -406,20 +427,6 @@ def process_emails(
 
                 if show_progress:
                     iterator.update(1)
-    else:
-        for idx, email in enumerate(iterator, 1):
-            if show_progress:
-                subject_preview = email.get("subject", "")[:40]
-                iterator.set_postfix_str(f"Current: {subject_preview}...")
-
-            _safe_log(f"Processing email {idx}: {email.get('subject', '')[:50]}")
-            metrics.increment("emails_processed")
-
-            _, _, result = _process_single_email(email, idx, extractor)
-            handle_result(email, idx, result)
-
-            if progress_callback:
-                progress_callback(idx, total_emails)
 
     if history_path:
         duplicate_detector.save_history()

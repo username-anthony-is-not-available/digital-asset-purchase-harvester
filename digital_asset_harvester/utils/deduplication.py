@@ -121,7 +121,7 @@ class DuplicateDetector:
                     json.dump(data, f, indent=2)
                 os.replace(temp_path, self.persistence_path)
             except Exception:
-                if 'temp_path' in locals() and os.path.exists(temp_path):
+                if "temp_path" in locals() and os.path.exists(temp_path):
                     os.remove(temp_path)
                 pass
 

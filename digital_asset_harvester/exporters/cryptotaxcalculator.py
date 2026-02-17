@@ -17,6 +17,7 @@ class CryptoTaxCalculatorReportGenerator:
             return ""
         try:
             from dateutil import parser
+
             dt = parser.parse(date_str)
             return dt.strftime("%Y-%m-%d %H:%M:%S")
         except (ValueError, TypeError, ImportError):

@@ -16,6 +16,7 @@ class CoinTrackerReportGenerator:
             return ""
         try:
             from dateutil import parser
+
             dt = parser.parse(date_str)
             return dt.strftime("%m/%d/%Y %H:%M:%S")
         except (ValueError, TypeError, ImportError):
@@ -49,21 +50,25 @@ class CoinTrackerReportGenerator:
         }
 
         if tx_type == "deposit":
-            pass # Received only
+            pass  # Received only
         elif tx_type == "withdrawal":
-            row.update({
-                "Received Quantity": "",
-                "Received Currency": "",
-                "Sent Quantity": str(purchase.get("amount", "")),
-                "Sent Currency": purchase.get("item_name", ""),
-            })
+            row.update(
+                {
+                    "Received Quantity": "",
+                    "Received Currency": "",
+                    "Sent Quantity": str(purchase.get("amount", "")),
+                    "Sent Currency": purchase.get("item_name", ""),
+                }
+            )
         elif tx_type == "staking_reward":
             row["Tag"] = "staked"
-        else: # Default to buy
-            row.update({
-                "Sent Quantity": str(purchase.get("total_spent", "")),
-                "Sent Currency": purchase.get("currency", ""),
-            })
+        else:  # Default to buy
+            row.update(
+                {
+                    "Sent Quantity": str(purchase.get("total_spent", "")),
+                    "Sent Currency": purchase.get("currency", ""),
+                }
+            )
 
         return row
 

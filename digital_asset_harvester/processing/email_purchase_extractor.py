@@ -1,6 +1,7 @@
 """Logic for identifying and extracting crypto purchase information from emails."""
 
 import email
+import hashlib
 import logging
 import time
 from decimal import Decimal
@@ -64,6 +65,7 @@ class EmailPurchaseExtractor:
     metrics: MetricsTracker = field(default_factory=MetricsTracker)
     prompts: PromptManager = field(default_factory=lambda: DEFAULT_PROMPTS)
     _metadata_cache: OrderedDict[str, Dict[str, str]] = field(default_factory=OrderedDict, init=False)
+    _scrubbed_cache: OrderedDict[str, str] = field(default_factory=OrderedDict, init=False)
     _MAX_CACHE_SIZE: int = 1000
 
     def __post_init__(self) -> None:
@@ -83,12 +85,17 @@ class EmailPurchaseExtractor:
         """Check if text matches the specified regex pattern."""
         return bool(pattern.search(text))
 
+    def _get_content_hash(self, content: str) -> str:
+        """Generate a SHA-256 hash of the content for use as a cache key."""
+        return hashlib.sha256(content.encode("utf-8", errors="ignore")).hexdigest()
+
     def _extract_email_metadata(self, email_content: str) -> Dict[str, str]:
         """Extract subject, sender, and body from email content with caching."""
-        if email_content in self._metadata_cache:
+        cache_key = self._get_content_hash(email_content)
+        if cache_key in self._metadata_cache:
             # Move to end for LRU
-            self._metadata_cache.move_to_end(email_content)
-            return self._metadata_cache[email_content]
+            self._metadata_cache.move_to_end(cache_key)
+            return self._metadata_cache[cache_key]
 
         metadata = {"subject": "", "sender": "", "body": ""}
 
@@ -146,7 +153,7 @@ class EmailPurchaseExtractor:
             if body_lines:
                 metadata["body"] = "\n".join(body_lines).strip()
 
-        self._metadata_cache[email_content] = metadata
+        self._metadata_cache[cache_key] = metadata
         if len(self._metadata_cache) > self._MAX_CACHE_SIZE:
             self._metadata_cache.popitem(last=False)
 
@@ -175,10 +182,22 @@ class EmailPurchaseExtractor:
 
     def _scrub_pii_if_enabled(self, email_content: str) -> str:
         """Apply PII scrubbing to email content if enabled in settings or privacy mode."""
-        if self.settings.enable_pii_scrubbing or self.settings.enable_privacy_mode:
-            logger.debug("PII scrubbing enabled, processing email content")
-            return self.pii_scrubber.scrub(email_content)
-        return email_content
+        if not (self.settings.enable_pii_scrubbing or self.settings.enable_privacy_mode):
+            return email_content
+
+        cache_key = self._get_content_hash(email_content)
+        if cache_key in self._scrubbed_cache:
+            self._scrubbed_cache.move_to_end(cache_key)
+            return self._scrubbed_cache[cache_key]
+
+        logger.debug("PII scrubbing enabled, processing email content")
+        scrubbed = self.pii_scrubber.scrub(email_content)
+
+        self._scrubbed_cache[cache_key] = scrubbed
+        if len(self._scrubbed_cache) > self._MAX_CACHE_SIZE:
+            self._scrubbed_cache.popitem(last=False)
+
+        return scrubbed
 
     def _should_skip_llm_analysis(self, email_content: str) -> bool:
         """Determine if email can be quickly filtered out without LLM analysis."""
@@ -205,8 +224,8 @@ class EmailPurchaseExtractor:
                 self.metrics.increment("classification_skipped_preprocessing")
                 return False
 
-            if not (self._is_likely_crypto_related(email_content) and self._is_likely_purchase_related(email_content)):
-                logger.debug("Email doesn't meet basic crypto + purchase criteria")
+            if not self._is_likely_purchase_related(email_content):
+                logger.debug("Email doesn't meet basic purchase criteria")
                 return False
 
         # Apply PII scrubbing before sending to LLM
