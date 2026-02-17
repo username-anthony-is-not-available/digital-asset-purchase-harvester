@@ -11,10 +11,13 @@ from typing import TYPE_CHECKING
 from digital_asset_harvester.config import get_settings
 
 if TYPE_CHECKING:
+    from digital_asset_harvester.config import HarvesterSettings
     from .provider import LLMProvider
 
 
-def get_llm_client(provider: str | None = None, settings: HarvesterSettings | None = None) -> LLMProvider:
+def get_llm_client(
+    provider: str | None = None, settings: HarvesterSettings | None = None, enable_cache_auto_save: bool = True
+) -> LLMProvider:
     """Get the configured LLM client.
 
     This factory function is the single point of entry for creating LLM clients.
@@ -82,7 +85,7 @@ def get_llm_client(provider: str | None = None, settings: HarvesterSettings | No
         from .cache import LLMCache
         from .cache_client import CachingLLMClient
 
-        cache = LLMCache(settings.llm_cache_file)
+        cache = LLMCache(settings.llm_cache_file, auto_save=enable_cache_auto_save)
         return CachingLLMClient(client, cache)
 
     return client

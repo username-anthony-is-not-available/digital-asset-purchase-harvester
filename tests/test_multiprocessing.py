@@ -21,7 +21,11 @@ def test_process_emails_uses_multiprocessing(mocker):
     process_emails(emails, mock_extractor, factory, show_progress=False)
 
     # THEN
-    m_executor.assert_called_once_with(max_workers=3)
+    # We now use initializer and initargs
+    args, kwargs = m_executor.call_args
+    assert kwargs["max_workers"] == 3
+    assert "initializer" in kwargs
+    assert "initargs" in kwargs
 
 
 def test_cli_multiprocessing_flag():
