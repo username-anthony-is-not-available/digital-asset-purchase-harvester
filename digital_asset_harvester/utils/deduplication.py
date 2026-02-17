@@ -36,13 +36,15 @@ def generate_email_hash(email_data: Dict[str, Any]) -> str:
     """
     Generate a unique hash for an email based on its content.
     Used as a fallback when Message-ID is missing.
-    """
-    subject = str(email_data.get("subject", "")).strip()
-    sender = str(email_data.get("sender", "")).strip()
-    date = str(email_data.get("date", "")).strip()
-    body = str(email_data.get("body", "")).strip()
 
-    components = f"{subject}|{sender}|{date}|{body}"
+    Normalizes subject, sender, and date to lowercase and strips whitespace.
+    Body is excluded to improve reliability against minor content variations.
+    """
+    subject = str(email_data.get("subject", "")).strip().lower()
+    sender = str(email_data.get("sender", "")).strip().lower()
+    date = str(email_data.get("date", "")).strip().lower()
+
+    components = f"{subject}|{sender}|{date}"
     return hashlib.sha256(components.encode(errors="ignore")).hexdigest()
 
 
