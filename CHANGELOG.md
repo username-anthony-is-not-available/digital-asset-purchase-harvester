@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **New Exchange Extractors**: Added specialized regex-based extractors for Bitstamp and Bitfinex to improve extraction speed and accuracy.
+- **Enhanced FX Rate Service**: Improved `FXRateService` with robust date parsing via `dateutil.parser` and a reliable retry mechanism for external API calls.
+- **Improved CRA PDF Export**: Enhanced the CRA report grouping logic to group summaries first by currency, then by vendor, including subtotals for clearer financial reporting.
+- **Standardized Date Formatting**: Unified date formatting across all exporters (`cointracker.py`, `koinly.py`, `cryptotaxcalculator.py`) using `dateutil.parser` with UTC normalization.
 - **Token Balance Verification**: Cross-reference harvested purchases with actual on-chain balances.
   - New `BlockchainVerifier` integration using `blockchain-core`.
   - Configurable wallet addresses via `DAP_BLOCKCHAIN_WALLETS`.
