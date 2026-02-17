@@ -66,6 +66,11 @@ async def status_page(request: Request, task_id: str):
     return templates.TemplateResponse(request, "status.html", {"task_id": task_id})
 
 
+@app.get("/metrics")
+async def metrics_page(request: Request):
+    return templates.TemplateResponse(request, "metrics.html")
+
+
 def run():
     """Run the Web UI server."""
     import uvicorn

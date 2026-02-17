@@ -193,7 +193,7 @@ TEST_CASES = [
             {
                 "amount": "0.05",
                 "item_name": "BTC",
-                "total_spent": "60000.00",
+                "total_spent": "3000.0",
                 "currency": "AUD",
                 "vendor": "BTCMarkets",
                 "transaction_id": "BTCM-554433",

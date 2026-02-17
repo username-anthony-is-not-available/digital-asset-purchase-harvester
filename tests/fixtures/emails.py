@@ -202,6 +202,20 @@ EMAIL_FIXTURES = {
     Total Cost: 900.00 USDT
     Fee: 0.005 SOL
     """,
+    "newton_purchase": """
+    From: Newton <support@newton.co>
+    Subject: Newton Trade Confirmation
+
+    You bought 0.1 BTC for $5,000.00 CAD.
+    Reference #NT-123
+    """,
+    "btcmarkets_purchase": """
+    From: BTCMarkets <noreply@btcmarkets.net>
+    Subject: BTCMarkets Trade Confirmation
+
+    Bought 0.05 BTC for 3,000 AUD.
+    Order ID: BTC-456
+    """,
 }
 
 
@@ -239,6 +253,8 @@ def purchase_emails():
         "encoded_subject_purchase",
         "binance_multi_asset",
         "binance_order_execution",
+        "newton_purchase",
+        "btcmarkets_purchase",
     }
     return {k: v for k, v in EMAIL_FIXTURES.items() if k in purchase_types}
 
