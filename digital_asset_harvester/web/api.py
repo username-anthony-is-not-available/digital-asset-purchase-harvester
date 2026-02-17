@@ -26,6 +26,7 @@ from ..cli import process_emails, configure_logging
 from ..utils.data_utils import normalize_for_frontend, denormalize_from_frontend
 from ..exporters.koinly import KoinlyReportGenerator
 from ..exporters.cryptotaxcalculator import CryptoTaxCalculatorReportGenerator
+from ..exporters.cointracker import CoinTrackerReportGenerator
 from ..exporters.cra import CRAReportGenerator, write_purchase_data_to_cra_pdf
 
 router = APIRouter()
@@ -492,6 +493,43 @@ async def export_koinly(task_id: str):
     output.seek(0)
     return StreamingResponse(
         output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=koinly_{task_id}.csv"}
+    )
+
+
+@router.get("/export/cointracker/{task_id}")
+async def export_cointracker(task_id: str):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    denormalized_results = [denormalize_from_frontend(p) for p in results]
+
+    generator = CoinTrackerReportGenerator()
+    rows = generator.generate_csv_rows(denormalized_results)
+
+    output = StringIO()
+    if rows:
+        writer = csv.DictWriter(output, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+    else:
+        headers = [
+            "Date",
+            "Received Quantity",
+            "Received Currency",
+            "Sent Quantity",
+            "Sent Currency",
+            "Fee Quantity",
+            "Fee Currency",
+            "Tag",
+        ]
+        writer = csv.writer(output)
+        writer.writerow(headers)
+
+    output.seek(0)
+    return StreamingResponse(
+        output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=cointracker_{task_id}.csv"}
     )
 
 

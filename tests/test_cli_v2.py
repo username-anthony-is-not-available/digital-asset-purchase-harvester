@@ -384,3 +384,26 @@ def test_run_cra_output_enabled(mocker):
     # THEN
     m_write_cra_csv.assert_called_once()
     m_write_csv.assert_not_called()
+
+
+def test_run_cointracker_output_enabled(mocker):
+    # GIVEN
+    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
+    m_get_settings.return_value.enable_cointracker_csv_export = True
+    mocker.patch("digital_asset_harvester.cli.configure_logging")
+    mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
+    mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
+    mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
+    mocker.patch(
+        "digital_asset_harvester.cli.process_emails",
+        return_value=([], mocker.MagicMock()),
+    )
+    m_write_cointracker_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_cointracker_csv")
+    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
+
+    # WHEN
+    run(["--mbox-file", "test.mbox", "--output-format", "cointracker"])
+
+    # THEN
+    m_write_cointracker_csv.assert_called_once()
+    m_write_csv.assert_not_called()

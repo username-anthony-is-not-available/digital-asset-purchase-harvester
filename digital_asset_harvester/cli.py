@@ -36,6 +36,9 @@ from digital_asset_harvester.exporters.cra import (
     write_purchase_data_to_cra_csv,
     write_purchase_data_to_cra_pdf,
 )
+from digital_asset_harvester.exporters.cointracker import (
+    write_purchase_data_to_cointracker_csv,
+)
 from digital_asset_harvester.telemetry import MetricsTracker, StructuredLoggerFactory
 from digital_asset_harvester.utils import ensure_directory_exists
 from digital_asset_harvester.utils.deduplication import DuplicateDetector
@@ -98,7 +101,7 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--output-format",
-        choices=["csv", "koinly", "cryptotaxcalculator", "cra", "cra-pdf"],
+        choices=["csv", "koinly", "cryptotaxcalculator", "cointracker", "cra", "cra-pdf"],
         default="csv",
         help="The output format (default: csv)",
     )
@@ -311,7 +314,8 @@ def process_emails(
     email_list = []
     for email in raw_email_list:
         if duplicate_detector.is_email_duplicate(email, auto_save=False):
-            _safe_log(f"Skipping already processed email: {email.get('subject', 'No Subject')}", level=logging.DEBUG)
+            subject = email.get("subject", "No Subject") if isinstance(email, dict) else "Raw Content"
+            _safe_log(f"Skipping already processed email: {subject}", level=logging.DEBUG)
             metrics.increment("email_duplicates_skipped")
             continue
         email_list.append(email)
@@ -576,6 +580,18 @@ def _process_and_save_results(
                 "CRA output format is not enabled. "
                 "Set `enable_cra_csv_export = true` in your config or "
                 "`DAP_ENABLE_CRA_CSV_EXPORT=true` env var. "
+                "Falling back to standard CSV output."
+            )
+            write_purchase_data_to_csv(output_path, purchases)
+    elif output_format == "cointracker":
+        if settings.enable_cointracker_csv_export:
+            logger.info("Writing output in CoinTracker format to %s", output_path)
+            write_purchase_data_to_cointracker_csv(purchases, output_path)
+        else:
+            logger.warning(
+                "CoinTracker output format is not enabled. "
+                "Set `enable_cointracker_csv_export = true` in your config or "
+                "`DAP_ENABLE_COINTRACKER_CSV_EXPORT=true` env var. "
                 "Falling back to standard CSV output."
             )
             write_purchase_data_to_csv(output_path, purchases)
