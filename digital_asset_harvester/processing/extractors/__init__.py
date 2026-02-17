@@ -15,6 +15,8 @@ from .coinspot import CoinSpotExtractor
 from .newton import NewtonExtractor
 from .swyftx import SwyftxExtractor
 from .btcmarkets import BTCMarketsExtractor
+from .bitstamp import BitstampExtractor
+from .bitfinex import BitfinexExtractor
 
 
 class ExtractorRegistry:
@@ -32,6 +34,8 @@ class ExtractorRegistry:
             NewtonExtractor(),
             SwyftxExtractor(),
             BTCMarketsExtractor(),
+            BitstampExtractor(),
+            BitfinexExtractor(),
         ]
 
     def extract(self, subject: str, sender: str, body: str) -> Optional[List[Dict[str, Any]]]:
@@ -63,6 +67,8 @@ __all__ = [
     "NewtonExtractor",
     "SwyftxExtractor",
     "BTCMarketsExtractor",
+    "BitstampExtractor",
+    "BitfinexExtractor",
     "ExtractorRegistry",
     "registry",
 ]

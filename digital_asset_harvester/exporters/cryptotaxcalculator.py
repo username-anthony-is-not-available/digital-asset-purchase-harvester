@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import csv
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
+
+from dateutil import parser
 
 
 class CryptoTaxCalculatorReportGenerator:
@@ -16,22 +18,14 @@ class CryptoTaxCalculatorReportGenerator:
         if not date_str:
             return ""
         try:
-            from dateutil import parser
             dt = parser.parse(date_str)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            else:
+                dt = dt.astimezone(timezone.utc)
             return dt.strftime("%Y-%m-%d %H:%M:%S")
-        except (ValueError, TypeError, ImportError):
-            try:
-                if " " in date_str:
-                    # Strip timezone name if present
-                    parts = date_str.split()
-                    if len(parts) > 2:
-                        date_str = " ".join(parts[:2])
-                    dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-                else:
-                    dt = datetime.strptime(date_str, "%Y-%m-%d")
-                return dt.strftime("%Y-%m-%d %H:%M:%S")
-            except (ValueError, TypeError):
-                return date_str
+        except (ValueError, TypeError, parser.ParserError):
+            return date_str
 
     def _convert_purchase_to_ctc_row(self, purchase: Dict[str, Any]) -> Dict[str, Any]:
         """Convert a single purchase record to a CTC CSV row."""
