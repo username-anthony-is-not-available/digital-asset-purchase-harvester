@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>System Metrics Dashboard</title>
+    <link rel="stylesheet" type="text/css" href="/static/styles.css">
+    <style>
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .metric-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 5px solid #2ecc71;
+        }
+        .metric-card h3 {
+            margin-top: 0;
+            color: #7f8c8d;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .settings-section {
+            margin-top: 40px;
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        pre {
+            background: #333;
+            color: #eee;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>System Metrics Dashboard</h1>
+        <p><a href="/">&larr; Back to Home</a></p>
+
+        <div id="metrics-container" class="metrics-grid">
+            <p>Loading metrics...</p>
+        </div>
+
+        <div class="settings-section">
+            <h2>Active Configuration</h2>
+            <div id="settings-container">
+                <p>Loading settings...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchMetrics() {
+            try {
+                const response = await fetch('/api/metrics');
+                const data = await response.json();
+                const metrics = data.metrics;
+                const container = document.getElementById('metrics-container');
+                container.innerHTML = '';
+
+                const labels = {
+                    'emails_processed': 'Emails Processed',
+                    'purchases_detected': 'Purchases Found',
+                    'purchases_extracted_regex': 'Regex Extractions',
+                    'purchases_extracted_llm': 'LLM Extractions',
+                    'llm_calls_total': 'Total LLM Calls',
+                    'llm_cache_hits': 'LLM Cache Hits',
+                    'email_duplicates_skipped': 'Duplicate Emails Skipped',
+                    'completed_tasks': 'Completed Tasks',
+                    'error_tasks': 'Failed Tasks'
+                };
+
+                for (const [key, value] of Object.entries(metrics)) {
+                    if (typeof value === 'number' && !key.includes('latency')) {
+                        const card = document.createElement('div');
+                        card.className = 'metric-card';
+                        const label = labels[key] || key.replace(/_/g, ' ');
+                        card.innerHTML = `
+                            <h3>${label}</h3>
+                            <div class="metric-value">${value}</div>
+                        `;
+                        container.appendChild(card);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching metrics:', error);
+            }
+        }
+
+        async function fetchSettings() {
+            try {
+                const response = await fetch('/api/system-info');
+                const data = await response.json();
+                const container = document.getElementById('settings-container');
+                container.innerHTML = `<pre>${JSON.stringify(data.settings, null, 2)}</pre>`;
+            } catch (error) {
+                console.error('Error fetching settings:', error);
+            }
+        }
+
+        fetchMetrics();
+        fetchSettings();
+
+        // Refresh every 30 seconds
+        setInterval(fetchMetrics, 30000);
+    </script>
+</body>
+</html>

@@ -21,7 +21,8 @@ from .. import (
 )
 from ..ingest import ImapClient, GmailClient, OutlookClient
 from ..utils.sync_state import SyncState
-from ..telemetry import StructuredLoggerFactory
+from ..utils.fx_rates import fx_service
+from ..telemetry import MetricsTracker, StructuredLoggerFactory
 from ..cli import process_emails, configure_logging
 from ..utils.data_utils import normalize_for_frontend, denormalize_from_frontend
 from ..exporters.koinly import KoinlyReportGenerator
@@ -792,20 +793,53 @@ async def update_record(task_id: str, index: int, updated_record: dict):
     if index < 0 or index >= len(results):
         raise HTTPException(status_code=404, detail="Record index out of bounds")
 
+    settings = get_settings()
     # Check if crypto_currency changed and we need to update asset_id
     from ..utils.asset_mapping import mapper
 
     old_currency = results[index].get("crypto_currency")
     new_currency = updated_record.get("crypto_currency")
 
+    # Fields that might trigger a fiat recalculation
+    old_amount = results[index].get("amount")
+    new_amount = updated_record.get("amount")
+    old_fiat_currency = results[index].get("currency")
+    new_fiat_currency = updated_record.get("currency")
+    old_date = results[index].get("purchase_date")
+    new_date = updated_record.get("purchase_date")
+
     results[index].update(updated_record)
 
+    # 1. Update Asset ID if crypto currency changed
     if new_currency and new_currency != old_currency:
         # Only auto-update asset_id if it wasn't explicitly provided/changed to something non-empty
         if not updated_record.get("asset_id"):
             asset_id = mapper.get_asset_id(new_currency)
             if asset_id:
                 results[index]["asset_id"] = asset_id
+
+    # 2. Recalculate base fiat if enabled and relevant fields changed
+    if settings.enable_currency_conversion:
+        fiat_changed = (
+            new_amount != old_amount or
+            new_fiat_currency != old_fiat_currency or
+            new_date != old_date
+        )
+
+        # Only recalculate if it wasn't manually overridden in this update
+        if fiat_changed and not updated_record.get("fiat_amount_base"):
+            try:
+                from_curr = results[index].get("currency")
+                to_curr = settings.base_fiat_currency
+                p_date = results[index].get("purchase_date", "")
+
+                rate = fx_service.get_rate(p_date, from_curr, to_curr)
+                if rate:
+                    from decimal import Decimal
+                    base_amount = Decimal(str(results[index].get("amount", 0))) * rate
+                    results[index]["fiat_amount_base"] = float(base_amount)
+            except Exception as e:
+                logger.warning(f"Failed to auto-recalculate fiat_amount_base: {e}")
 
     # Reset review status on manual edit
     results[index]["review_status"] = "pending"
@@ -926,6 +960,25 @@ async def clear_tasks():
         tasks = {}
     _save_tasks()
     return {"status": "success", "message": "All tasks cleared"}
+
+
+@router.get("/system-info")
+async def get_system_info():
+    """Return sanitized application settings."""
+    settings = get_settings()
+    from dataclasses import asdict
+    settings_dict = asdict(settings)
+
+    # Sanitize sensitive fields
+    sensitive_keywords = ["key", "password", "secret", "token", "auth"]
+    sanitized = {}
+    for k, v in settings_dict.items():
+        if any(kw in k.lower() for kw in sensitive_keywords):
+            sanitized[k] = "********" if v else ""
+        else:
+            sanitized[k] = v
+
+    return {"status": "success", "settings": sanitized}
 
 
 @router.get("/metrics")
