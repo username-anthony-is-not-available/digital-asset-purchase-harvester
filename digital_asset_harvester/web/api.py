@@ -1,34 +1,36 @@
-import os
-import logging
-import shutil
-import uuid
+import asyncio
 import csv
 import json
+import logging
+import os
+import shutil
 import tempfile
 import threading
-import asyncio
+import uuid
 from datetime import datetime
-from typing import List, Optional
-from fastapi import APIRouter, File, UploadFile, Depends, BackgroundTasks, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import RedirectResponse, StreamingResponse
 from io import StringIO
+from typing import List, Optional
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.responses import RedirectResponse, StreamingResponse
+
 from .. import (
     EmailPurchaseExtractor,
-    MboxDataExtractor,
     EmlDataExtractor,
+    MboxDataExtractor,
     get_llm_client,
     get_settings,
 )
-from ..ingest import ImapClient, GmailClient, OutlookClient
-from ..utils.sync_state import SyncState
-from ..utils.fx_rates import fx_service
-from ..telemetry import MetricsTracker, StructuredLoggerFactory
-from ..cli import process_emails, configure_logging
-from ..utils.data_utils import normalize_for_frontend, denormalize_from_frontend
-from ..exporters.koinly import KoinlyReportGenerator
-from ..exporters.cryptotaxcalculator import CryptoTaxCalculatorReportGenerator
+from ..cli import configure_logging, process_emails
 from ..exporters.cointracker import CoinTrackerReportGenerator
 from ..exporters.cra import CRAReportGenerator, write_purchase_data_to_cra_pdf
+from ..exporters.cryptotaxcalculator import CryptoTaxCalculatorReportGenerator
+from ..exporters.koinly import KoinlyReportGenerator
+from ..ingest import GmailClient, ImapClient, OutlookClient
+from ..telemetry import MetricsTracker, StructuredLoggerFactory
+from ..utils.data_utils import denormalize_from_frontend, normalize_for_frontend
+from ..utils.fx_rates import fx_service
+from ..utils.sync_state import SyncState
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -37,6 +39,7 @@ logger = logging.getLogger(__name__)
 TASKS_DB = "tasks_db.json"
 tasks = {}
 tasks_lock = threading.Lock()
+
 
 class ConnectionManager:
     def __init__(self):
@@ -64,8 +67,10 @@ class ConnectionManager:
                     if connection in self.active_connections[task_id]:
                         self.active_connections[task_id].remove(connection)
 
+
 manager = ConnectionManager()
 main_loop: Optional[asyncio.AbstractEventLoop] = None
+
 
 def broadcast_sync(task_id: str, message: dict):
     """Thread-safe way to broadcast from synchronous background tasks."""
@@ -77,9 +82,7 @@ def broadcast_sync(task_id: str, message: dict):
             return
 
     if main_loop and main_loop.is_running():
-        main_loop.call_soon_threadsafe(
-            lambda: asyncio.create_task(manager.broadcast(task_id, message))
-        )
+        main_loop.call_soon_threadsafe(lambda: asyncio.create_task(manager.broadcast(task_id, message)))
 
 
 def _save_tasks():
@@ -148,6 +151,7 @@ def _create_progress_callback(task_id: str):
 
     return progress_callback
 
+
 def _create_log_callback(task_id: str):
     def log_callback(message: str):
         with tasks_lock:
@@ -155,10 +159,7 @@ def _create_log_callback(task_id: str):
                 if "logs" not in tasks[task_id]:
                     tasks[task_id]["logs"] = []
 
-                log_entry = {
-                    "timestamp": datetime.now().isoformat(),
-                    "message": message
-                }
+                log_entry = {"timestamp": datetime.now().isoformat(), "message": message}
                 tasks[task_id]["logs"].append(log_entry)
 
                 # Keep only last 100 logs
@@ -194,14 +195,14 @@ def process_eml_files(task_id: str, temp_dir: str, logger_factory: StructuredLog
         eml_reader = EmlDataExtractor(temp_dir)
         emails = eml_reader.extract_emails(raw=settings.enable_multiprocessing)
 
-        purchases, _ = process_emails(
+        purchases, run_metrics = process_emails(
             emails,
             extractor,
             logger_factory,
             show_progress=False,
             progress_callback=_create_progress_callback(task_id),
             loading_callback=_create_progress_callback(task_id),
-            log_callback=_create_log_callback(task_id)
+            log_callback=_create_log_callback(task_id),
         )
 
         # Initialize review status and map fields for frontend
@@ -209,7 +210,7 @@ def process_eml_files(task_id: str, temp_dir: str, logger_factory: StructuredLog
 
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
-        tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+        tasks[task_id]["metrics"] = run_metrics.snapshot()
         broadcast_sync(task_id, {"type": "status", "data": "complete"})
         _save_tasks()
     except Exception as e:
@@ -247,14 +248,14 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
         mbox_reader = MboxDataExtractor(temp_path)
         emails = mbox_reader.extract_emails(raw=settings.enable_multiprocessing)
 
-        purchases, _ = process_emails(
+        purchases, run_metrics = process_emails(
             emails,
             extractor,
             logger_factory,
             show_progress=False,
             progress_callback=_create_progress_callback(task_id),
             loading_callback=_create_progress_callback(task_id),
-            log_callback=_create_log_callback(task_id)
+            log_callback=_create_log_callback(task_id),
         )
 
         # Initialize review status and map fields for frontend
@@ -262,7 +263,7 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
 
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
-        tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+        tasks[task_id]["metrics"] = run_metrics.snapshot()
         broadcast_sync(task_id, {"type": "status", "data": "complete"})
         _save_tasks()
     except Exception as e:
@@ -329,7 +330,7 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
             emails = list(
                 imap_client.fetch_emails_by_uids(uids, settings.imap_folder, raw=settings.enable_multiprocessing)
             )
-            purchases, _ = process_emails(
+            purchases, run_metrics = process_emails(
                 emails,
                 extractor,
                 logger_factory,
@@ -346,7 +347,7 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
             normalized_purchases = [normalize_for_frontend(p) for p in purchases]
             tasks[task_id]["status"] = "complete"
             tasks[task_id]["result"] = normalized_purchases
-            tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+            tasks[task_id]["metrics"] = run_metrics.snapshot()
             broadcast_sync(task_id, {"type": "status", "data": "complete"})
             _save_tasks()
 
@@ -382,20 +383,20 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
         gmail_client = GmailClient()
         query = settings.gmail_query
         emails = gmail_client.search_emails(query, raw=settings.enable_multiprocessing)
-        purchases, _ = process_emails(
+        purchases, run_metrics = process_emails(
             emails,
             extractor,
             logger_factory,
             show_progress=False,
             progress_callback=_create_progress_callback(task_id),
             loading_callback=_create_progress_callback(task_id),
-            log_callback=_create_log_callback(task_id)
+            log_callback=_create_log_callback(task_id),
         )
 
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
-        tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+        tasks[task_id]["metrics"] = run_metrics.snapshot()
         broadcast_sync(task_id, {"type": "status", "data": "complete"})
         _save_tasks()
     except Exception as e:
@@ -430,20 +431,20 @@ def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_fa
         outlook_client = OutlookClient(client_id, authority)
         query = settings.outlook_query
         emails = outlook_client.search_emails(query, raw=settings.enable_multiprocessing)
-        purchases, _ = process_emails(
+        purchases, run_metrics = process_emails(
             emails,
             extractor,
             logger_factory,
             show_progress=False,
             progress_callback=_create_progress_callback(task_id),
             loading_callback=_create_progress_callback(task_id),
-            log_callback=_create_log_callback(task_id)
+            log_callback=_create_log_callback(task_id),
         )
 
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
-        tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+        tasks[task_id]["metrics"] = run_metrics.snapshot()
         broadcast_sync(task_id, {"type": "status", "data": "complete"})
         _save_tasks()
     except Exception as e:
@@ -530,7 +531,9 @@ async def export_cointracker(task_id: str):
 
     output.seek(0)
     return StreamingResponse(
-        output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=cointracker_{task_id}.csv"}
+        output,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=cointracker_{task_id}.csv"},
     )
 
 
@@ -626,9 +629,7 @@ async def export_cra_pdf(task_id: str):
     denormalized_results = [denormalize_from_frontend(p) for p in results]
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        write_purchase_data_to_cra_pdf(
-            denormalized_results, tmp.name, base_fiat_currency=settings.base_fiat_currency
-        )
+        write_purchase_data_to_cra_pdf(denormalized_results, tmp.name, base_fiat_currency=settings.base_fiat_currency)
         tmp_path = tmp.name
 
     def iterfile():
@@ -727,14 +728,16 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str):
         # Send initial state
         with tasks_lock:
             if task_id in tasks:
-                await websocket.send_json({
-                    "type": "init",
-                    "data": {
-                        "progress": tasks[task_id].get("progress"),
-                        "logs": tasks[task_id].get("logs", []),
-                        "status": tasks[task_id].get("status")
+                await websocket.send_json(
+                    {
+                        "type": "init",
+                        "data": {
+                            "progress": tasks[task_id].get("progress"),
+                            "logs": tasks[task_id].get("logs", []),
+                            "status": tasks[task_id].get("status"),
+                        },
                     }
-                })
+                )
 
         while True:
             # Keep connection alive
@@ -820,11 +823,7 @@ async def update_record(task_id: str, index: int, updated_record: dict):
 
     # 2. Recalculate base fiat if enabled and relevant fields changed
     if settings.enable_currency_conversion:
-        fiat_changed = (
-            new_amount != old_amount or
-            new_fiat_currency != old_fiat_currency or
-            new_date != old_date
-        )
+        fiat_changed = new_amount != old_amount or new_fiat_currency != old_fiat_currency or new_date != old_date
 
         # Only recalculate if it wasn't manually overridden in this update
         if fiat_changed and not updated_record.get("fiat_amount_base"):
@@ -836,6 +835,7 @@ async def update_record(task_id: str, index: int, updated_record: dict):
                 rate = fx_service.get_rate(p_date, from_curr, to_curr)
                 if rate:
                     from decimal import Decimal
+
                     base_amount = Decimal(str(results[index].get("amount", 0))) * rate
                     results[index]["fiat_amount_base"] = float(base_amount)
             except Exception as e:
@@ -967,6 +967,7 @@ async def get_system_info():
     """Return sanitized application settings."""
     settings = get_settings()
     from dataclasses import asdict
+
     settings_dict = asdict(settings)
 
     # Sanitize sensitive fields

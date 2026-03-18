@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from digital_asset_harvester.cli import process_emails
 from digital_asset_harvester.telemetry import StructuredLoggerFactory
 

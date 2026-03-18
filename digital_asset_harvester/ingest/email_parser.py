@@ -1,7 +1,7 @@
 import email
 import re
 from email.header import decode_header, make_header
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 def decode_header_value(value: str) -> str:

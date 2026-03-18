@@ -1,12 +1,12 @@
 """Tests for the CLI utilities."""
 
 from unittest.mock import MagicMock
-from digital_asset_harvester.config import HarvesterSettings
-from digital_asset_harvester.cli import build_parser, process_emails, run
-from digital_asset_harvester.telemetry import StructuredLoggerFactory
-
 
 import pytest
+
+from digital_asset_harvester.cli import build_parser, process_emails, run
+from digital_asset_harvester.config import HarvesterSettings
+from digital_asset_harvester.telemetry import StructuredLoggerFactory
 
 
 def test_build_parser_defaults():

@@ -1,9 +1,10 @@
 import pytest
-from digital_asset_harvester.processing.extractors.gemini import GeminiExtractor
+
+from digital_asset_harvester.processing.extractors.btcmarkets import BTCMarketsExtractor
 from digital_asset_harvester.processing.extractors.cryptocom import CryptocomExtractor
 from digital_asset_harvester.processing.extractors.ftx import FTXExtractor
+from digital_asset_harvester.processing.extractors.gemini import GeminiExtractor
 from digital_asset_harvester.processing.extractors.newton import NewtonExtractor
-from digital_asset_harvester.processing.extractors.btcmarkets import BTCMarketsExtractor
 from tests.fixtures.emails import EMAIL_FIXTURES
 
 
@@ -111,8 +112,9 @@ def test_btcmarkets_extractor_price():
     assert results[0]["transaction_id"] == "BTC-789"
 
 
-from digital_asset_harvester.processing.extractors.bitstamp import BitstampExtractor
 from digital_asset_harvester.processing.extractors.bitfinex import BitfinexExtractor
+from digital_asset_harvester.processing.extractors.bitstamp import BitstampExtractor
+
 
 def test_bitstamp_extractor_buy():
     extractor = BitstampExtractor()
@@ -131,6 +133,7 @@ def test_bitstamp_extractor_buy():
     assert results[0]["transaction_type"] == "buy"
     assert results[0]["transaction_id"] == "BTST12345"
 
+
 def test_bitstamp_extractor_sell():
     extractor = BitstampExtractor()
     subject = "Transaction confirmation"
@@ -145,6 +148,7 @@ def test_bitstamp_extractor_sell():
     assert results[0]["total_spent"] == "20000.00"
     assert results[0]["currency"] == "USD"
     assert results[0]["transaction_type"] == "withdrawal"
+
 
 def test_bitfinex_extractor_buy():
     extractor = BitfinexExtractor()
@@ -162,6 +166,7 @@ def test_bitfinex_extractor_buy():
     assert results[0]["vendor"] == "Bitfinex"
     assert results[0]["transaction_type"] == "buy"
     assert results[0]["transaction_id"] == "987654321"
+
 
 def test_bitfinex_extractor_sell():
     extractor = BitfinexExtractor()
