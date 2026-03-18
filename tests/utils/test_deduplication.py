@@ -38,6 +38,25 @@ class TestDeduplication(unittest.TestCase):
         hash3 = generate_record_hash(record3)
         self.assertNotEqual(hash1, hash3)
 
+        # Test composite uniqueness (Item Name)
+        record4 = record1.copy()
+        record4["item_name"] = "ETH"
+        hash4 = generate_record_hash(record4)
+        self.assertNotEqual(hash1, hash4)
+
+        # Test composite uniqueness (Amount)
+        record5 = record1.copy()
+        record5["amount"] = 0.2
+        hash5 = generate_record_hash(record5)
+        self.assertNotEqual(hash1, hash5)
+
+        # Test identical record with minor differences in non-indexed fields
+        record6 = record1.copy()
+        record6["confidence"] = 0.99
+        record6["extraction_notes"] = "Some notes"
+        hash6 = generate_record_hash(record6)
+        self.assertEqual(hash1, hash6)
+
     def test_generate_email_hash(self):
         email1 = {
             "subject": "Your Purchase",

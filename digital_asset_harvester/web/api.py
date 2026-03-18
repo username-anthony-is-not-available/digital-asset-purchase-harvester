@@ -194,7 +194,7 @@ def process_eml_files(task_id: str, temp_dir: str, logger_factory: StructuredLog
         eml_reader = EmlDataExtractor(temp_dir)
         emails = eml_reader.extract_emails(raw=settings.enable_multiprocessing)
 
-        purchases, _ = process_emails(
+        purchases, metrics = process_emails(
             emails,
             extractor,
             logger_factory,
@@ -209,7 +209,7 @@ def process_eml_files(task_id: str, temp_dir: str, logger_factory: StructuredLog
 
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
-        tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+        tasks[task_id]["metrics"] = metrics.snapshot()
         broadcast_sync(task_id, {"type": "status", "data": "complete"})
         _save_tasks()
     except Exception as e:
@@ -247,7 +247,7 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
         mbox_reader = MboxDataExtractor(temp_path)
         emails = mbox_reader.extract_emails(raw=settings.enable_multiprocessing)
 
-        purchases, _ = process_emails(
+        purchases, metrics = process_emails(
             emails,
             extractor,
             logger_factory,
@@ -262,7 +262,7 @@ def process_mbox_file(task_id: str, temp_path: str, logger_factory: StructuredLo
 
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
-        tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+        tasks[task_id]["metrics"] = metrics.snapshot()
         broadcast_sync(task_id, {"type": "status", "data": "complete"})
         _save_tasks()
     except Exception as e:
@@ -329,7 +329,7 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
             emails = list(
                 imap_client.fetch_emails_by_uids(uids, settings.imap_folder, raw=settings.enable_multiprocessing)
             )
-            purchases, _ = process_emails(
+            purchases, metrics = process_emails(
                 emails,
                 extractor,
                 logger_factory,
@@ -346,7 +346,7 @@ def process_imap_sync(task_id: str, logger_factory: StructuredLoggerFactory):
             normalized_purchases = [normalize_for_frontend(p) for p in purchases]
             tasks[task_id]["status"] = "complete"
             tasks[task_id]["result"] = normalized_purchases
-            tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+            tasks[task_id]["metrics"] = metrics.snapshot()
             broadcast_sync(task_id, {"type": "status", "data": "complete"})
             _save_tasks()
 
@@ -382,7 +382,7 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
         gmail_client = GmailClient()
         query = settings.gmail_query
         emails = gmail_client.search_emails(query, raw=settings.enable_multiprocessing)
-        purchases, _ = process_emails(
+        purchases, metrics = process_emails(
             emails,
             extractor,
             logger_factory,
@@ -395,7 +395,7 @@ def process_gmail_sync(task_id: str, logger_factory: StructuredLoggerFactory):
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
-        tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+        tasks[task_id]["metrics"] = metrics.snapshot()
         broadcast_sync(task_id, {"type": "status", "data": "complete"})
         _save_tasks()
     except Exception as e:
@@ -430,7 +430,7 @@ def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_fa
         outlook_client = OutlookClient(client_id, authority)
         query = settings.outlook_query
         emails = outlook_client.search_emails(query, raw=settings.enable_multiprocessing)
-        purchases, _ = process_emails(
+        purchases, metrics = process_emails(
             emails,
             extractor,
             logger_factory,
@@ -443,7 +443,7 @@ def process_outlook_sync(task_id: str, client_id: str, authority: str, logger_fa
         normalized_purchases = [normalize_for_frontend(p) for p in purchases]
         tasks[task_id]["status"] = "complete"
         tasks[task_id]["result"] = normalized_purchases
-        tasks[task_id]["metrics"] = extractor.metrics.snapshot()
+        tasks[task_id]["metrics"] = metrics.snapshot()
         broadcast_sync(task_id, {"type": "status", "data": "complete"})
         _save_tasks()
     except Exception as e:
