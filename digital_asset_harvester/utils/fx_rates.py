@@ -2,6 +2,7 @@
 
 import logging
 import time
+import random
 from datetime import datetime, date
 from typing import Dict, Optional, Any
 from decimal import Decimal
@@ -45,8 +46,8 @@ class FXRateService:
         try:
             dt = parser.parse(purchase_date_str)
             date_key = dt.strftime("%Y-%m-%d")
-        except (ValueError, TypeError, parser.ParserError):
-            logger.warning(f"Could not parse date: {purchase_date_str}")
+        except (ValueError, TypeError, parser.ParserError, OverflowError) as e:
+            logger.warning(f"Could not parse date '{purchase_date_str}': {e}")
             return None
 
         cache_key = f"{date_key}_{from_currency}_{to_currency}"
@@ -61,7 +62,6 @@ class FXRateService:
                 response = httpx.get(url, timeout=10.0)
                 response.raise_for_status()
                 data = response.json()
-
                 rate = data.get("rates", {}).get(to_currency)
                 if rate is not None:
                     decimal_rate = Decimal(str(rate))
@@ -72,14 +72,17 @@ class FXRateService:
                 else:
                     logger.warning(f"Rate not found for {from_currency} to {to_currency} on {date_key}")
                     return None
-            except Exception as e:
+            except (httpx.RequestError, httpx.HTTPStatusError) as e:
                 last_error = e
                 if attempt < max_retries - 1:
-                    wait_time = 2 ** attempt
-                    logger.info(f"Retrying FX rate fetch in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                    wait_time = (2 ** attempt) + random.uniform(0, 1)
+                    logger.info(f"Retrying FX rate fetch in {wait_time:.2f}s (attempt {attempt + 1}/{max_retries}): {e}")
                     time.sleep(wait_time)
                 else:
                     logger.error(f"Failed to fetch FX rate after {max_retries} attempts: {last_error}")
+            except Exception as e:
+                logger.error(f"Unexpected error fetching FX rate: {e}")
+                break
 
         return None
 

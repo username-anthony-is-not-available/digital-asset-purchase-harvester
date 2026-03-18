@@ -11,6 +11,7 @@ from digital_asset_harvester.processing.extractors.coinspot import CoinSpotExtra
 from digital_asset_harvester.processing.extractors.newton import NewtonExtractor
 from digital_asset_harvester.processing.extractors.swyftx import SwyftxExtractor
 from digital_asset_harvester.processing.extractors.btcmarkets import BTCMarketsExtractor
+from digital_asset_harvester.processing.extractors.independent_reserve import IndependentReserveExtractor
 
 # Test data mapping: (ExtractorClass, Subject, Sender, Body, ExpectedResults)
 TEST_CASES = [
@@ -200,6 +201,23 @@ TEST_CASES = [
             }
         ],
     ),
+    # Independent Reserve Cases
+    (
+        IndependentReserveExtractor,
+        "Trade Confirmation",
+        "Independent Reserve <noreply@independentreserve.com>",
+        "You have successfully bought 0.1 BTC for $5,000.00 AUD.\nReference: IR-123456",
+        [
+            {
+                "amount": "0.1",
+                "item_name": "BTC",
+                "total_spent": "5000.0",
+                "currency": "AUD",
+                "vendor": "Independent Reserve",
+                "transaction_id": "IR-123456",
+            }
+        ],
+    ),
     # Edge Case: Thousands separator and different currency
     (
         CoinbaseExtractor,
@@ -244,6 +262,7 @@ NEGATIVE_TEST_CASES = [
     (GeminiExtractor, "Statement Ready", "no-reply@gemini.com", "Your monthly statement is ready"),
     (CryptocomExtractor, "Price Alert", "no-reply@crypto.com", "BTC is at $50,000"),
     (FTXExtractor, "Newsletter", "noreply@ftx.com", "Read our latest updates"),
+    (IndependentReserveExtractor, "Newsletter", "noreply@independentreserve.com", "Monthly update"),
 ]
 
 

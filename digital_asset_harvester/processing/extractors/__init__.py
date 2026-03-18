@@ -15,6 +15,7 @@ from .coinspot import CoinSpotExtractor
 from .newton import NewtonExtractor
 from .swyftx import SwyftxExtractor
 from .btcmarkets import BTCMarketsExtractor
+from .independent_reserve import IndependentReserveExtractor
 from .bitstamp import BitstampExtractor
 from .bitfinex import BitfinexExtractor
 
@@ -34,6 +35,7 @@ class ExtractorRegistry:
             NewtonExtractor(),
             SwyftxExtractor(),
             BTCMarketsExtractor(),
+            IndependentReserveExtractor(),
             BitstampExtractor(),
             BitfinexExtractor(),
         ]
@@ -67,6 +69,7 @@ __all__ = [
     "NewtonExtractor",
     "SwyftxExtractor",
     "BTCMarketsExtractor",
+    "IndependentReserveExtractor",
     "BitstampExtractor",
     "BitfinexExtractor",
     "ExtractorRegistry",
