@@ -161,28 +161,40 @@ def write_purchase_data_to_cra_pdf(
     pdf.cell(0, 10, "Summary by Exchange and Asset", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(5)
 
-    # Group summary by vendor for display
-    vendor_groups = defaultdict(list)
+    # Group summary by currency then vendor for display
+    currency_groups = defaultdict(lambda: defaultdict(list))
     for (vendor, asset, currency), data in summary.items():
-        vendor_groups[vendor].append({"asset": asset, "currency": currency, **data})
+        currency_groups[currency][vendor].append({"asset": asset, **data})
 
-    for vendor, items in vendor_groups.items():
-        pdf.set_font("helvetica", "B", 12)
-        pdf.cell(0, 10, f"Exchange: {vendor}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        pdf.set_font("helvetica", size=10)
+    for currency, vendors in currency_groups.items():
+        pdf.set_font("helvetica", "B", 14)
+        pdf.cell(0, 10, f"Currency: {currency}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(2)
 
-        # Table Header
-        pdf.cell(40, 8, "Asset", border=1)
-        pdf.cell(50, 8, "Total Quantity", border=1)
-        pdf.cell(50, 8, "Total Spent", border=1)
-        pdf.ln()
+        for vendor, items in vendors.items():
+            pdf.set_font("helvetica", "B", 12)
+            pdf.cell(0, 10, f"Exchange: {vendor}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.set_font("helvetica", size=10)
 
-        for item in items:
-            pdf.cell(40, 8, str(item["asset"]), border=1)
-            pdf.cell(50, 8, f"{item['quantity']:.8f}", border=1)
-            pdf.cell(50, 8, f"{item['total_spent']:.2f} {item['currency']}", border=1)
+            # Table Header
+            pdf.cell(40, 8, "Asset", border=1)
+            pdf.cell(50, 8, "Total Quantity", border=1)
+            pdf.cell(50, 8, "Total Spent", border=1)
             pdf.ln()
-        pdf.ln(5)
+
+            currency_total = 0.0
+            for item in items:
+                pdf.cell(40, 8, str(item["asset"]), border=1)
+                pdf.cell(50, 8, f"{item['quantity']:.8f}", border=1)
+                pdf.cell(50, 8, f"{item['total_spent']:.2f}", border=1)
+                pdf.ln()
+                currency_total += item["total_spent"]
+
+            # Subtotal for vendor in this currency
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(90, 8, f"Total for {vendor} ({currency})", border=1)
+            pdf.cell(50, 8, f"{currency_total:.2f}", border=1)
+            pdf.ln(10)
 
     # Detailed Transactions
     pdf.add_page()

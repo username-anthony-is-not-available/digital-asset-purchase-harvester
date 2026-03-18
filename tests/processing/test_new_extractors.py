@@ -109,3 +109,71 @@ def test_btcmarkets_extractor_price():
     assert results[0]["currency"] == "AUD"
     assert results[0]["vendor"] == "BTCMarkets"
     assert results[0]["transaction_id"] == "BTC-789"
+
+
+from digital_asset_harvester.processing.extractors.bitstamp import BitstampExtractor
+from digital_asset_harvester.processing.extractors.bitfinex import BitfinexExtractor
+
+def test_bitstamp_extractor_buy():
+    extractor = BitstampExtractor()
+    subject = "Transaction confirmation"
+    sender = "Bitstamp <noreply@bitstamp.net>"
+    body = "You have successfully bought 0.5 BTC for 25,000.00 USD. Transaction ID: BTST12345"
+
+    assert extractor.can_handle(subject, sender, body) is True
+    results = extractor.extract(subject, sender, body)
+    assert len(results) == 1
+    assert results[0]["amount"] == "0.5"
+    assert results[0]["item_name"] == "BTC"
+    assert results[0]["total_spent"] == "25000.00"
+    assert results[0]["currency"] == "USD"
+    assert results[0]["vendor"] == "Bitstamp"
+    assert results[0]["transaction_type"] == "buy"
+    assert results[0]["transaction_id"] == "BTST12345"
+
+def test_bitstamp_extractor_sell():
+    extractor = BitstampExtractor()
+    subject = "Transaction confirmation"
+    sender = "Bitstamp <noreply@bitstamp.net>"
+    body = "You have successfully sold 10.0 ETH for 20,000.00 USD."
+
+    assert extractor.can_handle(subject, sender, body) is True
+    results = extractor.extract(subject, sender, body)
+    assert len(results) == 1
+    assert results[0]["amount"] == "10.0"
+    assert results[0]["item_name"] == "ETH"
+    assert results[0]["total_spent"] == "20000.00"
+    assert results[0]["currency"] == "USD"
+    assert results[0]["transaction_type"] == "withdrawal"
+
+def test_bitfinex_extractor_buy():
+    extractor = BitfinexExtractor()
+    subject = "Exchange Trade Execution - BUY ETH/USD"
+    sender = "Bitfinex <no-reply@bitfinex.com>"
+    body = "Exchange Trade Execution - BUY 0.5 ETH @ 2500.0 USD on ETH/USD. Order ID: 987654321"
+
+    assert extractor.can_handle(subject, sender, body) is True
+    results = extractor.extract(subject, sender, body)
+    assert len(results) == 1
+    assert results[0]["amount"] == "0.5"
+    assert results[0]["item_name"] == "ETH"
+    assert float(results[0]["total_spent"]) == 1250.0
+    assert results[0]["currency"] == "USD"
+    assert results[0]["vendor"] == "Bitfinex"
+    assert results[0]["transaction_type"] == "buy"
+    assert results[0]["transaction_id"] == "987654321"
+
+def test_bitfinex_extractor_sell():
+    extractor = BitfinexExtractor()
+    subject = "Exchange Trade Execution - SELL BTC/USD"
+    sender = "Bitfinex <no-reply@bitfinex.com>"
+    body = "Exchange Trade Execution - SELL 0.1 BTC @ 50000.0 USD on BTC/USD."
+
+    assert extractor.can_handle(subject, sender, body) is True
+    results = extractor.extract(subject, sender, body)
+    assert len(results) == 1
+    assert results[0]["amount"] == "0.1"
+    assert results[0]["item_name"] == "BTC"
+    assert float(results[0]["total_spent"]) == 5000.0
+    assert results[0]["currency"] == "USD"
+    assert results[0]["transaction_type"] == "withdrawal"

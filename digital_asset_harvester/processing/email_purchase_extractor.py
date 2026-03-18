@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
 
 from pydantic import ValidationError
+from dateutil import parser
 
 from digital_asset_harvester.config import HarvesterSettings, get_settings
 from digital_asset_harvester.confidence import calculate_confidence
@@ -347,42 +348,20 @@ class EmailPurchaseExtractor:
         return self._process_extracted_transactions(transactions)
 
     def _process_extracted_dates(self, transactions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Common date processing for extracted transactions."""
+        """Common date processing for extracted transactions using robust parsing."""
         for purchase_data in transactions:
             if purchase_data.get("purchase_date"):
                 try:
-                    # Parse the date and ensure it's in UTC
+                    # Parse the date using dateutil for robust format support
                     date_str = str(purchase_data["purchase_date"])
-                    # Handle various date formats
-                    if "T" in date_str:
-                        date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-                    else:
-                        # Try to parse common date formats
-                        for fmt in [
-                            "%Y-%m-%d %H:%M:%S",
-                            "%Y-%m-%d %H:%M:%S %Z",
-                            "%Y-%m-%d",
-                            "%m/%d/%Y %H:%M:%S",
-                            "%m/%d/%Y",
-                            "%d %b %Y %H:%M:%S",
-                            "%d %b %Y",
-                            "%b %d, %Y %H:%M:%S",
-                            "%b %d, %Y",
-                        ]:
-                            try:
-                                date = datetime.strptime(date_str, fmt)
-                                break
-                            except ValueError:
-                                continue
-                        else:
-                            raise ValueError(f"Unable to parse date: {date_str}")
+                    date = parser.parse(date_str)
 
                     if date.tzinfo is None:
                         date = date.replace(tzinfo=timezone.utc)
                     else:
                         date = date.astimezone(timezone.utc)
                     purchase_data["purchase_date"] = date.strftime("%Y-%m-%d %H:%M:%S %Z")
-                except (ValueError, TypeError) as e:
+                except (ValueError, TypeError, parser.ParserError) as e:
                     logger.warning("Invalid date format (%s). Using current time.", e)
                     purchase_data["purchase_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")
             else:
