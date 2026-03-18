@@ -408,9 +408,7 @@ def process_emails(
             executor_class = ThreadPoolExecutor
             submit_fn = lambda exc, email, idx: exc.submit(_process_single_email, email, idx, extractor)
 
-        with executor_class(
-            max_workers=max_workers, initializer=_init_worker, initargs=(settings,)
-        ) as executor:
+        with executor_class(max_workers=max_workers, initializer=_init_worker, initargs=(settings,)) as executor:
             futures = {submit_fn(executor, email, idx): (email, idx) for idx, email in enumerate(email_list, 1)}
 
             processed_count = 0

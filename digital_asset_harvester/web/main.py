@@ -11,6 +11,7 @@ async def lifespan(app: FastAPI):
     """Cleanup stale and old tasks on startup."""
     import asyncio
     from . import api
+
     api.main_loop = asyncio.get_running_loop()
 
     modified = False

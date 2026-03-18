@@ -12,6 +12,7 @@ from dateutil import parser
 
 logger = logging.getLogger(__name__)
 
+
 class FXRateService:
     """Service to fetch historical FX rates from a reliable external API."""
 
@@ -20,7 +21,9 @@ class FXRateService:
         self._cache: OrderedDict[str, Decimal] = OrderedDict()
         self.max_cache_size = max_cache_size
 
-    def get_rate(self, purchase_date_str: str, from_currency: str, to_currency: str, max_retries: int = 3) -> Optional[Decimal]:
+    def get_rate(
+        self, purchase_date_str: str, from_currency: str, to_currency: str, max_retries: int = 3
+    ) -> Optional[Decimal]:
         """
         Fetch historical exchange rate for a given date.
 
@@ -75,8 +78,10 @@ class FXRateService:
             except (httpx.RequestError, httpx.HTTPStatusError) as e:
                 last_error = e
                 if attempt < max_retries - 1:
-                    wait_time = (2 ** attempt) + random.uniform(0, 1)
-                    logger.info(f"Retrying FX rate fetch in {wait_time:.2f}s (attempt {attempt + 1}/{max_retries}): {e}")
+                    wait_time = (2**attempt) + random.uniform(0, 1)
+                    logger.info(
+                        f"Retrying FX rate fetch in {wait_time:.2f}s (attempt {attempt + 1}/{max_retries}): {e}"
+                    )
                     time.sleep(wait_time)
                 else:
                     logger.error(f"Failed to fetch FX rate after {max_retries} attempts: {last_error}")
@@ -85,6 +90,7 @@ class FXRateService:
                 break
 
         return None
+
 
 # Singleton instance
 fx_service = FXRateService()
