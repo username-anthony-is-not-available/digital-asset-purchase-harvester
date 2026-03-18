@@ -12,23 +12,20 @@ def generate_record_hash(record: Dict[str, Any]) -> str:
     """
     Generate a unique hash for a purchase record to help detect duplicates.
 
-    Uses transaction_id if available, otherwise falls back to a hash of
-    vendor, item_name, amount, and purchase_date.
+    Uses a composite hash of all identifying fields: Vendor, Item Name,
+    Amount, Purchase Date, and Transaction ID.
     """
-    if record.get("transaction_id"):
-        return hashlib.sha256(str(record["transaction_id"]).strip().encode()).hexdigest()
-
-    # Fallback to combination of fields
     # We normalize strings to lowercase and strip whitespace for better matching
     vendor = str(record.get("vendor", "")).lower().strip()
     item_name = str(record.get("item_name", "")).lower().strip()
     amount = str(record.get("amount", "")).strip()
     date = str(record.get("purchase_date", "")).strip()
+    tx_id = str(record.get("transaction_id", "")).strip()
 
     # Some dates might have different formats but represent the same time.
     # We rely on the extractor's date normalization if it has been run.
 
-    components = f"{vendor}|{item_name}|{amount}|{date}"
+    components = f"{vendor}|{item_name}|{amount}|{date}|{tx_id}"
     return hashlib.sha256(components.encode()).hexdigest()
 
 
@@ -123,7 +120,7 @@ class DuplicateDetector:
                     json.dump(data, f, indent=2)
                 os.replace(temp_path, self.persistence_path)
             except Exception:
-                if 'temp_path' in locals() and os.path.exists(temp_path):
+                if "temp_path" in locals() and os.path.exists(temp_path):
                     os.remove(temp_path)
                 pass
 

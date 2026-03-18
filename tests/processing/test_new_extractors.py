@@ -114,6 +114,7 @@ def test_btcmarkets_extractor_price():
 from digital_asset_harvester.processing.extractors.bitstamp import BitstampExtractor
 from digital_asset_harvester.processing.extractors.bitfinex import BitfinexExtractor
 
+
 def test_bitstamp_extractor_buy():
     extractor = BitstampExtractor()
     subject = "Transaction confirmation"
@@ -131,6 +132,7 @@ def test_bitstamp_extractor_buy():
     assert results[0]["transaction_type"] == "buy"
     assert results[0]["transaction_id"] == "BTST12345"
 
+
 def test_bitstamp_extractor_sell():
     extractor = BitstampExtractor()
     subject = "Transaction confirmation"
@@ -145,6 +147,7 @@ def test_bitstamp_extractor_sell():
     assert results[0]["total_spent"] == "20000.00"
     assert results[0]["currency"] == "USD"
     assert results[0]["transaction_type"] == "withdrawal"
+
 
 def test_bitfinex_extractor_buy():
     extractor = BitfinexExtractor()
@@ -162,6 +165,7 @@ def test_bitfinex_extractor_buy():
     assert results[0]["vendor"] == "Bitfinex"
     assert results[0]["transaction_type"] == "buy"
     assert results[0]["transaction_id"] == "987654321"
+
 
 def test_bitfinex_extractor_sell():
     extractor = BitfinexExtractor()

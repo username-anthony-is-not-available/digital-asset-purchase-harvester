@@ -43,15 +43,17 @@ class IndependentReserveExtractor(BaseExtractor):
             currency = match.group(5) or "AUD"
 
             try:
-                purchases.append({
-                    "amount": str(float(amount_str)),
-                    "item_name": crypto,
-                    "total_spent": str(float(total_str)),
-                    "currency": currency,
-                    "vendor": "Independent Reserve",
-                    "transaction_id": self._find_match(r"\b(?:Reference|Ref|Order ID):?\s*([A-Z0-9\-]+)", body),
-                    "extraction_method": "regex",
-                })
+                purchases.append(
+                    {
+                        "amount": str(float(amount_str)),
+                        "item_name": crypto,
+                        "total_spent": str(float(total_str)),
+                        "currency": currency,
+                        "vendor": "Independent Reserve",
+                        "transaction_id": self._find_match(r"\b(?:Reference|Ref|Order ID):?\s*([A-Z0-9\-]+)", body),
+                        "extraction_method": "regex",
+                    }
+                )
             except (ValueError, TypeError):
                 continue
 
