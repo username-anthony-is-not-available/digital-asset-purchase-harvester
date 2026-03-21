@@ -99,9 +99,7 @@ class EmailPurchaseExtractor:
         self._exchanges_pattern = re.compile(
             r"\b(" + "|".join(re.escape(ex) for ex in exchanges) + r")\b", re.IGNORECASE
         )
-        self._terms_pattern = re.compile(
-            r"\b(" + "|".join(re.escape(term) for term in terms) + r")\b", re.IGNORECASE
-        )
+        self._terms_pattern = re.compile(r"\b(" + "|".join(re.escape(term) for term in terms) + r")\b", re.IGNORECASE)
         self._purchase_keywords_pattern = re.compile(
             r"\b(" + "|".join(re.escape(kw) for kw in purchase_keywords) + r")\b", re.IGNORECASE
         )
