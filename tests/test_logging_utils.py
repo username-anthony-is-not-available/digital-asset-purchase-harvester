@@ -1,9 +1,7 @@
 import logging
 from unittest.mock import MagicMock, patch
-from digital_asset_harvester.telemetry.logging_utils import (
-    StructuredLoggerAdapter,
-    StructuredLoggerFactory,
-)
+
+from digital_asset_harvester.telemetry.logging_utils import StructuredLoggerAdapter, StructuredLoggerFactory
 
 
 def test_structured_logger_adapter_processes_with_extra():

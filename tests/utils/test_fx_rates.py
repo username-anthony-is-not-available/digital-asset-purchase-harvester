@@ -1,6 +1,8 @@
-import pytest
 from decimal import Decimal
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
+
 from digital_asset_harvester.utils.fx_rates import FXRateService
 
 

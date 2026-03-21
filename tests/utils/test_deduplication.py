@@ -1,8 +1,9 @@
-import os
 import json
+import os
 import tempfile
 import unittest
-from digital_asset_harvester.utils.deduplication import DuplicateDetector, generate_record_hash, generate_email_hash
+
+from digital_asset_harvester.utils.deduplication import DuplicateDetector, generate_email_hash, generate_record_hash
 
 
 class TestDeduplication(unittest.TestCase):

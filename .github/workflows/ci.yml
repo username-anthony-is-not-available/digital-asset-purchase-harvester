@@ -31,6 +31,9 @@ jobs:
         pip install -e .
         pip install -r requirements-dev.txt
 
+    - name: Install Playwright browsers
+      run: playwright install chromium
+
     - name: Run tests with pytest
       run: |
         pytest tests/ -v --cov=digital_asset_harvester --cov-report=xml --cov-report=term-missing -m "not integration and not performance"

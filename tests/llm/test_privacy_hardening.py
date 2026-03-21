@@ -1,7 +1,8 @@
 """Tests for privacy hardening features."""
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from digital_asset_harvester.config import HarvesterSettings
 from digital_asset_harvester.llm import get_llm_client

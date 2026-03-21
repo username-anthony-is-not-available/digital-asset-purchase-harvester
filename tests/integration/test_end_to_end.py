@@ -7,15 +7,9 @@ Run with: pytest tests/integration/ -v --timeout=300
 import csv
 import mailbox
 
-
 import pytest
 
-from digital_asset_harvester import (
-    EmailPurchaseExtractor,
-    MboxDataExtractor,
-    get_settings,
-    write_purchase_data_to_csv,
-)
+from digital_asset_harvester import EmailPurchaseExtractor, MboxDataExtractor, get_settings, write_purchase_data_to_csv
 from digital_asset_harvester.llm.ollama_client import OllamaLLMClient
 from digital_asset_harvester.telemetry import StructuredLoggerFactory
 

@@ -486,6 +486,22 @@ prompts.register("extraction", "Custom extraction prompt for ${email_content}")
 extractor = EmailPurchaseExtractor(settings=settings, prompts=prompts)
 ```
 
+### Custom Keywords
+
+If you use a niche exchange that isn't supported out of the box, or if your purchase emails use unusual language, you can extend the pre-filtering list with custom keywords.
+
+1. Create a file named `keywords.txt` in the root of the project.
+2. Add one keyword or phrase per line.
+3. Lines starting with `#` are ignored.
+
+The harvester will load these keywords and use them to ensure your emails are not filtered out during the preprocessing stage.
+
+You can also specify a different filename using the `DAP_CUSTOM_KEYWORDS_FILE` environment variable:
+
+```sh
+export DAP_CUSTOM_KEYWORDS_FILE="my_niche_keywords.txt"
+```
+
 ### Telemetry
 
 Enable JSON-formatted logs and capture processing metrics with the built-in telemetry helpers:

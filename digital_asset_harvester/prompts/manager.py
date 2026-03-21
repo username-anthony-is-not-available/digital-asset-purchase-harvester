@@ -51,7 +51,7 @@ ANALYSIS CRITERIA:
 EXCLUDE these types of emails:
 - Marketing emails, newsletters, promotional content
 - Price alerts, market analysis, or news updates
-- Account notifications, security alerts, or general announcements  
+- Account notifications, security alerts, or general announcements
 - Educational content, blog posts, or webinars
 - Referral programs, contests, or airdrops
 - Failed transactions or declined orders

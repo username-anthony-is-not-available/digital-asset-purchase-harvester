@@ -1,7 +1,9 @@
 """Tests for Binance-specific extraction improvements."""
 
 from __future__ import annotations
+
 import pytest
+
 from digital_asset_harvester import get_settings_with_overrides
 from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 from tests.fixtures.emails import EMAIL_FIXTURES

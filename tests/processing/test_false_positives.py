@@ -1,10 +1,12 @@
 """False Positive Regression Suite for identifying non-purchase emails."""
 
-import pytest
 from unittest.mock import MagicMock
-from digital_asset_harvester.processing.extractors import registry
-from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
+
+import pytest
+
 from digital_asset_harvester.config import HarvesterSettings
+from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
+from digital_asset_harvester.processing.extractors import registry
 
 # Define negative test cases
 NEGATIVE_EMAILS = [

@@ -3,11 +3,8 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
-from digital_asset_harvester.llm.ollama_client import (
-    LLMError,
-    LLMResponseFormatError,
-    OllamaLLMClient,
-)
+
+from digital_asset_harvester.llm.ollama_client import LLMError, LLMResponseFormatError, OllamaLLMClient
 
 
 @patch("time.sleep", return_value=None)

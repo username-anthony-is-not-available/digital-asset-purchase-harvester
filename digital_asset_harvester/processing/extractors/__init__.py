@@ -6,18 +6,18 @@ from typing import Any, Dict, List, Optional
 
 from .base import BaseExtractor
 from .binance import BinanceExtractor
+from .bitfinex import BitfinexExtractor
+from .bitstamp import BitstampExtractor
+from .btcmarkets import BTCMarketsExtractor
 from .coinbase import CoinbaseExtractor
-from .kraken import KrakenExtractor
-from .gemini import GeminiExtractor
+from .coinspot import CoinSpotExtractor
 from .cryptocom import CryptocomExtractor
 from .ftx import FTXExtractor
-from .coinspot import CoinSpotExtractor
+from .gemini import GeminiExtractor
+from .independent_reserve import IndependentReserveExtractor
+from .kraken import KrakenExtractor
 from .newton import NewtonExtractor
 from .swyftx import SwyftxExtractor
-from .btcmarkets import BTCMarketsExtractor
-from .independent_reserve import IndependentReserveExtractor
-from .bitstamp import BitstampExtractor
-from .bitfinex import BitfinexExtractor
 
 
 class ExtractorRegistry:

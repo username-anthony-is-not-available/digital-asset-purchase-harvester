@@ -18,9 +18,7 @@ def test_is_crypto_purchase_email_positive(mocker):
             "reasoning": "Direct purchase confirmation",
         }
     )
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     settings = get_settings_with_overrides(enable_preprocessing=False)
     extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
@@ -33,9 +31,7 @@ def test_is_crypto_purchase_email_low_confidence(mocker):
     mock_llm_client.generate_json.return_value = mocker.Mock(
         data={"is_crypto_purchase": True, "confidence": 0.4, "reasoning": "Uncertain"}
     )
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     settings = get_settings_with_overrides(enable_preprocessing=False)
     extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
@@ -61,9 +57,7 @@ def test_extract_purchase_info_success(mocker):
             ]
         }
     )
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     settings = get_settings_with_overrides(enable_preprocessing=False)
     extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
@@ -98,9 +92,7 @@ def test_extract_purchase_info_missing_fields_strict(mocker):
             ]
         }
     )
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     settings = get_settings_with_overrides(enable_preprocessing=False, strict_validation=True)
     extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
@@ -135,9 +127,7 @@ def test_process_email_successful_path(mocker, monkeypatch):
             }
         ),
     ]
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     settings = get_settings_with_overrides(enable_regex_extractors=False)
     extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
@@ -154,9 +144,7 @@ def test_process_email_successful_path(mocker, monkeypatch):
 def test_process_email_filtered_by_preprocessing(mocker):
     email_content = "Subject: Dinner order\nFrom: restaurant@example.com\nBody: Your order has shipped"
     mocker.patch("digital_asset_harvester.processing.email_purchase_extractor.get_llm_client")
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     extractor = EmailPurchaseExtractor()
     result = extractor.process_email(email_content)
@@ -193,9 +181,7 @@ def test_process_email_with_coinbase_fixture(mocker, monkeypatch):
             }
         ),
     ]
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     settings = get_settings_with_overrides(enable_regex_extractors=False)
     extractor = EmailPurchaseExtractor(settings=settings, llm_client=mock_llm_client)
@@ -235,9 +221,7 @@ def test_process_email_with_binance_fixture(mocker, monkeypatch):
             }
         ),
     ]
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
@@ -258,9 +242,7 @@ def test_process_email_with_non_purchase_fixture(mocker, monkeypatch):
             "reasoning": "Price alert",
         }
     )
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
@@ -299,9 +281,7 @@ def test_process_email_with_binance_deposit_fixture(mocker, monkeypatch):
             }
         ),
     ]
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
@@ -343,9 +323,7 @@ def test_process_email_with_binance_withdrawal_fixture(mocker, monkeypatch):
             }
         ),
     ]
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
@@ -388,9 +366,7 @@ def test_process_email_with_coinbase_staking_reward(mocker, monkeypatch):
             }
         ),
     ]
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
@@ -433,9 +409,7 @@ def test_process_email_with_binance_staking_reward(mocker, monkeypatch):
             }
         ),
     ]
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
@@ -478,9 +452,7 @@ def test_process_email_with_kraken_staking_reward(mocker, monkeypatch):
             }
         ),
     ]
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     extractor = EmailPurchaseExtractor(llm_client=mock_llm_client)
     monkeypatch.setattr(extractor, "_should_skip_llm_analysis", lambda x: False)
@@ -520,9 +492,7 @@ def test_process_email_with_currency_conversion(mocker, monkeypatch):
 
     mock_fx_service.get_rate.return_value = Decimal("1.35")
 
-    from digital_asset_harvester.processing.email_purchase_extractor import (
-        EmailPurchaseExtractor,
-    )
+    from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
     settings = get_settings_with_overrides(
         enable_regex_extractors=False, enable_currency_conversion=True, base_fiat_currency="CAD"

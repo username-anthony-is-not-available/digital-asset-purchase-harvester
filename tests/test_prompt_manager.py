@@ -1,4 +1,5 @@
 import pytest
+
 from digital_asset_harvester.prompts.manager import PromptManager
 
 

@@ -1,11 +1,9 @@
 import json
-import pytest
 from unittest.mock import MagicMock
-from digital_asset_harvester import (
-    EmailPurchaseExtractor,
-    MboxDataExtractor,
-    get_settings_with_overrides,
-)
+
+import pytest
+
+from digital_asset_harvester import EmailPurchaseExtractor, MboxDataExtractor, get_settings_with_overrides
 from digital_asset_harvester.llm.provider import LLMResult
 
 
