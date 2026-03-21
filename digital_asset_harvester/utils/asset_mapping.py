@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Dict, List, Optional, Tuple
 
-from rapidfuzz import process, fuzz
+from rapidfuzz import fuzz, process
 
 logger = logging.getLogger(__name__)
 

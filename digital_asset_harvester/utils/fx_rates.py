@@ -1,12 +1,13 @@
 """Utility for fetching historical FX rates."""
 
 import logging
-import time
 import random
-from datetime import datetime, date
-from typing import Dict, Optional, Any
-from decimal import Decimal
+import time
 from collections import OrderedDict
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Any, Dict, Optional
+
 import httpx
 from dateutil import parser
 

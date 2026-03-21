@@ -1,6 +1,7 @@
 """Tests for Koinly API client."""
 
 import pytest
+
 from digital_asset_harvester.integrations.koinly_api_client import (
     KoinlyApiClient,
     KoinlyApiError,

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 import httpx
+import pytest
 
 from digital_asset_harvester.ingest.outlook_client import OutlookClient
 

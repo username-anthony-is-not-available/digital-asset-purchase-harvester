@@ -1,8 +1,10 @@
 """Unit tests for the CoinTracker exporter."""
 
-import os
 import csv
+import os
+
 import pytest
+
 from digital_asset_harvester.exporters.cointracker import (
     CoinTrackerReportGenerator,
     write_purchase_data_to_cointracker_csv,

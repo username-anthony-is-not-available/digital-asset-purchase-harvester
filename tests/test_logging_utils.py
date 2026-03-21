@@ -1,5 +1,6 @@
 import logging
 from unittest.mock import MagicMock, patch
+
 from digital_asset_harvester.telemetry.logging_utils import (
     StructuredLoggerAdapter,
     StructuredLoggerFactory,

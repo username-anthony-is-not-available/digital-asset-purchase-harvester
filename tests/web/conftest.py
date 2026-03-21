@@ -1,10 +1,12 @@
-import pytest
-from unittest.mock import patch, MagicMock
-from digital_asset_harvester.web.api import tasks
-import uvicorn
-from digital_asset_harvester.web.main import app
 import threading
 import time
+from unittest.mock import MagicMock, patch
+
+import pytest
+import uvicorn
+
+from digital_asset_harvester.web.api import tasks
+from digital_asset_harvester.web.main import app
 
 
 @pytest.fixture(scope="session")

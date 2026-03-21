@@ -1,4 +1,5 @@
 import pytest
+
 from digital_asset_harvester.processing.extractors.coinspot import CoinSpotExtractor
 from tests.fixtures.emails import EMAIL_FIXTURES
 

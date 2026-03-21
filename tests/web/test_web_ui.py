@@ -1,8 +1,10 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
-from digital_asset_harvester.web.main import app
+
 from digital_asset_harvester.web.api import tasks
+from digital_asset_harvester.web.main import app
 
 client = TestClient(app)
 

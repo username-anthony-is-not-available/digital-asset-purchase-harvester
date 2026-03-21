@@ -1,8 +1,10 @@
 import os
-import pytest
 import tempfile
-from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
+
+import pytest
+
 from digital_asset_harvester.config import HarvesterSettings
+from digital_asset_harvester.processing.email_purchase_extractor import EmailPurchaseExtractor
 
 
 def test_load_custom_keywords():

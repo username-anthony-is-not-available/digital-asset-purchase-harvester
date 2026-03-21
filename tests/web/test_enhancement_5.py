@@ -1,5 +1,6 @@
-import pytest
 import re
+
+import pytest
 from playwright.sync_api import Page, expect
 
 
@@ -119,11 +120,11 @@ def test_take_screenshots(page: Page, live_server_url):
 
     # 1. Show Rejected
     page.locator("#row-0").get_by_role("button", name="Reject").click()
-    page.screenshot(path="/home/jules/verification/rejected_row.png")
+    page.screenshot(path="rejected_row.png")
 
     # 2. Hide Rejected
     page.locator("#hide-rejected").click()
-    page.screenshot(path="/home/jules/verification/hidden_rejected.png")
+    page.screenshot(path="hidden_rejected.png")
 
     # 3. Auto Asset ID
     page.locator("#hide-rejected").click()  # show it again
@@ -132,4 +133,4 @@ def test_take_screenshots(page: Page, live_server_url):
     binance_row.locator(".edit-cc").fill("Solana")
     binance_row.locator(".edit-aid").fill("")
     binance_row.get_by_role("button", name="Save").click()
-    page.screenshot(path="/home/jules/verification/auto_asset_id.png")
+    page.screenshot(path="auto_asset_id.png")

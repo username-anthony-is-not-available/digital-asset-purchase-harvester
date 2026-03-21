@@ -1,8 +1,9 @@
 """Tests for specialized regex extractors."""
 
 import pytest
-from digital_asset_harvester.processing.extractors.coinbase import CoinbaseExtractor
+
 from digital_asset_harvester.processing.extractors.binance import BinanceExtractor
+from digital_asset_harvester.processing.extractors.coinbase import CoinbaseExtractor
 from digital_asset_harvester.processing.extractors.kraken import KrakenExtractor
 from tests.fixtures.emails import EMAIL_FIXTURES
 

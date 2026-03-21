@@ -12,6 +12,7 @@ from digital_asset_harvester.config import get_settings
 
 if TYPE_CHECKING:
     from digital_asset_harvester.config import HarvesterSettings
+
     from .provider import LLMProvider
 
 
@@ -55,6 +56,7 @@ def get_llm_client(
 
         if settings.enable_ollama_fallback and not provider:
             from digital_asset_harvester.config import get_settings_with_overrides
+
             from .fallback_client import FallbackLLMClient
 
             # Primary client with threshold as timeout

@@ -1,9 +1,10 @@
 import pytest
-from digital_asset_harvester.processing.extractors.gemini import GeminiExtractor
+
+from digital_asset_harvester.processing.extractors.btcmarkets import BTCMarketsExtractor
 from digital_asset_harvester.processing.extractors.cryptocom import CryptocomExtractor
 from digital_asset_harvester.processing.extractors.ftx import FTXExtractor
+from digital_asset_harvester.processing.extractors.gemini import GeminiExtractor
 from digital_asset_harvester.processing.extractors.newton import NewtonExtractor
-from digital_asset_harvester.processing.extractors.btcmarkets import BTCMarketsExtractor
 from tests.fixtures.emails import EMAIL_FIXTURES
 
 
@@ -111,8 +112,8 @@ def test_btcmarkets_extractor_price():
     assert results[0]["transaction_id"] == "BTC-789"
 
 
-from digital_asset_harvester.processing.extractors.bitstamp import BitstampExtractor
 from digital_asset_harvester.processing.extractors.bitfinex import BitfinexExtractor
+from digital_asset_harvester.processing.extractors.bitstamp import BitstampExtractor
 
 
 def test_bitstamp_extractor_buy():

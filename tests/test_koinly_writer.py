@@ -1,8 +1,9 @@
 """Tests for Koinly CSV writer functionality."""
 
+import csv
 import os
 import tempfile
-import csv
+
 from digital_asset_harvester.exporters.koinly import (
     KoinlyReportGenerator,
     write_purchase_data_to_koinly_csv,
