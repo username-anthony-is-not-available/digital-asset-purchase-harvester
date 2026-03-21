@@ -3,11 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from digital_asset_harvester.llm.ollama_client import (
-    LLMError,
-    LLMResponseFormatError,
-    OllamaLLMClient,
-)
+from digital_asset_harvester.llm.ollama_client import LLMError, LLMResponseFormatError, OllamaLLMClient
 
 
 @pytest.fixture

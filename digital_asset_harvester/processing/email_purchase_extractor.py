@@ -120,7 +120,7 @@ class EmailPurchaseExtractor:
 
     def _load_custom_keywords(self) -> List[str]:
         """Load custom keywords from the configured file if it exists."""
-        keywords = []
+        keywords: List[str] = []
         filepath = self.settings.custom_keywords_file
 
         if not filepath:

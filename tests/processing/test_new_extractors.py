@@ -1,5 +1,7 @@
-import pytest
+"""Unit tests for specialized regex extractors."""
 
+from digital_asset_harvester.processing.extractors.bitfinex import BitfinexExtractor
+from digital_asset_harvester.processing.extractors.bitstamp import BitstampExtractor
 from digital_asset_harvester.processing.extractors.btcmarkets import BTCMarketsExtractor
 from digital_asset_harvester.processing.extractors.cryptocom import CryptocomExtractor
 from digital_asset_harvester.processing.extractors.ftx import FTXExtractor
@@ -9,6 +11,7 @@ from tests.fixtures.emails import EMAIL_FIXTURES
 
 
 def test_gemini_extractor():
+    """Test Gemini extractor."""
     extractor = GeminiExtractor()
     email = EMAIL_FIXTURES["gemini_purchase"]
     subject = "Order Confirmation - Buy BTC"
@@ -27,6 +30,7 @@ def test_gemini_extractor():
 
 
 def test_cryptocom_extractor():
+    """Test Crypto.com extractor."""
     extractor = CryptocomExtractor()
     email = EMAIL_FIXTURES["complex_purchase"]
     subject = "Your order #12345 has been executed"
@@ -45,6 +49,7 @@ def test_cryptocom_extractor():
 
 
 def test_ftx_extractor():
+    """Test FTX extractor."""
     extractor = FTXExtractor()
     email = EMAIL_FIXTURES["ftx_purchase"]
     subject = "Trade Executed: BUY 10 MATIC"
@@ -62,6 +67,7 @@ def test_ftx_extractor():
 
 
 def test_newton_extractor():
+    """Test Newton extractor."""
     extractor = NewtonExtractor()
     subject = "Newton Trade Confirmation"
     sender = "Newton <support@newton.co>"
@@ -79,6 +85,7 @@ def test_newton_extractor():
 
 
 def test_btcmarkets_extractor_total():
+    """Test BTCMarkets extractor with total."""
     extractor = BTCMarketsExtractor()
     subject = "BTCMarkets Trade Confirmation"
     sender = "BTCMarkets <noreply@btcmarkets.net>"
@@ -96,6 +103,7 @@ def test_btcmarkets_extractor_total():
 
 
 def test_btcmarkets_extractor_price():
+    """Test BTCMarkets extractor with price."""
     extractor = BTCMarketsExtractor()
     subject = "BTCMarkets Trade Confirmation"
     sender = "BTCMarkets <noreply@btcmarkets.net>"
@@ -112,11 +120,8 @@ def test_btcmarkets_extractor_price():
     assert results[0]["transaction_id"] == "BTC-789"
 
 
-from digital_asset_harvester.processing.extractors.bitfinex import BitfinexExtractor
-from digital_asset_harvester.processing.extractors.bitstamp import BitstampExtractor
-
-
 def test_bitstamp_extractor_buy():
+    """Test Bitstamp buy extractor."""
     extractor = BitstampExtractor()
     subject = "Transaction confirmation"
     sender = "Bitstamp <noreply@bitstamp.net>"
@@ -135,6 +140,7 @@ def test_bitstamp_extractor_buy():
 
 
 def test_bitstamp_extractor_sell():
+    """Test Bitstamp sell extractor."""
     extractor = BitstampExtractor()
     subject = "Transaction confirmation"
     sender = "Bitstamp <noreply@bitstamp.net>"
@@ -151,6 +157,7 @@ def test_bitstamp_extractor_sell():
 
 
 def test_bitfinex_extractor_buy():
+    """Test Bitfinex buy extractor."""
     extractor = BitfinexExtractor()
     subject = "Exchange Trade Execution - BUY ETH/USD"
     sender = "Bitfinex <no-reply@bitfinex.com>"
@@ -169,6 +176,7 @@ def test_bitfinex_extractor_buy():
 
 
 def test_bitfinex_extractor_sell():
+    """Test Bitfinex sell extractor."""
     extractor = BitfinexExtractor()
     subject = "Exchange Trade Execution - SELL BTC/USD"
     sender = "Bitfinex <no-reply@bitfinex.com>"

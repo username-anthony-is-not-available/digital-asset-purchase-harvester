@@ -109,28 +109,3 @@ def test_hide_rejected_filter(page: Page, live_server_url):
     page.locator("#hide-rejected").click()
     expect(page.locator("#row-0")).to_be_visible()
     expect(page.locator("#row-1")).to_be_visible()
-
-
-def test_take_screenshots(page: Page, live_server_url):
-    page.goto(live_server_url)
-    test_mbox_path = "tests/fixtures/test_emails.mbox"
-    page.set_input_files("input[type='file']", test_mbox_path)
-    page.click("input[type='submit']")
-    page.wait_for_selector("#results-section")
-
-    # 1. Show Rejected
-    page.locator("#row-0").get_by_role("button", name="Reject").click()
-    page.screenshot(path="rejected_row.png")
-
-    # 2. Hide Rejected
-    page.locator("#hide-rejected").click()
-    page.screenshot(path="hidden_rejected.png")
-
-    # 3. Auto Asset ID
-    page.locator("#hide-rejected").click()  # show it again
-    binance_row = page.locator("#row-1")
-    binance_row.get_by_role("button", name="Edit").click()
-    binance_row.locator(".edit-cc").fill("Solana")
-    binance_row.locator(".edit-aid").fill("")
-    binance_row.get_by_role("button", name="Save").click()
-    page.screenshot(path="auto_asset_id.png")

@@ -6,10 +6,7 @@ import pytest
 from openai import OpenAIError
 
 from digital_asset_harvester.config import get_settings_with_overrides
-from digital_asset_harvester.llm.ollama_client import (
-    LLMError,
-    LLMResponseFormatError,
-)
+from digital_asset_harvester.llm.ollama_client import LLMError, LLMResponseFormatError
 from digital_asset_harvester.llm.openai_client import OpenAILLMClient
 
 

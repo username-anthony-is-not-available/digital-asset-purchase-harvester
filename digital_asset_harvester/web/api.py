@@ -14,13 +14,7 @@ from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import RedirectResponse, StreamingResponse
 
-from .. import (
-    EmailPurchaseExtractor,
-    EmlDataExtractor,
-    MboxDataExtractor,
-    get_llm_client,
-    get_settings,
-)
+from .. import EmailPurchaseExtractor, EmlDataExtractor, MboxDataExtractor, get_llm_client, get_settings
 from ..cli import configure_logging, process_emails
 from ..exporters.cointracker import CoinTrackerReportGenerator
 from ..exporters.cra import CRAReportGenerator, write_purchase_data_to_cra_pdf

@@ -26,6 +26,7 @@ class LLMProvider(ABC):
         *,
         model: Optional[str] = None,
         temperature: Optional[float] = None,
+        retries: Optional[int] = None,
     ) -> LLMResult:
         """Execute a prompt expecting JSON output."""
         raise NotImplementedError

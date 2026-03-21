@@ -7,10 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from digital_asset_harvester.exporters.koinly import (
-    KoinlyReportGenerator,
-    write_purchase_data_to_koinly_csv,
-)
+from digital_asset_harvester.exporters.koinly import KoinlyReportGenerator, write_purchase_data_to_koinly_csv
 from digital_asset_harvester.validation.schemas import PurchaseRecord
 
 

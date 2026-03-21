@@ -3,11 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from digital_asset_harvester import (
-    EmailPurchaseExtractor,
-    MboxDataExtractor,
-    get_settings_with_overrides,
-)
+from digital_asset_harvester import EmailPurchaseExtractor, MboxDataExtractor, get_settings_with_overrides
 from digital_asset_harvester.llm.provider import LLMResult
 
 

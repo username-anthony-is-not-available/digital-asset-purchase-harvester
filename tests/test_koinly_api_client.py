@@ -2,11 +2,7 @@
 
 import pytest
 
-from digital_asset_harvester.integrations.koinly_api_client import (
-    KoinlyApiClient,
-    KoinlyApiError,
-    KoinlyTransaction,
-)
+from digital_asset_harvester.integrations.koinly_api_client import KoinlyApiClient, KoinlyApiError, KoinlyTransaction
 
 
 def test_koinly_transaction_creation():

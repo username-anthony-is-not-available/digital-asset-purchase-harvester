@@ -6,7 +6,7 @@ Write-Host "=" * 60
 
 $choice = Read-Host "What would you like to do?
 [1] Deactivate virtual environment only
-[2] Remove virtual environment completely  
+[2] Remove virtual environment completely
 [3] Clean pip cache
 [4] Full cleanup (remove venv + clean cache)
 [q] Quit
@@ -42,17 +42,17 @@ switch ($choice.ToLower()) {
     }
     "4" {
         Write-Host "Performing full cleanup..." -ForegroundColor Cyan
-        
+
         # Remove venv
         if (Test-Path "venv") {
             Remove-Item -Recurse -Force "venv"
             Write-Host "✅ Virtual environment removed" -ForegroundColor Green
         }
-        
+
         # Clean pip cache
         pip cache purge 2>$null
         Write-Host "✅ Pip cache cleaned" -ForegroundColor Green
-        
+
         Write-Host "✅ Full cleanup complete!" -ForegroundColor Green
         Write-Host "💡 Run setup.ps1 to start fresh" -ForegroundColor Blue
     }

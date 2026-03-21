@@ -2,10 +2,7 @@ import os
 import time
 from unittest.mock import patch
 
-from digital_asset_harvester.utils.file_utils import (
-    ensure_directory_exists,
-    get_unique_filename,
-)
+from digital_asset_harvester.utils.file_utils import ensure_directory_exists, get_unique_filename
 
 
 def test_ensure_directory_exists_creates_directory():

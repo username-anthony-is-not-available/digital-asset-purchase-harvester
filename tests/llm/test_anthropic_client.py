@@ -7,10 +7,7 @@ from anthropic import AnthropicError
 
 from digital_asset_harvester.config import get_settings_with_overrides
 from digital_asset_harvester.llm.anthropic_client import AnthropicLLMClient
-from digital_asset_harvester.llm.ollama_client import (
-    LLMError,
-    LLMResponseFormatError,
-)
+from digital_asset_harvester.llm.ollama_client import LLMError, LLMResponseFormatError
 
 
 class MockAnthropicClient:

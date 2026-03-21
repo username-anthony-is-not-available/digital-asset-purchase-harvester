@@ -6,11 +6,7 @@ from email.mime.text import MIMEText
 
 import pytest
 
-from digital_asset_harvester.ingest.email_parser import (
-    decode_header_value,
-    extract_body,
-    message_to_dict,
-)
+from digital_asset_harvester.ingest.email_parser import decode_header_value, extract_body, message_to_dict
 
 
 class TestDecodeHeaderValue:

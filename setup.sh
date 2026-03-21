@@ -48,11 +48,11 @@ command_exists() {
 # Check Docker installation
 check_docker() {
     print_header "Checking Docker Installation"
-    
+
     if command_exists docker; then
         DOCKER_VERSION=$(docker --version)
         print_success "Docker is installed: $DOCKER_VERSION"
-        
+
         # Check if Docker daemon is running
         if docker ps >/dev/null 2>&1; then
             print_success "Docker daemon is running"
@@ -64,7 +64,7 @@ check_docker() {
     else
         print_warning "Docker is not installed"
         print_info "Installing Docker..."
-        
+
         # Install Docker based on OS
         if [[ "$OSTYPE" == "linux-gnu"* ]]; then
             curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
@@ -86,7 +86,7 @@ check_docker() {
 # Check Docker Compose installation
 check_docker_compose() {
     print_header "Checking Docker Compose Installation"
-    
+
     if docker compose version >/dev/null 2>&1; then
         COMPOSE_VERSION=$(docker compose version)
         print_success "Docker Compose is installed: $COMPOSE_VERSION"
@@ -101,13 +101,13 @@ check_docker_compose() {
 # Build Docker image
 build_docker_image() {
     print_header "Building Docker Image"
-    
+
     if [ ! -f "Dockerfile" ]; then
         print_error "Dockerfile not found in the current directory"
         print_info "Creating a basic Dockerfile..."
         create_dockerfile
     fi
-    
+
     print_info "Building image: $DOCKER_IMAGE_NAME"
     docker build --build-arg OLLAMA_MODEL="$OLLAMA_MODEL" -t "$DOCKER_IMAGE_NAME:latest" .
     print_success "Docker image built successfully"
@@ -158,7 +158,7 @@ EOF
 # Create docker-compose.yml if it doesn't exist
 create_docker_compose() {
     print_header "Checking Docker Compose Configuration"
-    
+
     if [ ! -f "docker-compose.yml" ]; then
         print_info "Creating docker-compose.yml..."
         cat > docker-compose.yml <<'EOF'
@@ -323,15 +323,15 @@ EOF
 # Setup Ollama model
 setup_ollama_model() {
     print_header "Setting up Ollama Model"
-    
+
     print_info "The Docker image now includes pre-cached model weights for $OLLAMA_MODEL."
     print_info "Starting Ollama service..."
     docker compose up -d ollama
-    
+
     # Wait for Ollama to be ready
     print_info "Waiting for Ollama service to be ready..."
     sleep 5
-    
+
     # Verify the model is present
     print_info "Verifying model availability..."
     if docker compose exec -T ollama ollama list | grep -q "$(echo $OLLAMA_MODEL | cut -d: -f1)"; then
@@ -343,17 +343,17 @@ setup_ollama_model() {
             print_info "You can pull it manually later with: docker compose exec ollama ollama pull $OLLAMA_MODEL"
         }
     fi
-    
+
     print_success "Ollama setup complete"
 }
 
 # Start services
 start_services() {
     print_header "Starting Services"
-    
+
     print_info "Starting all services with Docker Compose..."
     docker compose up -d
-    
+
     print_success "All services started successfully"
     print_info "Harvester container: docker compose exec harvester bash"
     print_info "View logs: docker compose logs -f"
@@ -362,7 +362,7 @@ start_services() {
 # Display usage information
 show_usage() {
     print_header "Usage Information"
-    
+
     echo ""
     echo "The Docker environment is now set up!"
     echo ""
@@ -388,24 +388,24 @@ show_usage() {
 main() {
     print_header "Digital Asset Purchase Harvester - Docker Setup"
     echo ""
-    
+
     # Check prerequisites
     check_docker
     check_docker_compose
-    
+
     # Create necessary files
     create_dockerignore
     create_entrypoint
     create_docker_compose
-    
+
     # Build and setup
     build_docker_image
     setup_ollama_model
     start_services
-    
+
     # Show usage
     show_usage
-    
+
     print_success "Setup completed successfully! 🎉"
 }
 
