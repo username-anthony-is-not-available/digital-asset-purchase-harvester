@@ -3,6 +3,8 @@
 import email
 import hashlib
 import logging
+import os
+import re
 import time
 from decimal import Decimal
 from collections import OrderedDict
@@ -65,14 +67,50 @@ class EmailPurchaseExtractor:
     event_logger: StructuredLoggerAdapter = field(init=False)
     metrics: MetricsTracker = field(default_factory=MetricsTracker)
     prompts: PromptManager = field(default_factory=lambda: DEFAULT_PROMPTS)
+    # Instance-level regex patterns for keyword matching
+    _exchanges_pattern: re.Pattern = field(init=False)
+    _terms_pattern: re.Pattern = field(init=False)
+    _purchase_keywords_pattern: re.Pattern = field(init=False)
+    _non_purchase_pattern: re.Pattern = field(init=False)
     _metadata_cache: OrderedDict[str, Dict[str, str]] = field(default_factory=OrderedDict, init=False)
     _scrubbed_cache: OrderedDict[str, str] = field(default_factory=OrderedDict, init=False)
     _MAX_CACHE_SIZE: int = 1000
 
     def __post_init__(self) -> None:
         self.validator = PurchaseValidator(allow_unknown_crypto=self.settings.allow_unknown_cryptos)
+
+        # Load custom keywords and compile instance-level regex patterns
+        custom_keywords = self._load_custom_keywords()
+
+        # Merge custom keywords into exchanges and purchase keywords
+        exchanges = set(CRYPTO_EXCHANGES)
+        terms = set(CRYPTOCURRENCY_TERMS)
+        purchase_keywords = set(PURCHASE_KEYWORDS)
+        non_purchase_patterns = set(NON_PURCHASE_PATTERNS)
+
+        if custom_keywords:
+            logger.info("Adding %d custom keywords to pre-filtering list", len(custom_keywords))
+            # We add custom keywords to exchanges, terms, and purchase keywords to ensure they
+            # are picked up by our filtering logic regardless of where they appear.
+            exchanges.update(custom_keywords)
+            terms.update(custom_keywords)
+            purchase_keywords.update(custom_keywords)
+
+        self._exchanges_pattern = re.compile(
+            r"\b(" + "|".join(re.escape(ex) for ex in exchanges) + r")\b", re.IGNORECASE
+        )
+        self._terms_pattern = re.compile(
+            r"\b(" + "|".join(re.escape(term) for term in terms) + r")\b", re.IGNORECASE
+        )
+        self._purchase_keywords_pattern = re.compile(
+            r"\b(" + "|".join(re.escape(kw) for kw in purchase_keywords) + r")\b", re.IGNORECASE
+        )
+        self._non_purchase_pattern = re.compile(
+            r"\b(" + "|".join(re.escape(p) for p in non_purchase_patterns) + r")\b", re.IGNORECASE
+        )
+
         # Initialize PII scrubber with crypto terms to avoid over-scrubbing
-        skip_terms = set(CRYPTOCURRENCY_TERMS) | set(CRYPTO_EXCHANGES)
+        skip_terms = terms | exchanges
         self.pii_scrubber = PIIScrubber(skip_terms=skip_terms)
         self.event_logger = self.logger_factory.build(
             __name__,
@@ -81,6 +119,29 @@ class EmailPurchaseExtractor:
                 "strict_validation": self.settings.strict_validation,
             },
         )
+
+    def _load_custom_keywords(self) -> List[str]:
+        """Load custom keywords from the configured file if it exists."""
+        keywords = []
+        filepath = self.settings.custom_keywords_file
+
+        if not filepath:
+            return keywords
+
+        if os.path.exists(filepath):
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#"):
+                            keywords.append(line)
+                logger.info("Loaded custom keywords from %s", filepath)
+            except Exception as e:
+                logger.warning("Failed to load custom keywords from %s: %s", filepath, e)
+        else:
+            logger.debug("Custom keywords file %s not found, using defaults", filepath)
+
+        return keywords
 
     def _contains_keywords(self, text: str, pattern: Any) -> bool:
         """Check if text matches the specified regex pattern."""
@@ -166,8 +227,8 @@ class EmailPurchaseExtractor:
         full_text = f"{metadata['subject']} {metadata['sender']} {metadata['body']}"
 
         # Check for crypto exchanges in sender or content
-        has_crypto_exchange = self._contains_keywords(metadata["sender"], CRYPTO_EXCHANGES_PATTERN)
-        has_crypto_terms = self._contains_keywords(full_text, CRYPTOCURRENCY_TERMS_PATTERN)
+        has_crypto_exchange = self._contains_keywords(metadata["sender"], self._exchanges_pattern)
+        has_crypto_terms = self._contains_keywords(full_text, self._terms_pattern)
 
         return has_crypto_exchange or has_crypto_terms
 
@@ -176,8 +237,8 @@ class EmailPurchaseExtractor:
         metadata = self._extract_email_metadata(email_content)
         full_text = f"{metadata['subject']} {metadata['body']}"
 
-        has_purchase_keywords = self._contains_keywords(full_text, PURCHASE_KEYWORDS_PATTERN)
-        has_non_purchase_patterns = self._contains_keywords(full_text, NON_PURCHASE_PATTERNS_PATTERN)
+        has_purchase_keywords = self._contains_keywords(full_text, self._purchase_keywords_pattern)
+        has_non_purchase_patterns = self._contains_keywords(full_text, self._non_purchase_pattern)
 
         return has_purchase_keywords and not has_non_purchase_patterns
 
@@ -206,7 +267,7 @@ class EmailPurchaseExtractor:
         full_text = f"{metadata['subject']} {metadata['sender']} {metadata['body']}"
 
         # Skip if contains clear non-purchase patterns
-        if self._contains_keywords(full_text, NON_PURCHASE_PATTERNS_PATTERN):
+        if self._contains_keywords(full_text, self._non_purchase_pattern):
             return True
 
         # Skip if doesn't contain any crypto-related terms
