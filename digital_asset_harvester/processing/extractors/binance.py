@@ -35,45 +35,92 @@ class BinanceExtractor(BaseExtractor):
 
         # Handle structured "Order Details" block
         if "Order Details:" in body or "Details:" in body:
-            # Split by blocks if multi-asset
-            blocks = re.split(r"\n\s*\n", body)
-            for block in blocks:
-                if "Amount:" in block and ("Price:" in block or "Total:" in block or "Total Cost:" in block):
-                    amount = self._find_match(r"Amount:\s*([\d,.]+)\s*([A-Z0-9]+)?", block, 1)
-                    crypto = self._find_match(r"Amount:\s*[\d,.]+\s*([A-Z0-9]+)", block, 1)
+            # 1. First try to find repeating patterns within the Order Details section
+            # Look for repeated "- Pair:" blocks in multi-asset emails
+            if "- Pair:" in body:
+                asset_blocks = re.split(r"- Pair:", body)
+                # Skip the first one if it doesn't contain transaction data
+                for block in asset_blocks:
+                    if "Amount:" in block and ("Price:" in block or "Total:" in block or "Total Cost:" in block):
+                        amount = self._find_match(r"Amount:\s*([\d,.]+)\s*([A-Z0-9]+)?", block, 1)
+                        crypto = self._find_match(r"Amount:\s*[\d,.]+\s*([A-Z0-9]+)", block, 1)
 
-                    if not crypto:
-                        # Try to find from Pair if available
-                        pair = self._find_match(r"Pair:\s*([A-Z0-9]+)/", block, 1) or self._find_match(
-                            r"Trading Pair:\s*([A-Z0-9]+)/", block, 1
-                        )
-                        if pair:
-                            crypto = pair
+                        if not crypto:
+                            pair = self._find_match(r"([A-Z0-9]+)/", block, 1)
+                            if pair:
+                                crypto = pair
 
-                    total_spent = self._find_match(r"(?:Total|Total Cost):\s*([\d,.]+)", block, 1)
-                    currency = self._find_match(r"(?:Total|Total Cost):\s*[\d,.]+\s*([A-Z0-9]+)", block, 1)
+                        total_spent = self._find_match(r"(?:Total|Total Cost):\s*([\d,.]+)", block, 1)
+                        currency = self._find_match(r"(?:Total|Total Cost):\s*[\d,.]+\s*([A-Z0-9]+)", block, 1)
 
-                    if not currency:
-                        # Try to find from Price
-                        currency = self._find_match(r"Price:\s*[\d,.]+\s*([A-Z0-9]+)", block, 1)
+                        if not currency:
+                            currency = self._find_match(r"Price:\s*[\d,.]+\s*([A-Z0-9]+)", block, 1)
 
-                    if amount and crypto:
-                        purchases.append(
-                            self._create_purchase_dict(
-                                amount.replace(",", ""),
-                                crypto.upper(),
-                                total_spent.replace(",", "") if total_spent else None,
-                                currency.upper() if currency else "USDT",
-                                block,
-                                body,
+                        side = self._find_match(r"Side:\s*([A-Za-z]+)", block, 1)
+                        transaction_type = "buy"
+                        if side and side.lower() == "sell":
+                            transaction_type = "withdrawal"
+
+                        if amount and crypto:
+                            purchases.append(
+                                self._create_purchase_dict(
+                                    amount.replace(",", ""),
+                                    crypto.upper(),
+                                    total_spent.replace(",", "") if total_spent else None,
+                                    currency.upper() if currency else "USDT",
+                                    block,
+                                    body,
+                                    transaction_type=transaction_type,
+                                )
                             )
-                        )
+
+            # 2. If no multi-asset blocks found, try splitting by "Order Details" or "Details"
+            if not purchases:
+                blocks = re.split(r"(?:Order Details|Details):", body)
+                for block in blocks:
+                    if "Amount:" in block and ("Price:" in block or "Total:" in block or "Total Cost:" in block):
+                        amount = self._find_match(r"Amount:\s*([\d,.]+)\s*([A-Z0-9]+)?", block, 1)
+                        crypto = self._find_match(r"Amount:\s*[\d,.]+\s*([A-Z0-9]+)", block, 1)
+
+                        if not crypto:
+                            # Try to find from Pair if available
+                            pair = self._find_match(r"Pair:\s*([A-Z0-9]+)/", block, 1) or self._find_match(
+                                r"Trading Pair:\s*([A-Z0-9]+)/", block, 1
+                            )
+                            if pair:
+                                crypto = pair
+
+                        total_spent = self._find_match(r"(?:Total|Total Cost):\s*([\d,.]+)", block, 1)
+                        currency = self._find_match(r"(?:Total|Total Cost):\s*[\d,.]+\s*([A-Z0-9]+)", block, 1)
+
+                        if not currency:
+                            # Try to find from Price
+                            currency = self._find_match(r"Price:\s*[\d,.]+\s*([A-Z0-9]+)", block, 1)
+
+                        side = self._find_match(r"Side:\s*([A-Za-z]+)", block, 1)
+                        transaction_type = "buy"
+                        if side and side.lower() == "sell":
+                            transaction_type = "withdrawal"
+
+                        if amount and crypto:
+                            purchases.append(
+                                self._create_purchase_dict(
+                                    amount.replace(",", ""),
+                                    crypto.upper(),
+                                    total_spent.replace(",", "") if total_spent else None,
+                                    currency.upper() if currency else "USDT",
+                                    block,
+                                    body,
+                                    transaction_type=transaction_type,
+                                )
+                            )
 
         # Handle simple one-liner
         # "Your order to buy 0.1 ETH for 200.00 USD has been filled."
         if not purchases:
-            match = re.search(r"buy\s+([\d,.]+)\s+([A-Z]{3,5})\s+for\s+([\d,.]+)\s+([A-Z]{3,5})", body, re.IGNORECASE)
-            if match:
+            for match in re.finditer(
+                r"buy\s+([\d,.]+)\s+([A-Z]{3,5})\s+for\s+([\d,.]+)\s+([A-Z]{3,5})", body, re.IGNORECASE
+            ):
                 purchases.append(
                     self._create_purchase_dict(
                         match.group(1).replace(",", ""),
@@ -109,7 +156,14 @@ class BinanceExtractor(BaseExtractor):
         return purchases
 
     def _create_purchase_dict(
-        self, amount: str, crypto: str, total_spent: str | None, currency: str, context: str, full_body: str = ""
+        self,
+        amount: str,
+        crypto: str,
+        total_spent: str | None,
+        currency: str,
+        context: str,
+        full_body: str = "",
+        transaction_type: str = "buy",
     ) -> Dict[str, Any]:
         # Extract transaction ID or Reference - try context first, then full body
         txn_id = self._find_match(r"(?:Transaction ID|Reference|Order\s*#)\s*:?\s*([A-Z0-9#\-]+)", context)
@@ -131,6 +185,7 @@ class BinanceExtractor(BaseExtractor):
             "currency": currency,
             "vendor": "Binance",
             "transaction_id": txn_id,
+            "transaction_type": transaction_type,
             "fee_amount": fee_amount.replace(",", "") if fee_amount else None,
             "fee_currency": fee_currency.upper() if fee_currency else None,
             "extraction_method": "regex",
