@@ -53,6 +53,14 @@ switch ($choice.ToLower()) {
         pip cache purge 2>$null
         Write-Host "✅ Pip cache cleaned" -ForegroundColor Green
 
+        # Remove temporary artifacts
+        Write-Host "Removing temporary artifacts..." -ForegroundColor Cyan
+        Get-ChildItem -Path . -Filter "*.mbox" | Remove-Item -Force
+        if (Test-Path ".coverage") { Remove-Item ".coverage" -Force }
+        if (Test-Path ".pytest_cache") { Remove-Item -Recurse ".pytest_cache" -Force }
+        if (Test-Path "htmlcov") { Remove-Item -Recurse "htmlcov" -Force }
+        Write-Host "✅ Temporary artifacts removed" -ForegroundColor Green
+
         Write-Host "✅ Full cleanup complete!" -ForegroundColor Green
         Write-Host "💡 Run setup.ps1 to start fresh" -ForegroundColor Blue
     }

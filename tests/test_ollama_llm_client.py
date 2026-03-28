@@ -12,6 +12,7 @@ def mock_settings(mocker):
     mock.return_value.llm_model_name = "test-model"
     mock.return_value.llm_max_retries = 1
     mock.return_value.llm_timeout_seconds = 30.0
+    mock.return_value.llm_context_window = 4096
     return mock
 
 
@@ -27,7 +28,7 @@ def test_ollama_llm_client_generate_json_with_temperature(mock_settings):
         model="test-model",
         prompt="test prompt",
         format="json",
-        options={"temperature": 0.5},
+        options={"num_ctx": 4096, "temperature": 0.5},
     )
 
 

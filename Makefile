@@ -110,3 +110,4 @@ clean:
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
 	rm -rf build dist htmlcov .coverage .pytest_cache .mypy_cache .benchmarks $(VENV_DIR)
+	rm -f *.mbox
