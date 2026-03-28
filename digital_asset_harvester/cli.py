@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import logging
+import os
 from typing import Callable, Iterable, Optional
 
 from tqdm import tqdm
@@ -39,7 +41,11 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Process emails to extract cryptocurrency purchase information.",
     )
-    source_group = parser.add_mutually_exclusive_group(required=True)
+    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+
+    # Extract command (default)
+    extract_parser = subparsers.add_parser("extract", help="Extract purchase information from emails")
+    source_group = extract_parser.add_mutually_exclusive_group(required=True)
     source_group.add_argument("--mbox-file", help="Path to the mbox file")
     source_group.add_argument("--eml-dir", help="Path to a directory containing .eml files")
     source_group.add_argument(
@@ -55,87 +61,100 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
 
     if settings.enable_imap:
         source_group.add_argument("--imap", action="store_true", help="Import emails from an IMAP server")
-        parser.add_argument("--imap-server", help="IMAP server address")
-        parser.add_argument("--imap-user", help="IMAP username")
-        parser.add_argument("--imap-password", help="IMAP password")
-        parser.add_argument(
+        extract_parser.add_argument("--imap-server", help="IMAP server address")
+        extract_parser.add_argument("--imap-user", help="IMAP username")
+        extract_parser.add_argument("--imap-password", help="IMAP password")
+        extract_parser.add_argument(
             "--imap-auth-type",
             choices=["password", "gmail_oauth2", "outlook_oauth2"],
             default="password",
             help="IMAP authentication type",
         )
-        parser.add_argument("--client-id", help="OAuth2 client ID")
-        parser.add_argument("--authority", help="OAuth2 authority URL")
-        parser.add_argument(
+        extract_parser.add_argument("--client-id", help="OAuth2 client ID")
+        extract_parser.add_argument("--authority", help="OAuth2 authority URL")
+        extract_parser.add_argument(
             "--imap-query",
             default="ALL",
             help="The query to use when searching for emails via IMAP",
         )
 
-    parser.add_argument(
+    extract_parser.add_argument(
         "--gmail-query",
         default=settings.gmail_query,
         help="The query to use when searching for emails in Gmail",
     )
-    parser.add_argument(
+    extract_parser.add_argument(
         "--outlook-query",
         default=settings.outlook_query,
         help="The query to use when searching for emails in Outlook",
     )
-    parser.add_argument(
+    extract_parser.add_argument(
         "--output",
         default="output/purchase_data.csv",
         help="Output CSV file path",
     )
-    parser.add_argument(
+    extract_parser.add_argument(
         "--output-format",
         choices=["csv", "koinly", "cryptotaxcalculator", "cointracker", "cra", "cra-pdf"],
         default="csv",
         help="The output format (default: csv)",
     )
-    parser.add_argument(
+    extract_parser.add_argument(
         "--sync",
         action="store_true",
         help="Only fetch new emails since the last run (applies to IMAP)",
     )
-    parser.add_argument(
+    extract_parser.add_argument(
         "--parallel",
         action="store_true",
         help="Enable parallel processing of emails (defaults to threading)",
     )
-    parser.add_argument(
+    extract_parser.add_argument(
         "--multiprocessing",
         action="store_true",
         help="Use multiprocessing for parallel processing (more efficient for CPU-bound tasks like local LLMs)",
     )
-    parser.add_argument(
+    extract_parser.add_argument(
         "--max-workers",
         type=int,
         default=settings.max_workers,
         help=f"Maximum number of worker threads for parallel processing (default: {settings.max_workers})",
     )
-    parser.add_argument(
+    extract_parser.add_argument(
         "--koinly-upload",
         action="store_true",
         help="Upload transactions to Koinly (requires API support)",
     )
-    parser.add_argument(
+    extract_parser.add_argument(
         "--verify",
         action="store_true",
         help="Verify harvested totals against on-chain balances",
     )
-    parser.add_argument(
+    extract_parser.add_argument(
         "--progress",
         action="store_true",
         default=True,
         help="Show progress bar during processing (default: True)",
     )
-    parser.add_argument(
+    extract_parser.add_argument(
         "--no-progress",
         dest="progress",
         action="store_false",
         help="Disable progress bar",
     )
+
+    # Vault command
+    vault_parser = subparsers.add_parser("vault", help="Manage secure wallet vault")
+    vault_subparsers = vault_parser.add_subparsers(dest="vault_command", help="Vault action")
+
+    vault_subparsers.add_parser("create", help="Create a new vault")
+
+    add_key_parser = vault_subparsers.add_parser("add-key", help="Add a new derived key to the vault")
+    add_key_parser.add_argument("--asset", default="ETH", help="Asset type (default: ETH)")
+    add_key_parser.add_argument("--index", type=int, default=0, help="HD derivation index")
+
+    vault_subparsers.add_parser("list", help="List addresses in the vault")
+
     return parser
 
 
@@ -453,10 +472,33 @@ def _process_and_save_results(
     if verify_balances or settings.enable_blockchain_verification:
         logger.info("Verifying harvested totals against on-chain balances...")
         wallets_config = settings.blockchain_wallets
-        if not wallets_config:
-            logger.warning("No blockchain wallets configured. Set DAP_BLOCKCHAIN_WALLETS environment variable.")
+
+        # Attempt to load vault if it exists
+        vault_manager = None
+        if os.path.exists(settings.vault_path):
+            try:
+                from digital_asset_harvester.blockchain.vault import VaultManager
+
+                vault_manager = VaultManager(settings.vault_path, salt=settings.vault_salt.encode())
+                passphrase = getpass.getpass("Enter vault passphrase to resolve addresses: ")
+                vault_manager.unlock(passphrase)
+                logger.info("Vault unlocked successfully.")
+            except (ValueError, RuntimeError) as e:
+                logger.error("Vault integrity failure or incorrect passphrase: %s", e)
+                print(f"\nCRITICAL ERROR: {e}")
+                print("Operation ceased for security. Check vault file and passphrase.\n")
+                import sys
+
+                sys.exit(1)
+            except Exception as e:
+                logger.warning("Failed to load vault: %s. Continuing with explicit config only.", e)
+
+        if not wallets_config and not vault_manager:
+            logger.warning(
+                "No blockchain wallets configured and no vault available. Set DAP_BLOCKCHAIN_WALLETS or use 'dap vault'."
+            )
         else:
-            verifier = BlockchainVerifier(wallets_config)
+            verifier = BlockchainVerifier(wallets_config, vault_manager=vault_manager)
             report = verifier.verify(purchases)
             if report.get("success"):
                 logger.info("--- Blockchain Verification Report ---")
@@ -636,10 +678,91 @@ def _process_and_save_results(
 def run(argv: Optional[list[str]] = None) -> int:
     settings = get_settings()
     parser = build_parser(settings)
-    args = parser.parse_args(argv)
+
+    import sys
+
+    args_to_parse = argv if argv is not None else sys.argv[1:]
+
+    # Command detection logic
+    # 1. No arguments -> show help
+    if not args_to_parse:
+        parser.print_help()
+        return 0
+
+    # 2. Top-level help/version -> pass through
+    if args_to_parse[0] in ["-h", "--help", "--version"]:
+        args = parser.parse_args(args_to_parse)
+        return 0
+
+    # 3. Known command -> pass through
+    if args_to_parse[0] in ["extract", "vault"]:
+        args = parser.parse_args(args_to_parse)
+    else:
+        # 4. Unknown but not a flag -> maybe legacy or just invalid.
+        # If it starts with -, it's probably a flag for 'extract' (legacy compatibility)
+        if args_to_parse[0].startswith("-"):
+            args_to_parse = ["extract"] + args_to_parse
+        else:
+            # Not a flag, and not a command. Show help.
+            parser.print_help()
+            return 1
+        args = parser.parse_args(args_to_parse)
 
     logger_factory = configure_logging(settings)
     logger = logging.getLogger(__name__)
+
+    if args.command == "vault":
+        from digital_asset_harvester.blockchain.vault import VaultManager
+
+        vm = VaultManager(settings.vault_path, salt=settings.vault_salt.encode())
+
+        if args.vault_command == "create":
+            passphrase = getpass.getpass("Enter master passphrase for new vault: ")
+            confirm = getpass.getpass("Confirm passphrase: ")
+            if passphrase != confirm:
+                logger.error("Passphrases do not match.")
+                return 1
+            mnemonic = vm.create_vault(passphrase)
+            print("\n!!! IMPORTANT: SAVE THIS MNEMONIC SECURELY !!!")
+            print(mnemonic)
+            print("!!! DO NOT SHARE THIS WITH ANYONE !!!\n")
+            return 0
+
+        elif args.vault_command == "add-key":
+            if not os.path.exists(settings.vault_path):
+                logger.error("Vault does not exist. Run 'dap vault create' first.")
+                return 1
+            passphrase = getpass.getpass("Enter vault passphrase: ")
+            try:
+                vm.unlock(passphrase)
+                address = vm.add_wallet(args.asset, args.index)
+                logger.info(f"Added {args.asset} wallet: {address}")
+                return 0
+            except Exception as e:
+                logger.error(f"Error: {e}")
+                return 1
+
+        elif args.vault_command == "list":
+            if not os.path.exists(settings.vault_path):
+                logger.error("Vault does not exist.")
+                return 1
+            passphrase = getpass.getpass("Enter vault passphrase: ")
+            try:
+                vm.unlock(passphrase)
+                wallets = vm.list_wallets()
+                print("\nVault Wallets:")
+                for w in wallets:
+                    print(f"  - {w['asset']}: {w['address']}")
+                print("")
+                return 0
+            except Exception as e:
+                logger.error(f"Error: {e}")
+                return 1
+        else:
+            # Use the generic help for the vault subcommand
+            # We can find the vault parser in subparsers
+            parser.parse_args(["vault", "--help"])
+            return 1
 
     try:
         # Override settings from CLI args

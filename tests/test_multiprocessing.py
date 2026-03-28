@@ -35,5 +35,5 @@ def test_cli_multiprocessing_flag():
 
     settings = HarvesterSettings()
     parser = build_parser(settings)
-    args = parser.parse_args(["--mbox-file", "test.mbox", "--multiprocessing"])
+    args = parser.parse_args(["extract", "--mbox-file", "test.mbox", "--multiprocessing"])
     assert args.multiprocessing is True

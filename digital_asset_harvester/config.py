@@ -91,6 +91,8 @@ class HarvesterSettings:
 
     enable_blockchain_verification: bool = False
     blockchain_wallets: str = ""
+    vault_path: str = ".vault.json"
+    vault_salt: str = "default_salt_for_dap"
 
     enable_currency_conversion: bool = False
     base_fiat_currency: str = "CAD"

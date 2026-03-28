@@ -12,7 +12,8 @@ from digital_asset_harvester.telemetry import StructuredLoggerFactory
 def test_build_parser_defaults():
     settings = HarvesterSettings()
     parser = build_parser(settings)
-    args = parser.parse_args(["--mbox-file", "inbox.mbox"])
+    args = parser.parse_args(["extract", "--mbox-file", "inbox.mbox"])
+    assert args.command == "extract"
     assert args.mbox_file == "inbox.mbox"
     assert args.output == "output/purchase_data.csv"
 
@@ -20,7 +21,7 @@ def test_build_parser_defaults():
 def test_build_parser_no_progress():
     settings = HarvesterSettings()
     parser = build_parser(settings)
-    args = parser.parse_args(["--mbox-file", "inbox.mbox", "--no-progress"])
+    args = parser.parse_args(["extract", "--mbox-file", "inbox.mbox", "--no-progress"])
     assert not args.progress
 
 
