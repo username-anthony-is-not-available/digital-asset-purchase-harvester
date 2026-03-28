@@ -188,9 +188,25 @@ In addition to the default local LLM (Ollama), the harvester now supports cloud-
   - `DAP_OPENAI_API_KEY`
   - `DAP_ANTHROPIC_API_KEY`
 
+#### Privacy Mode & Local Parsing (Ollama)
+
+For privacy-conscious users, the harvester supports a **Privacy Mode** that ensures all email content is processed locally and never sent to cloud providers.
+
+- **Enable Privacy Mode**: Set `DAP_ENABLE_PRIVACY_MODE=true`. This forces the use of local Ollama and disables all cloud-based features.
+- **PII Scrubbing**: Privacy mode automatically enables Personally Identifiable Information (PII) scrubbing to mask sensitive data like emails, phone numbers, and wallet addresses before they reach the local LLM.
+- **Context Window**: Local models often have smaller default context windows. You can adjust this using `DAP_LLM_CONTEXT_WINDOW` (default: 4096) to ensure long emails are parsed correctly.
+
+Example configuration for maximum privacy:
+
+```sh
+export DAP_ENABLE_PRIVACY_MODE=true
+export DAP_LLM_PROVIDER=ollama
+export DAP_LLM_MODEL_NAME="llama3.2:3b"
+```
+
 #### Ollama Auto-Fallback
 
-If you have a slow computer and local Ollama processing takes too long, you can enable automatic fallback to a cloud provider.
+If you have a slow computer and local Ollama processing takes too long, you can enable automatic fallback to a cloud provider. **Note: Fallback is disabled when Privacy Mode is active.**
 
 - **Enable Fallback**: Set `DAP_ENABLE_OLLAMA_FALLBACK=true`.
 - **Threshold**: Set the timeout threshold in seconds using `DAP_OLLAMA_FALLBACK_THRESHOLD_SECONDS` (default: 10).

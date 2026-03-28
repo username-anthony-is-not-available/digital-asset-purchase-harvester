@@ -23,6 +23,7 @@ class HarvesterSettings:
     llm_model_name: str = "llama3.2:3b"
     llm_max_retries: int = 3
     llm_timeout_seconds: int = 30
+    llm_context_window: int = 4096
     ollama_base_url: str = ""
 
     enable_privacy_mode: bool = False
