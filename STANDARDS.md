@@ -27,4 +27,9 @@ Example:
 - Additional required reviewers for smart contract changes
 -->
 
-None.
+### Private Key Lifecycle & Vault Security
+- **Never Log Secrets**: Private keys, mnemonics, and passphrases must never be logged to stdout, files, or any telemetry system.
+- **In-Memory Only**: Decrypted private keys should only exist in-memory for the duration of the required operation.
+- **Encryption at Rest**: All sensitive on-chain credentials must be stored in an encrypted vault (AES-256-GCM or equivalent) using a strong key derivation function (PBKDF2HMAC with ≥100,000 iterations).
+- **Integrity Lock**: The application must fail-fast and alert the user if a vault file appears corrupted or tampered with.
+- **Template Safety**: Example credential files must be suffixed with `.example` and the actual secret-containing files must be included in `.gitignore`.

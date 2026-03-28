@@ -180,3 +180,7 @@ cython_debug/
 tasks_db.json
 .processed_hashes.json
 .sync_state.json
+
+# Credentials and secrets
+credentials.json
+.vault.json
