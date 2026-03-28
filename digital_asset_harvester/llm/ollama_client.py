@@ -58,7 +58,7 @@ class OllamaLLMClient(LLMProvider):
 
         attempts = retries or self.default_retries
         chosen_model = model or self.settings.llm_model_name
-        options: Dict[str, Any] = {}
+        options: Dict[str, Any] = {"num_ctx": self.settings.llm_context_window}
         if temperature is not None:
             options["temperature"] = temperature
 
