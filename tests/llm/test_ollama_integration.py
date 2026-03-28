@@ -24,34 +24,38 @@ def test_ollama_end_to_end_parsing(mock_ollama_client):
     settings = HarvesterSettings(
         llm_provider="ollama",
         enable_preprocessing=False,  # Force LLM calls
-        enable_regex_extractors=False, # Force LLM extraction
+        enable_regex_extractors=False,  # Force LLM extraction
         min_confidence_threshold=0.1,
     )
 
     # Setup mock responses for classification then extraction
     mock_ollama_client.generate.side_effect = [
         # Classification response
-        {"response": json.dumps({
-            "is_crypto_purchase": True,
-            "confidence": 0.95,
-            "reasoning": "Standard purchase confirmation"
-        })},
+        {
+            "response": json.dumps(
+                {"is_crypto_purchase": True, "confidence": 0.95, "reasoning": "Standard purchase confirmation"}
+            )
+        },
         # Extraction response
-        {"response": json.dumps({
-            "transactions": [
+        {
+            "response": json.dumps(
                 {
-                    "transaction_type": "buy",
-                    "total_spent": 100.0,
-                    "currency": "USD",
-                    "amount": 0.005,
-                    "item_name": "BTC",
-                    "vendor": "Coinbase",
-                    "purchase_date": "2024-01-01 12:00:00 UTC",
-                    "confidence": 0.98,
-                    "extraction_notes": "Perfect match"
+                    "transactions": [
+                        {
+                            "transaction_type": "buy",
+                            "total_spent": 100.0,
+                            "currency": "USD",
+                            "amount": 0.005,
+                            "item_name": "BTC",
+                            "vendor": "Coinbase",
+                            "purchase_date": "2024-01-01 12:00:00 UTC",
+                            "confidence": 0.98,
+                            "extraction_notes": "Perfect match",
+                        }
+                    ]
                 }
-            ]
-        })}
+            )
+        },
     ]
 
     llm_client = OllamaLLMClient(settings=settings)
@@ -80,11 +84,7 @@ def test_ollama_end_to_end_parsing(mock_ollama_client):
 def test_ollama_parsing_with_custom_context_window(mock_ollama_client):
     """Verify that a custom context window size is correctly passed to Ollama."""
     custom_ctx = 8192
-    settings = HarvesterSettings(
-        llm_provider="ollama",
-        llm_context_window=custom_ctx,
-        enable_preprocessing=False
-    )
+    settings = HarvesterSettings(llm_provider="ollama", llm_context_window=custom_ctx, enable_preprocessing=False)
 
     mock_ollama_client.generate.return_value = {
         "response": json.dumps({"is_crypto_purchase": False, "confidence": 0.0, "reasoning": "N/A"})

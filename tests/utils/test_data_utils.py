@@ -1,5 +1,7 @@
 import pytest
-from digital_asset_harvester.utils.data_utils import normalize_for_frontend, denormalize_from_frontend
+
+from digital_asset_harvester.utils.data_utils import denormalize_from_frontend, normalize_for_frontend
+
 
 def test_normalize_for_frontend():
     purchase = {
@@ -8,7 +10,7 @@ def test_normalize_for_frontend():
         "item_name": "BTC",
         "confidence": 0.9,
         "fee_amount": 1.0,
-        "fee_currency": "USD"
+        "fee_currency": "USD",
     }
 
     normalized = normalize_for_frontend(purchase)
@@ -23,11 +25,13 @@ def test_normalize_for_frontend():
     assert normalized["asset_id"] is None
     assert normalized["fiat_amount_base"] is None
 
+
 def test_normalize_for_frontend_empty():
     normalized = normalize_for_frontend({})
     assert normalized["review_status"] == "pending"
     assert normalized["fee_amount"] is None
     assert normalized["fee_currency"] == ""
+
 
 def test_denormalize_from_frontend():
     frontend_data = {
@@ -35,7 +39,7 @@ def test_denormalize_from_frontend():
         "crypto_amount": 0.001,
         "crypto_currency": "BTC",
         "confidence_score": 0.9,
-        "asset_id": "bitcoin"
+        "asset_id": "bitcoin",
     }
 
     denormalized = denormalize_from_frontend(frontend_data)

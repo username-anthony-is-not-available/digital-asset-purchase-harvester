@@ -64,9 +64,7 @@ class CoinbaseExtractor(BaseExtractor):
                     if not currency:
                         currency = "USD"
 
-                purchases.append(
-                    self._create_purchase_dict(amount, crypto, total_spent, currency, body, "buy")
-                )
+                purchases.append(self._create_purchase_dict(amount, crypto, total_spent, currency, body, "buy"))
 
         # 2. Try subject line if nothing found in body
         if not purchases:
@@ -89,9 +87,7 @@ class CoinbaseExtractor(BaseExtractor):
                     total_spent = None
                     currency = "USD"
 
-                purchases.append(
-                    self._create_purchase_dict(amount, crypto, total_spent, currency, body, "buy")
-                )
+                purchases.append(self._create_purchase_dict(amount, crypto, total_spent, currency, body, "buy"))
 
         # 3. Handle Staking Rewards
         if "staking reward" in body.lower() or "staking reward" in subject.lower():
@@ -101,9 +97,7 @@ class CoinbaseExtractor(BaseExtractor):
             ):
                 amount = match.group(1).replace(",", "")
                 crypto = match.group(2).upper()
-                purchases.append(
-                    self._create_purchase_dict(amount, crypto, None, "USD", body, "staking_reward")
-                )
+                purchases.append(self._create_purchase_dict(amount, crypto, None, "USD", body, "staking_reward"))
 
         return purchases
 
@@ -122,9 +116,7 @@ class CoinbaseExtractor(BaseExtractor):
         # Extract fee
         fee_amount = None
         fee_currency = currency
-        fee_match = re.search(
-            r"(?:fee of|Coinbase Fee)\s*([$€£¥])?([\d,.]+)\s*([A-Z]{3})?", body, re.IGNORECASE
-        )
+        fee_match = re.search(r"(?:fee of|Coinbase Fee)\s*([$€£¥])?([\d,.]+)\s*([A-Z]{3})?", body, re.IGNORECASE)
         if fee_match:
             fee_amount = fee_match.group(2).replace(",", "")
             if fee_match.group(3):
