@@ -16,6 +16,7 @@ def decode_header_value(value: str) -> str:
 
 class HeaderParseError(Exception):
     """Exception raised for errors during header parsing."""
+
     pass
 
 

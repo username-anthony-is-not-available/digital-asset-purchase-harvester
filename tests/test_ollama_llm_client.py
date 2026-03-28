@@ -23,11 +23,12 @@ def test_ollama_llm_client_generate_json_with_temperature(mock_settings):
     result = client.generate_json("test prompt", temperature=0.5)
 
     assert result is not None
+    # options should now include num_ctx from settings
     mock_client.generate.assert_called_with(
         model="test-model",
         prompt="test prompt",
         format="json",
-        options={"temperature": 0.5},
+        options={"num_ctx": mock_settings.return_value.llm_context_window, "temperature": 0.5},
     )
 
 
