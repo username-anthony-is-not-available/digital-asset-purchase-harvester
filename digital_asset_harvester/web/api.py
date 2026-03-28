@@ -16,6 +16,7 @@ from fastapi.responses import RedirectResponse, StreamingResponse
 
 from .. import EmailPurchaseExtractor, EmlDataExtractor, MboxDataExtractor, get_llm_client, get_settings
 from ..cli import configure_logging, process_emails
+from ..exporters.blockchain_tax_calculator import BlockchainTaxCalculatorReportGenerator
 from ..exporters.cointracker import CoinTrackerReportGenerator
 from ..exporters.cra import CRAReportGenerator, write_purchase_data_to_cra_pdf
 from ..exporters.cryptotaxcalculator import CryptoTaxCalculatorReportGenerator
@@ -489,6 +490,47 @@ async def export_koinly(task_id: str):
     output.seek(0)
     return StreamingResponse(
         output, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=koinly_{task_id}.csv"}
+    )
+
+
+@router.get("/export/blockchain-tax-calculator/{task_id}")
+async def export_blockchain_tax_calculator(task_id: str):
+    task = tasks.get(task_id)
+    if not task or task["status"] != "complete":
+        raise HTTPException(status_code=404, detail="Task not found or not complete")
+
+    results = task.get("result", [])
+    denormalized_results = [denormalize_from_frontend(p) for p in results]
+
+    generator = BlockchainTaxCalculatorReportGenerator()
+    rows = generator.generate_csv_rows(denormalized_results)
+
+    output = StringIO()
+    if rows:
+        writer = csv.DictWriter(output, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+    else:
+        headers = [
+            "Date",
+            "Type",
+            "Amount",
+            "Asset",
+            "Quote Amount",
+            "Quote Asset",
+            "Fee",
+            "Fee Asset",
+            "ID",
+            "Description",
+        ]
+        writer = csv.writer(output)
+        writer.writerow(headers)
+
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=blockchain_tax_{task_id}.csv"},
     )
 
 

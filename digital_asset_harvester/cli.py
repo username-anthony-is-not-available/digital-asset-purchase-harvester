@@ -20,6 +20,7 @@ from digital_asset_harvester import (
     log_event,
     write_purchase_data_to_csv,
 )
+from digital_asset_harvester.exporters.blockchain_tax_calculator import write_purchase_data_to_blockchain_tax_csv
 from digital_asset_harvester.exporters.cointracker import write_purchase_data_to_cointracker_csv
 from digital_asset_harvester.exporters.cra import write_purchase_data_to_cra_csv, write_purchase_data_to_cra_pdf
 from digital_asset_harvester.exporters.cryptotaxcalculator import write_purchase_data_to_ctc_csv
@@ -95,7 +96,7 @@ def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
     )
     extract_parser.add_argument(
         "--output-format",
-        choices=["csv", "koinly", "cryptotaxcalculator", "cointracker", "cra", "cra-pdf"],
+        choices=["csv", "koinly", "cryptotaxcalculator", "cointracker", "blockchain-tax-calculator", "cra", "cra-pdf"],
         default="csv",
         help="The output format (default: csv)",
     )
@@ -598,6 +599,18 @@ def _process_and_save_results(
                 "CryptoTaxCalculator output format is not enabled. "
                 "Set `enable_ctc_csv_export = true` in your config or "
                 "`DAP_ENABLE_CTC_CSV_EXPORT=true` env var. "
+                "Falling back to standard CSV output."
+            )
+            write_purchase_data_to_csv(output_path, purchases)
+    elif output_format == "blockchain-tax-calculator":
+        if settings.enable_blockchain_tax_export:
+            logger.info("Writing output in Blockchain-Tax-Calculator format to %s", output_path)
+            write_purchase_data_to_blockchain_tax_csv(purchases, output_path)
+        else:
+            logger.warning(
+                "Blockchain-Tax-Calculator output format is not enabled. "
+                "Set `enable_blockchain_tax_export = true` in your config or "
+                "`DAP_ENABLE_BLOCKCHAIN_TAX_EXPORT=true` env var. "
                 "Falling back to standard CSV output."
             )
             write_purchase_data_to_csv(output_path, purchases)

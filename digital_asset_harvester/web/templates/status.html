@@ -429,6 +429,7 @@
                     <a id="export-koinly" href="#" download><button style="background-color: #9b59b6; color: white;">Export to Koinly</button></a>
                     <a id="export-ctc" href="#" download><button style="background-color: #9b59b6; color: white;">Export to CTC</button></a>
                     <a id="export-cointracker" href="#" download><button style="background-color: #9b59b6; color: white;">Export to CoinTracker</button></a>
+                    <a id="export-blockchain-tax" href="#" download><button style="background-color: #9b59b6; color: white;">Export to Blockchain Tax</button></a>
                     <a id="export-cra" href="#" download><button style="background-color: #e67e22; color: white;">Export to CRA</button></a>
                     <a id="export-cra-pdf" href="#" download><button style="background-color: #e67e22; color: white;">Export to CRA PDF</button></a>
                     <a href="/"><button style="background-color: #2ecc71; color: white;">Process Another File</button></a>
@@ -486,6 +487,7 @@
         const exportKoinly = document.getElementById('export-koinly');
         const exportCtc = document.getElementById('export-ctc');
         const exportCointracker = document.getElementById('export-cointracker');
+        const exportBlockchainTax = document.getElementById('export-blockchain-tax');
         const exportCra = document.getElementById('export-cra');
         const exportCraPdf = document.getElementById('export-cra-pdf');
 
@@ -545,6 +547,7 @@
                 exportKoinly.href = `/api/export/koinly/${taskId}`;
                 exportCtc.href = `/api/export/ctc/${taskId}`;
                 exportCointracker.href = `/api/export/cointracker/${taskId}`;
+                exportBlockchainTax.href = `/api/export/blockchain-tax-calculator/${taskId}`;
                 exportCra.href = `/api/export/cra/${taskId}`;
                 exportCraPdf.href = `/api/export/cra-pdf/${taskId}`;
             } else if (status === 'error') {

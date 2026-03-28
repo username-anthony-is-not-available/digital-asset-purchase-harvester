@@ -81,6 +81,7 @@ class HarvesterSettings:
     enable_koinly_csv_export: bool = False
     enable_ctc_csv_export: bool = False
     enable_cointracker_csv_export: bool = False
+    enable_blockchain_tax_export: bool = False
     enable_cra_csv_export: bool = False
     enable_cra_pdf_export: bool = False
     enable_koinly_api: bool = False
