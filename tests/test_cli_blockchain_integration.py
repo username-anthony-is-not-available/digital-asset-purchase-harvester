@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 import logging
+import os
 from unittest.mock import MagicMock, patch
 
 from digital_asset_harvester.cli import run
-from tests.mock_blockchain_core import WalletClient
 
 
 @patch("digital_asset_harvester.cli.BlockchainVerifier")
 @patch("digital_asset_harvester.cli.process_emails")
 @patch("digital_asset_harvester.cli.MboxDataExtractor")
 @patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
-def test_cli_verify_flag_enabled(mock_write_csv, mock_mbox, mock_process, mock_verifier_class, caplog):
+@patch("os.path.exists")
+def test_cli_verify_flag_enabled(mock_exists, mock_write_csv, mock_mbox, mock_process, mock_verifier_class, caplog):
     """Test that the --verify flag triggers verification in the CLI."""
+    mock_exists.return_value = False
     mock_mbox.return_value.extract_emails.return_value = []
     mock_process.return_value = ([{"item_name": "BTC", "amount": 1.0}], MagicMock())
 
@@ -33,10 +35,11 @@ def test_cli_verify_flag_enabled(mock_write_csv, mock_mbox, mock_process, mock_v
         settings.log_json_output = False
         settings.enable_debug_output = False
         settings.enable_blockchain_verification = False
+        settings.vault_path = ".vault.json"
 
         # Run CLI with --verify flag
         with caplog.at_level(logging.INFO):
-            run(["--mbox-file", "dummy.mbox", "--verify"])
+            run(["extract", "--mbox-file", "dummy.mbox", "--verify"])
 
     assert "Verifying harvested totals against on-chain balances..." in caplog.text
     assert "BTC: MATCH" in caplog.text

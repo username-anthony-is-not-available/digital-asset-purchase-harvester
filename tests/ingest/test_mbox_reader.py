@@ -1,19 +1,21 @@
 from digital_asset_harvester.ingest.mbox_reader import MboxDataExtractor
 
 
-def test_mbox_reader_initialization():
+def test_mbox_reader_initialization(tmp_path):
     """
     Tests that the MboxReader can be initialized.
     """
-    reader = MboxDataExtractor("non_existent_path.mbox")
+    mbox_path = str(tmp_path / "non_existent_path.mbox")
+    reader = MboxDataExtractor(mbox_path)
     assert reader is not None
 
 
-def test_mbox_reader_extract_emails_file_not_found():
+def test_mbox_reader_extract_emails_file_not_found(tmp_path):
     """
     Tests that extract_emails returns an empty generator if the mbox file does not exist.
     """
-    reader = MboxDataExtractor("non_existent_path.mbox")
+    mbox_path = str(tmp_path / "non_existent_path.mbox")
+    reader = MboxDataExtractor(mbox_path)
     emails = reader.extract_emails()
     assert list(emails) == []
 
@@ -110,20 +112,22 @@ def test_mbox_reader_extract_emails_with_metadata(mbox_file_path):
         assert isinstance(email["subject"], str)
 
 
-def test_mbox_reader_len(mbox_file_path):
+def test_mbox_reader_len(mbox_file_path, tmp_path):
     """Test the __len__ method of MboxDataExtractor."""
     reader = MboxDataExtractor(mbox_file_path)
     assert len(reader) == 10
 
     # Test with non-existent file
-    reader_missing = MboxDataExtractor("missing.mbox")
+    mbox_path = str(tmp_path / "missing.mbox")
+    reader_missing = MboxDataExtractor(mbox_path)
     assert len(reader_missing) == 0
 
 
-def test_mbox_reader_len_error(mocker):
+def test_mbox_reader_len_error(mocker, tmp_path):
     """Test __len__ when mailbox.mbox raises an error."""
     mocker.patch("mailbox.mbox", side_effect=Exception("mailbox error"))
-    reader = MboxDataExtractor("any.mbox")
+    mbox_path = str(tmp_path / "any.mbox")
+    reader = MboxDataExtractor(mbox_path)
     assert len(reader) == 0
 
 
@@ -136,29 +140,32 @@ def test_mbox_emails_iterable_raw(mbox_file_path):
     assert "Coinbase" in emails[0]
 
 
-def test_mbox_emails_iterable_invalid_file():
+def test_mbox_emails_iterable_invalid_file(tmp_path):
     """Test MboxEmailsIterable with an invalid file."""
     from digital_asset_harvester.ingest.mbox_reader import MboxEmailsIterable
 
-    iterable = MboxEmailsIterable("non_existent.mbox", raw=False)
+    mbox_path = str(tmp_path / "non_existent.mbox")
+    iterable = MboxEmailsIterable(mbox_path, raw=False)
     assert len(iterable) == 0
     assert list(iterable) == []
 
 
-def test_mbox_emails_iterable_len_error(mocker):
+def test_mbox_emails_iterable_len_error(mocker, tmp_path):
     """Test MboxEmailsIterable.__len__ when len(self.mbox) raises an error."""
     from digital_asset_harvester.ingest.mbox_reader import MboxEmailsIterable
 
-    iterable = MboxEmailsIterable("any.mbox", raw=False)
+    mbox_path = str(tmp_path / "any.mbox")
+    iterable = MboxEmailsIterable(mbox_path, raw=False)
     iterable.mbox = mocker.MagicMock()
     iterable.mbox.__len__.side_effect = Exception("len error")
     assert len(iterable) == 0
 
 
-def test_mbox_emails_iterable_init_error(mocker):
+def test_mbox_emails_iterable_init_error(mocker, tmp_path):
     """Test MboxEmailsIterable.__init__ when mailbox.mbox raises an error."""
     from digital_asset_harvester.ingest.mbox_reader import MboxEmailsIterable
 
     mocker.patch("mailbox.mbox", side_effect=Exception("init error"))
-    iterable = MboxEmailsIterable("any.mbox", raw=False)
+    mbox_path = str(tmp_path / "any.mbox")
+    iterable = MboxEmailsIterable(mbox_path, raw=False)
     assert iterable.mbox == []
