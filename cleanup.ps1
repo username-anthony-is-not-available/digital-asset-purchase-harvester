@@ -53,6 +53,12 @@ switch ($choice.ToLower()) {
         pip cache purge 2>$null
         Write-Host "✅ Pip cache cleaned" -ForegroundColor Green
 
+        # Remove temporary artifacts
+        Write-Host "Removing temporary artifacts..." -ForegroundColor Cyan
+        Remove-Item -Path "*.mbox", ".llm_cache.json", ".processed_hashes.json", ".sync_state.json", "tasks_db.json" -ErrorAction SilentlyContinue
+        Remove-Item -Path "output" -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Host "✅ Temporary artifacts removed" -ForegroundColor Green
+
         Write-Host "✅ Full cleanup complete!" -ForegroundColor Green
         Write-Host "💡 Run setup.ps1 to start fresh" -ForegroundColor Blue
     }
