@@ -108,3 +108,57 @@ def test_mbox_reader_extract_emails_with_metadata(mbox_file_path):
         assert "sender" in email or "from" in email
         assert isinstance(email["body"], str)
         assert isinstance(email["subject"], str)
+
+
+def test_mbox_reader_len(mbox_file_path):
+    """Test the __len__ method of MboxDataExtractor."""
+    reader = MboxDataExtractor(mbox_file_path)
+    assert len(reader) == 10
+
+    # Test with non-existent file
+    reader_missing = MboxDataExtractor("missing.mbox")
+    assert len(reader_missing) == 0
+
+
+def test_mbox_reader_len_error(mocker):
+    """Test __len__ when mailbox.mbox raises an error."""
+    mocker.patch("mailbox.mbox", side_effect=Exception("mailbox error"))
+    reader = MboxDataExtractor("any.mbox")
+    assert len(reader) == 0
+
+
+def test_mbox_emails_iterable_raw(mbox_file_path):
+    """Test MboxEmailsIterable with raw=True."""
+    reader = MboxDataExtractor(mbox_file_path)
+    emails = list(reader.extract_emails(raw=True))
+    assert len(emails) == 10
+    assert isinstance(emails[0], str)
+    assert "Coinbase" in emails[0]
+
+
+def test_mbox_emails_iterable_invalid_file():
+    """Test MboxEmailsIterable with an invalid file."""
+    from digital_asset_harvester.ingest.mbox_reader import MboxEmailsIterable
+
+    iterable = MboxEmailsIterable("non_existent.mbox", raw=False)
+    assert len(iterable) == 0
+    assert list(iterable) == []
+
+
+def test_mbox_emails_iterable_len_error(mocker):
+    """Test MboxEmailsIterable.__len__ when len(self.mbox) raises an error."""
+    from digital_asset_harvester.ingest.mbox_reader import MboxEmailsIterable
+
+    iterable = MboxEmailsIterable("any.mbox", raw=False)
+    iterable.mbox = mocker.MagicMock()
+    iterable.mbox.__len__.side_effect = Exception("len error")
+    assert len(iterable) == 0
+
+
+def test_mbox_emails_iterable_init_error(mocker):
+    """Test MboxEmailsIterable.__init__ when mailbox.mbox raises an error."""
+    from digital_asset_harvester.ingest.mbox_reader import MboxEmailsIterable
+
+    mocker.patch("mailbox.mbox", side_effect=Exception("init error"))
+    iterable = MboxEmailsIterable("any.mbox", raw=False)
+    assert iterable.mbox == []

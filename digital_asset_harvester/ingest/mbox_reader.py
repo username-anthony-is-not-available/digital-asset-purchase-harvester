@@ -1,8 +1,10 @@
 import mailbox
+import logging
 from typing import Any, Dict, Generator
 
 from .email_parser import message_to_dict
 
+logger = logging.getLogger(__name__)
 
 class MboxDataExtractor:
     """Extracts data from an mbox file."""
@@ -15,7 +17,8 @@ class MboxDataExtractor:
         try:
             mbox = mailbox.mbox(self.mbox_file)
             return len(mbox)
-        except (FileNotFoundError, mailbox.Error):
+        except Exception as e:
+            logger.debug(f"Error getting mbox length: {e}")
             return 0
 
     def extract_emails(self, raw: bool = False) -> Any:
@@ -31,11 +34,15 @@ class MboxEmailsIterable:
         self.raw = raw
         try:
             self.mbox = mailbox.mbox(self.mbox_file)
-        except (FileNotFoundError, mailbox.Error):
+        except Exception as e:
+            logger.debug(f"Error opening mbox: {e}")
             self.mbox = []
 
     def __len__(self) -> int:
-        return len(self.mbox)
+        try:
+            return len(self.mbox)
+        except Exception:
+            return 0
 
     def __iter__(self) -> Generator[Any, None, None]:
         for message in self.mbox:

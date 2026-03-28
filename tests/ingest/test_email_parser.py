@@ -6,7 +6,36 @@ from email.mime.text import MIMEText
 
 import pytest
 
-from digital_asset_harvester.ingest.email_parser import decode_header_value, extract_body, message_to_dict
+from digital_asset_harvester.ingest.email_parser import (
+    decode_header_value,
+    extract_body,
+    message_to_dict,
+    strip_html_tags,
+)
+
+
+class TestStripHtmlTags:
+    """Tests for strip_html_tags function."""
+
+    def test_strip_html_basic(self):
+        html = "<p>Hello <b>World</b></p>"
+        assert strip_html_tags(html) == "Hello World"
+
+    def test_strip_html_script_style(self):
+        html = "<script>alert('hi')</script><style>body {color: red;}</style><p>Content</p>"
+        assert strip_html_tags(html) == "Content"
+
+    def test_strip_html_block_elements(self):
+        html = "<div>Line 1</div><p>Line 2</p>Line 3<br>Line 4"
+        text = strip_html_tags(html)
+        assert "Line 1" in text
+        assert "Line 2" in text
+        assert "Line 3" in text
+        assert "Line 4" in text
+
+    def test_strip_html_entities(self):
+        html = "Fish &amp; Chips &nbsp; &lt; &gt; &quot;"
+        assert strip_html_tags(html) == 'Fish & Chips   < > "'
 
 
 class TestDecodeHeaderValue:
@@ -90,6 +119,119 @@ class TestExtractBody:
         msg = MIMEText("Test body", "plain", "utf-8")
         body = extract_body(msg)
         assert body == "Test body"
+
+    def test_extract_body_html_only(self):
+        """Test extracting body from an HTML-only email."""
+        msg = MIMEText("<html><body>HTML only body</body></html>", "html")
+        body = extract_body(msg)
+        assert body == "HTML only body"
+
+    def test_extract_body_multipart_html_only(self):
+        """Test extracting body from a multipart email with only HTML."""
+        msg = MIMEMultipart("alternative")
+        html_part = MIMEText("<html><body>HTML body in multipart</body></html>", "html")
+        msg.attach(html_part)
+
+        body = extract_body(msg)
+        assert body == "HTML body in multipart"
+
+    def test_extract_body_empty(self):
+        """Test extracting body from an empty email."""
+        msg = MIMEMultipart("alternative")
+        assert extract_body(msg) == ""
+
+    def test_extract_body_decode_error(self):
+        """Test extracting body with a decoding error."""
+        msg = email.message.Message()
+        msg.set_payload(b"\xff\xfe\xfd")
+        msg["Content-Type"] = "text/plain; charset=utf-8"
+        # Since we use errors="ignore", it should return a string even if garbage
+        body = extract_body(msg)
+        assert isinstance(body, str)
+
+    def test_extract_body_multipart_decode_error(self):
+        """Test extracting body with a decoding error in a multipart email."""
+        msg = MIMEMultipart("alternative")
+        part = email.message.Message()
+        part.set_payload(b"\xff\xfe\xfd")
+        part["Content-Type"] = "text/plain; charset=utf-8"
+        msg.attach(part)
+
+        # It should ignore errors and return something or continue
+        body = extract_body(msg)
+        assert isinstance(body, str)
+
+    def test_extract_body_multipart_html_decode_error(self):
+        """Test extracting body with a decoding error in HTML part of multipart email."""
+        msg = MIMEMultipart("alternative")
+        part = email.message.Message()
+        part.set_payload(b"\xff\xfe\xfd")
+        part["Content-Type"] = "text/html; charset=utf-8"
+        msg.attach(part)
+
+        body = extract_body(msg)
+        assert isinstance(body, str)
+
+    def test_extract_body_no_text_at_all(self):
+        msg = MIMEMultipart("alternative")
+        msg.attach(MIMEText("", "plain"))
+        msg.attach(MIMEText("", "html"))
+        assert extract_body(msg) == ""
+
+    def test_extract_body_multipart_with_plain_text_return(self):
+        """Test that multipart returns early if plain text is found."""
+        msg = MIMEMultipart("alternative")
+        msg.attach(MIMEText("Plain", "plain"))
+        msg.attach(MIMEText("HTML", "html"))
+        assert extract_body(msg) == "Plain"
+
+    def test_extract_body_multipart_attachment(self):
+        """Test that multipart skips attachments."""
+        msg = MIMEMultipart()
+        attachment = MIMEText("content")
+        attachment.add_header("Content-Disposition", "attachment", filename="test.txt")
+        msg.attach(attachment)
+        assert extract_body(msg) == ""
+
+
+class TestExtractBodyAdvanced:
+    """Advanced tests for extract_body requiring mocking."""
+
+    def test_extract_body_multipart_decode_exception(self, mocker):
+        msg = MIMEMultipart("alternative")
+        part = MIMEText("Plain", "plain")
+        # Mock get_payload to fail on first call (with decode=True)
+        # But we want it to succeed on the second call (without decode=True) to test fallback
+        # However, the code calls it again with decode=True in the except block.
+        # Let's just make it return a specific value in the second call.
+        mock_payload = mocker.Mock()
+        mock_payload.decode.side_effect = AttributeError("mock error")
+        mocker.patch.object(part, "get_payload", return_value=mock_payload)
+
+        msg.attach(part)
+
+        body = extract_body(msg)
+        assert isinstance(body, str)
+
+    def test_extract_body_multipart_html_decode_exception(self, mocker):
+        msg = MIMEMultipart("alternative")
+        part = MIMEText("<html>HTML</html>", "html")
+        mock_payload = mocker.Mock()
+        mock_payload.decode.side_effect = AttributeError("mock error")
+        mocker.patch.object(part, "get_payload", return_value=mock_payload)
+        msg.attach(part)
+
+        body = extract_body(msg)
+        assert isinstance(body, str)
+
+    def test_extract_body_non_multipart_decode_exception(self, mocker):
+        msg = MIMEText("Plain", "plain")
+        mock_payload = mocker.Mock()
+        mock_payload.decode.side_effect = AttributeError("mock error")
+        mocker.patch.object(msg, "get_payload", return_value=mock_payload)
+
+        body = extract_body(msg)
+        assert isinstance(body, str)
 
 
 class TestMessageToDict:

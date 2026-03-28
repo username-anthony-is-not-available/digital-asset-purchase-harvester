@@ -131,3 +131,49 @@ def test_crypto_address_priority():
     scrubbed = scrubber.scrub(text)
     assert "[ADA_ADDRESS]" in scrubbed
     assert "[PHONE]" not in scrubbed
+
+
+def test_scrub_more_greetings():
+    scrubber = PIIScrubber()
+    text = "Greetings John Doe,"
+    assert scrubber.scrub(text) == "Greetings [NAME],"
+
+    text = "Hello Alice Smith,"
+    assert scrubber.scrub(text) == "Hello [NAME],"
+
+
+def test_scrub_more_addresses():
+    scrubber = PIIScrubber()
+    # Test different suffixes
+    suffixes = [
+        "Street",
+        "St",
+        "Avenue",
+        "Ave",
+        "Road",
+        "Rd",
+        "Boulevard",
+        "Blvd",
+        "Drive",
+        "Dr",
+        "Lane",
+        "Ln",
+        "Court",
+        "Ct",
+        "Circle",
+        "Cir",
+        "Way",
+    ]
+    for suffix in suffixes:
+        text = f"123 Main {suffix}"
+        assert scrubber.scrub(text) == "[ADDRESS]"
+
+
+def test_skip_terms_name_and_phone():
+    scrubber = PIIScrubber(skip_terms={"John", "1-555-010-9999"})
+    text = "Hi John, call me at 1-555-010-9999"
+    scrubbed = scrubber.scrub(text)
+    assert "John" in scrubbed
+    assert "1-555-010-9999" in scrubbed
+    assert "[NAME]" not in scrubbed
+    assert "[PHONE]" not in scrubbed
