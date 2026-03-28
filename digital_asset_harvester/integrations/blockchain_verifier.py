@@ -6,6 +6,8 @@ import logging
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
+from digital_asset_harvester.blockchain.vault import VaultManager
+
 try:
     from blockchain_core import WalletClient
 except ImportError:
@@ -18,16 +20,36 @@ logger = logging.getLogger(__name__)
 class BlockchainVerifier:
     """Verifies harvested digital asset totals against on-chain wallet balances."""
 
-    def __init__(self, wallets_config: str):
+    def __init__(self, wallets_config: str, vault_manager: Optional[VaultManager] = None):
         """
-        Initialize the verifier with a configuration string.
+        Initialize the verifier with a configuration string and optional vault.
 
         Args:
             wallets_config: Comma-separated list of ASSET:ADDRESS pairs.
                            Example: "BTC:1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa,ETH:0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe"
+            vault_manager: Optional VaultManager for resolving addresses.
         """
         self.wallets = self._parse_wallets(wallets_config)
+        self.vault_manager = vault_manager
         self.client = WalletClient() if WalletClient else None
+
+    def _resolve_address(self, asset: str) -> Optional[str]:
+        """Resolve address from config or vault."""
+        # 1. Check explicit config
+        address = self.wallets.get(asset)
+        if address:
+            return address
+
+        # 2. Check vault if available
+        if self.vault_manager:
+            try:
+                return self.vault_manager.get_address_for_asset(asset)
+            except RuntimeError:
+                # Vault might be locked, attempt to unlock if we are in a context that allows it
+                # For now, we assume it should be unlocked beforehand or we skip
+                logger.debug("Vault is locked, cannot resolve address for %s", asset)
+
+        return None
 
     def _parse_wallets(self, config: str) -> Dict[str, str]:
         """Parse the wallet configuration string into a dictionary."""
@@ -77,7 +99,7 @@ class BlockchainVerifier:
 
         results = {}
         for asset, harvested_total in harvested_totals.items():
-            address = self.wallets.get(asset)
+            address = self._resolve_address(asset)
             if not address:
                 results[asset] = {
                     "harvested_total": float(harvested_total),
