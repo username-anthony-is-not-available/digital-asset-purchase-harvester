@@ -8,7 +8,15 @@ def decode_header_value(value: str) -> str:
     """Safely decodes email header values."""
     if not value:
         return ""
-    return str(make_header(decode_header(value)))
+    try:
+        return str(make_header(decode_header(value)))
+    except (ValueError, TypeError, HeaderParseError):
+        return str(value)
+
+
+class HeaderParseError(Exception):
+    """Exception raised for errors during header parsing."""
+    pass
 
 
 def strip_html_tags(html: str) -> str:
@@ -34,49 +42,49 @@ def strip_html_tags(html: str) -> str:
 
 def extract_body(message: email.message.Message) -> str:
     """Extracts the body from an email message, falling back to HTML if plain text is missing."""
-    plain_text = ""
     html_content = ""
 
     if message.is_multipart():
         for part in message.walk():
             content_type = part.get_content_type()
-            content_disposition = str(part.get("Content-Disposition"))
+            content_disposition = str(part.get("Content-Disposition") or "")
 
             if "attachment" in content_disposition:
                 continue
 
             if content_type == "text/plain":
-                payload = part.get_payload(decode=True)
-                charset = part.get_content_charset() or "utf-8"
                 try:
-                    plain_text = payload.decode(charset, errors="ignore")
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        charset = part.get_content_charset() or "utf-8"
+                        plain_text = payload.decode(charset, errors="ignore")
+                        if plain_text.strip():
+                            return plain_text
                 except (UnicodeDecodeError, AttributeError):
-                    plain_text = str(payload)
-                if plain_text.strip():
-                    return plain_text
+                    pass
             elif content_type == "text/html":
-                payload = part.get_payload(decode=True)
-                charset = part.get_content_charset() or "utf-8"
                 try:
-                    html_content = payload.decode(charset, errors="ignore")
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        charset = part.get_content_charset() or "utf-8"
+                        html_content = payload.decode(charset, errors="ignore")
                 except (UnicodeDecodeError, AttributeError):
-                    html_content = str(payload)
+                    pass
     else:
         content_type = message.get_content_type()
-        payload = message.get_payload(decode=True)
-        charset = message.get_content_charset() or "utf-8"
+        body = ""
         try:
-            body = payload.decode(charset, errors="ignore")
+            payload = message.get_payload(decode=True)
+            if payload:
+                charset = message.get_content_charset() or "utf-8"
+                body = payload.decode(charset, errors="ignore")
         except (UnicodeDecodeError, AttributeError):
-            body = str(payload)
+            pass
 
         if content_type == "text/plain":
             return body
         elif content_type == "text/html":
             html_content = body
-
-    if plain_text.strip():
-        return plain_text
 
     if html_content.strip():
         return strip_html_tags(html_content)
