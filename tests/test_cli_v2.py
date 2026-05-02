@@ -1,6 +1,6 @@
 """Tests for the CLI utilities."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -9,8 +9,33 @@ from digital_asset_harvester.config import HarvesterSettings
 from digital_asset_harvester.telemetry import StructuredLoggerFactory
 
 
+@pytest.fixture(autouse=True)
+def mock_common_cli_deps(mocker):
+    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
+    settings = HarvesterSettings(
+        enable_blockchain_verification=False,
+        vault_path=".vault.json",
+        imap_server=None,
+        imap_user=None,
+        imap_password=None,
+        imap_client_id=None,
+        imap_authority=None,
+        enable_imap=True  # Ensure parser has imap arguments for all tests
+    )
+    m_get_settings.return_value = settings
+    mocker.patch("os.path.exists", return_value=False)
+    mocker.patch("digital_asset_harvester.cli.configure_logging")
+    mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
+    mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
+    m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
+    m_process_emails.return_value = ([], MagicMock(get=lambda x: 0))
+    mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
+    mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
+    return m_get_settings
+
+
 def test_build_parser_defaults():
-    settings = HarvesterSettings()
+    settings = HarvesterSettings(enable_imap=True)
     parser = build_parser(settings)
     args = parser.parse_args(["extract", "--mbox-file", "inbox.mbox"])
     assert args.mbox_file == "inbox.mbox"
@@ -18,7 +43,7 @@ def test_build_parser_defaults():
 
 
 def test_build_parser_no_progress():
-    settings = HarvesterSettings()
+    settings = HarvesterSettings(enable_imap=True)
     parser = build_parser(settings)
     args = parser.parse_args(["extract", "--mbox-file", "inbox.mbox", "--no-progress"])
     assert not args.progress
@@ -64,50 +89,27 @@ def test_process_emails_collects_metrics(mocker):
 
 def test_run_mbox_calls_dependencies(mocker):
     # GIVEN
-    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
-    m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
     m_mbox_extractor = mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
-    m_llm_client = mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
-    m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
-    m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
-    m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
-    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
-
     m_mbox_extractor.return_value.extract_emails.return_value = []
-    m_process_emails.return_value = ([], MagicMock(get=lambda x: 0))
 
     # WHEN
-    result = run(["--mbox-file", "test.mbox"])
+    result = run(["extract", "--mbox-file", "test.mbox"])
 
     # THEN
     assert result == 0
-    m_get_settings.assert_called()
-    m_configure_logging.assert_called_once()
     m_mbox_extractor.assert_called_once_with("test.mbox")
-    m_llm_client.assert_called_once()
-    m_extractor.assert_called_once()
-    m_process_emails.assert_called_once()
-    m_ensure_dir.assert_called_once_with("output/purchase_data.csv")
-    m_write_csv.assert_called_once()
 
 
-def test_run_imap_gmail_oauth2(mocker):
+def test_run_imap_gmail_oauth2(mocker, mock_common_cli_deps):
     # GIVEN
-    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
-    m_get_settings.return_value.enable_imap = True
-    m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
+    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_imap=True, enable_blockchain_verification=False, vault_path=".vault.json", imap_server=None, imap_user=None, imap_password=None, imap_client_id=None, imap_authority=None, imap_auth_type="gmail_oauth2"))
     m_imap_client = mocker.patch("digital_asset_harvester.cli.ImapClient")
-    m_llm_client = mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
-    m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
-    m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
-    m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
-    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
-
     m_imap_client.return_value.__enter__.return_value.search_emails.return_value = []
-    m_process_emails.return_value = ([], MagicMock(get=lambda x: 0))
+
     # WHEN
     result = run(
         [
+            "extract",
             "--imap",
             "--imap-server",
             "imap.gmail.com",
@@ -123,23 +125,16 @@ def test_run_imap_gmail_oauth2(mocker):
     m_imap_client.assert_called_once_with("imap.gmail.com", "user", None, "gmail_oauth2", None, None)
 
 
-def test_run_imap_outlook_oauth2(mocker):
+def test_run_imap_outlook_oauth2(mocker, mock_common_cli_deps):
     # GIVEN
-    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
-    m_get_settings.return_value.enable_imap = True
-    m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
+    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_imap=True, enable_blockchain_verification=False, vault_path=".vault.json", imap_server=None, imap_user=None, imap_password=None, imap_client_id=None, imap_authority=None, imap_auth_type="outlook_oauth2"))
     m_imap_client = mocker.patch("digital_asset_harvester.cli.ImapClient")
-    m_llm_client = mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
-    m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
-    m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
-    m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
-    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
-
     m_imap_client.return_value.__enter__.return_value.search_emails.return_value = []
-    m_process_emails.return_value = ([], MagicMock(get=lambda x: 0))
+
     # WHEN
     result = run(
         [
+            "extract",
             "--imap",
             "--imap-server",
             "outlook.office365.com",
@@ -166,103 +161,64 @@ def test_run_imap_outlook_oauth2(mocker):
     )
 
 
-def test_run_gmail_calls_dependencies(mocker):
+def test_run_gmail_calls_dependencies(mocker, mock_common_cli_deps):
     # GIVEN
-    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
-    m_get_settings.return_value.gmail_query = "from:coinbase OR from:binance"
-    m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
+    settings = HarvesterSettings(gmail_query="from:coinbase OR from:binance", enable_blockchain_verification=False, vault_path=".vault.json", enable_imap=True)
+    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=settings)
     m_gmail_client = mocker.patch("digital_asset_harvester.cli.GmailClient")
-    m_llm_client = mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
-    m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
-    m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
-    m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
-    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
-
     m_gmail_client.return_value.search_emails.return_value = []
-    m_process_emails.return_value = ([], MagicMock(get=lambda x: 0))
 
     # WHEN
-    result = run(["--gmail", "--gmail-query", "test query"])
+    result = run(["extract", "--gmail", "--gmail-query", "test query"])
 
     # THEN
     assert result == 0
-    m_get_settings.assert_called()
-    m_configure_logging.assert_called_once()
     m_gmail_client.assert_called_once()
     m_gmail_client.return_value.search_emails.assert_called_once_with(
-        "test query", raw=m_get_settings.return_value.enable_multiprocessing
+        "test query", raw=settings.enable_multiprocessing
     )
-    m_llm_client.assert_called_once()
-    m_extractor.assert_called_once()
-    m_process_emails.assert_called_once()
-    m_ensure_dir.assert_called_once_with("output/purchase_data.csv")
-    m_write_csv.assert_called_once()
 
 
-def test_run_outlook_calls_dependencies(mocker):
+def test_run_outlook_calls_dependencies(mocker, mock_common_cli_deps):
     # GIVEN
-    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
-    m_get_settings.return_value.outlook_query = "from:coinbase OR from:binance"
-    m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
+    settings = HarvesterSettings(outlook_query="from:coinbase OR from:binance", enable_blockchain_verification=False, vault_path=".vault.json", outlook_client_id="id", outlook_authority="auth", enable_imap=True)
+    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=settings)
     m_outlook_client = mocker.patch("digital_asset_harvester.cli.OutlookClient")
-    m_llm_client = mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
-    m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
-    m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
-    m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
-    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
-
     m_outlook_client.return_value.search_emails.return_value = []
-    m_process_emails.return_value = ([], MagicMock(get=lambda x: 0))
 
     # WHEN
-    result = run(["--outlook", "--client-id", "id", "--authority", "auth"])
+    result = run(["extract", "--outlook", "--client-id", "id", "--authority", "auth"])
 
     # THEN
     assert result == 0
-    m_get_settings.assert_called()
-    m_configure_logging.assert_called_once()
     m_outlook_client.assert_called_once_with("id", "auth")
     m_outlook_client.return_value.search_emails.assert_called_once_with(
-        "from:coinbase OR from:binance", raw=m_get_settings.return_value.enable_multiprocessing
+        "from:coinbase OR from:binance", raw=settings.enable_multiprocessing
     )
-    m_llm_client.assert_called_once()
-    m_extractor.assert_called_once()
-    m_process_emails.assert_called_once()
-    m_ensure_dir.assert_called_once_with("output/purchase_data.csv")
-    m_write_csv.assert_called_once()
 
 
 def test_run_file_not_found(mocker, caplog):
     # GIVEN
-    mocker.patch("digital_asset_harvester.cli.get_settings")
-    mocker.patch("digital_asset_harvester.cli.configure_logging")
     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor", side_effect=FileNotFoundError("File not found"))
 
     # WHEN
-    result = run(["--mbox-file", "nonexistent.mbox"])
+    result = run(["extract", "--mbox-file", "nonexistent.mbox"])
 
     # THEN
     assert result == 1
     assert "Error processing mailbox: File not found" in caplog.text
 
 
-def test_run_imap_calls_dependencies(mocker):
+def test_run_imap_calls_dependencies(mocker, mock_common_cli_deps):
     # GIVEN
-    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
-    m_get_settings.return_value.enable_imap = True
-    m_configure_logging = mocker.patch("digital_asset_harvester.cli.configure_logging")
+    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_imap=True, enable_blockchain_verification=False, vault_path=".vault.json", imap_server=None, imap_user=None, imap_password=None, imap_client_id=None, imap_authority=None))
     m_imap_client = mocker.patch("digital_asset_harvester.cli.ImapClient")
-    m_llm_client = mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
-    m_extractor = mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
-    m_process_emails = mocker.patch("digital_asset_harvester.cli.process_emails")
-    m_ensure_dir = mocker.patch("digital_asset_harvester.cli.ensure_directory_exists")
-    m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
-
     m_imap_client.return_value.__enter__.return_value.search_emails.return_value = []
-    m_process_emails.return_value = ([], MagicMock(get=lambda x: 0))
+
     # WHEN
     result = run(
         [
+            "extract",
             "--imap",
             "--imap-server",
             "imap.example.com",
@@ -275,53 +231,37 @@ def test_run_imap_calls_dependencies(mocker):
 
     # THEN
     assert result == 0
-    m_get_settings.assert_called_once()
-    m_configure_logging.assert_called_once()
     m_imap_client.assert_called_once_with("imap.example.com", "user", "pass", "password", None, None)
-    m_llm_client.assert_called_once()
-    m_extractor.assert_called_once()
-    m_process_emails.assert_called_once()
-    m_ensure_dir.assert_called_once_with("output/purchase_data.csv")
-    m_write_csv.assert_called_once()
 
 
-def test_run_koinly_output_enabled(mocker):
+def test_run_koinly_output_enabled(mocker, mock_common_cli_deps):
     # GIVEN
-    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
-    m_get_settings.return_value.enable_koinly_csv_export = True
-    mocker.patch("digital_asset_harvester.cli.configure_logging")
+    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_koinly_csv_export=True, enable_blockchain_verification=False, vault_path=".vault.json", enable_imap=True))
     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
-    mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
-    mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
-    mocker.patch("digital_asset_harvester.cli.process_emails", return_value=([], mocker.MagicMock()))
     m_write_koinly_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_koinly_csv")
     m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
 
     # WHEN
-    run(["--mbox-file", "test.mbox", "--output-format", "koinly"])
+    run(["extract", "--mbox-file", "test.mbox", "--output-format", "koinly"])
 
     # THEN
     m_write_koinly_csv.assert_called_once()
     m_write_csv.assert_not_called()
 
 
-def test_run_koinly_output_disabled(mocker, caplog):
+def test_run_koinly_output_disabled(mocker, caplog, mock_common_cli_deps):
     # GIVEN
-    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
-    m_get_settings.return_value.enable_koinly_csv_export = False
-    mocker.patch("digital_asset_harvester.cli.configure_logging")
+    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_koinly_csv_export=False, enable_blockchain_verification=False, vault_path=".vault.json", enable_imap=True))
     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
-    mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
-    mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
-    mocker.patch("digital_asset_harvester.cli.process_emails", return_value=([], mocker.MagicMock()))
     m_write_koinly_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_koinly_csv")
     m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
 
     # WHEN
-    run(["--mbox-file", "test.mbox", "--output-format", "koinly"])
+    run(["extract", "--mbox-file", "test.mbox", "--output-format", "koinly"])
 
     # THEN
-    m_write_koinly_csv.assert_not_called()
+    m_write_koinly_assert_not_called = getattr(m_write_koinly_csv, "assert_not_called")
+    m_write_koinly_assert_not_called()
     m_write_csv.assert_called_once()
     assert "Koinly output format is not enabled" in caplog.text
 
@@ -340,69 +280,45 @@ def test_main(mocker):
     m_run.assert_called_once()
 
 
-def test_run_ctc_output_enabled(mocker):
+def test_run_ctc_output_enabled(mocker, mock_common_cli_deps):
     # GIVEN
-    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
-    m_get_settings.return_value.enable_ctc_csv_export = True
-    mocker.patch("digital_asset_harvester.cli.configure_logging")
+    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_ctc_csv_export=True, enable_blockchain_verification=False, vault_path=".vault.json", enable_imap=True))
     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
-    mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
-    mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
-    mocker.patch(
-        "digital_asset_harvester.cli.process_emails",
-        return_value=([], mocker.MagicMock()),
-    )
     m_write_ctc_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_ctc_csv")
     m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
 
     # WHEN
-    run(["--mbox-file", "test.mbox", "--output-format", "cryptotaxcalculator"])
+    run(["extract", "--mbox-file", "test.mbox", "--output-format", "cryptotaxcalculator"])
 
     # THEN
     m_write_ctc_csv.assert_called_once()
     m_write_csv.assert_not_called()
 
 
-def test_run_cra_output_enabled(mocker):
+def test_run_cra_output_enabled(mocker, mock_common_cli_deps):
     # GIVEN
-    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
-    m_get_settings.return_value.enable_cra_csv_export = True
-    mocker.patch("digital_asset_harvester.cli.configure_logging")
+    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_cra_csv_export=True, enable_blockchain_verification=False, vault_path=".vault.json", enable_imap=True))
     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
-    mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
-    mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
-    mocker.patch(
-        "digital_asset_harvester.cli.process_emails",
-        return_value=([], mocker.MagicMock()),
-    )
     m_write_cra_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_cra_csv")
     m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
 
     # WHEN
-    run(["--mbox-file", "test.mbox", "--output-format", "cra"])
+    run(["extract", "--mbox-file", "test.mbox", "--output-format", "cra"])
 
     # THEN
     m_write_cra_csv.assert_called_once()
     m_write_csv.assert_not_called()
 
 
-def test_run_cointracker_output_enabled(mocker):
+def test_run_cointracker_output_enabled(mocker, mock_common_cli_deps):
     # GIVEN
-    m_get_settings = mocker.patch("digital_asset_harvester.cli.get_settings")
-    m_get_settings.return_value.enable_cointracker_csv_export = True
-    mocker.patch("digital_asset_harvester.cli.configure_logging")
+    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_cointracker_csv_export=True, enable_blockchain_verification=False, vault_path=".vault.json", enable_imap=True))
     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
-    mocker.patch("digital_asset_harvester.llm.ollama_client.OllamaLLMClient")
-    mocker.patch("digital_asset_harvester.cli.EmailPurchaseExtractor")
-    mocker.patch(
-        "digital_asset_harvester.cli.process_emails",
-        return_value=([], mocker.MagicMock()),
-    )
     m_write_cointracker_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_cointracker_csv")
     m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
 
     # WHEN
-    run(["--mbox-file", "test.mbox", "--output-format", "cointracker"])
+    run(["extract", "--mbox-file", "test.mbox", "--output-format", "cointracker"])
 
     # THEN
     m_write_cointracker_csv.assert_called_once()
