@@ -479,6 +479,7 @@ def _process_and_save_results(
         if os.path.exists(settings.vault_path):
             try:
                 from digital_asset_harvester.blockchain.vault import VaultManager
+
                 vault_manager = VaultManager(settings.vault_path, salt=settings.vault_salt.encode())
                 passphrase = getpass.getpass("Enter vault passphrase to resolve addresses: ")
                 vault_manager.unlock(passphrase)
@@ -488,12 +489,15 @@ def _process_and_save_results(
                 print(f"\nCRITICAL ERROR: {e}")
                 print("Operation ceased for security. Check vault file and passphrase.\n")
                 import sys
+
                 sys.exit(1)
             except Exception as e:
                 logger.warning("Failed to load vault: %s. Continuing with explicit config only.", e)
 
         if not wallets_config and not vault_manager:
-            logger.warning("No blockchain wallets configured and no vault available. Set DAP_BLOCKCHAIN_WALLETS or use 'dap vault'.")
+            logger.warning(
+                "No blockchain wallets configured and no vault available. Set DAP_BLOCKCHAIN_WALLETS or use 'dap vault'."
+            )
         else:
             verifier = BlockchainVerifier(wallets_config, vault_manager=vault_manager)
             report = verifier.verify(purchases)
@@ -689,6 +693,7 @@ def run(argv: Optional[list[str]] = None) -> int:
     parser = build_parser(settings)
 
     import sys
+
     args_to_parse = argv if argv is not None else sys.argv[1:]
 
     # Command detection logic
@@ -721,6 +726,7 @@ def run(argv: Optional[list[str]] = None) -> int:
 
     if args.command == "vault":
         from digital_asset_harvester.blockchain.vault import VaultManager
+
         vm = VaultManager(settings.vault_path, salt=settings.vault_salt.encode())
 
         if args.vault_command == "create":

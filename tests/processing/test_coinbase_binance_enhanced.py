@@ -1,8 +1,10 @@
 """Enhanced unit tests for Coinbase and Binance extractors."""
 
 import pytest
-from digital_asset_harvester.processing.extractors.coinbase import CoinbaseExtractor
+
 from digital_asset_harvester.processing.extractors.binance import BinanceExtractor
+from digital_asset_harvester.processing.extractors.coinbase import CoinbaseExtractor
+
 
 def test_coinbase_multi_purchase():
     """Test Coinbase extractor with multiple purchases in one email."""
@@ -20,6 +22,7 @@ def test_coinbase_multi_purchase():
     assert results[1]["amount"] == "1.0"
     assert results[1]["item_name"] == "ETH"
 
+
 def test_coinbase_fiat_first_variant():
     """Test Coinbase variant where fiat amount comes before crypto."""
     extractor = CoinbaseExtractor()
@@ -32,6 +35,7 @@ def test_coinbase_fiat_first_variant():
     assert results[0]["total_spent"] == "100.00"
     assert results[0]["currency"] == "USD"
 
+
 def test_coinbase_order_completed_variant():
     """Test Coinbase variant 'Order #... completed'."""
     extractor = CoinbaseExtractor()
@@ -43,6 +47,7 @@ def test_coinbase_order_completed_variant():
     assert results[0]["amount"] == "0.05"
     assert results[0]["item_name"] == "BTC"
     assert results[0]["transaction_id"] == "TXN-999"
+
 
 def test_coinbase_multi_staking_rewards():
     """Test Coinbase extractor with multiple staking rewards."""
@@ -59,6 +64,7 @@ def test_coinbase_multi_staking_rewards():
     assert results[0]["transaction_type"] == "staking_reward"
     assert results[1]["item_name"] == "SOL"
     assert results[1]["transaction_type"] == "staking_reward"
+
 
 def test_binance_multi_trade_confirmation_blocks():
     """Test Binance extractor with multiple trade blocks."""
@@ -89,6 +95,7 @@ def test_binance_multi_trade_confirmation_blocks():
     assert results[1]["item_name"] == "ETH"
     assert results[1]["total_spent"] == "1500.00"
 
+
 def test_binance_sell_side():
     """Test Binance extractor with a Sell trade."""
     extractor = BinanceExtractor()
@@ -107,6 +114,7 @@ def test_binance_sell_side():
     assert results[0]["item_name"] == "BTC"
     # Sell should be treated as withdrawal or similar for tax tracking
     assert results[0]["transaction_type"] == "withdrawal"
+
 
 def test_binance_multi_one_liner():
     """Test Binance extractor with multiple one-liner buys."""

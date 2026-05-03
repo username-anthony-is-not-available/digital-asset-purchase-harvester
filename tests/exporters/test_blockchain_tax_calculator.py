@@ -5,7 +5,10 @@ from decimal import Decimal
 
 import pytest
 
-from digital_asset_harvester.exporters.blockchain_tax_calculator import BlockchainTaxCalculatorReportGenerator, write_purchase_data_to_blockchain_tax_csv
+from digital_asset_harvester.exporters.blockchain_tax_calculator import (
+    BlockchainTaxCalculatorReportGenerator,
+    write_purchase_data_to_blockchain_tax_csv,
+)
 from digital_asset_harvester.validation.schemas import PurchaseRecord
 
 

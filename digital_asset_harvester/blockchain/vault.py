@@ -8,15 +8,16 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from mnemonic import Mnemonic
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from eth_account import Account
+from mnemonic import Mnemonic
 
 logger = logging.getLogger(__name__)
 
 # Enable HD Wallet features for eth-account
 Account.enable_unaudited_hdwallet_features()
+
 
 class VaultManager:
     """Manages an encrypted vault of private keys and mnemonics using AES-256-GCM."""
@@ -48,10 +49,7 @@ class VaultManager:
         self._key = self._derive_key(passphrase)
         self._aesgcm = AESGCM(self._key)
 
-        self._unlocked_data = {
-            "mnemonic": mnemonic,
-            "wallets": []
-        }
+        self._unlocked_data = {"mnemonic": mnemonic, "wallets": []}
 
         self.save()
         return mnemonic
@@ -64,7 +62,7 @@ class VaultManager:
         with open(self.vault_path, "rb") as f:
             raw_data = f.read()
 
-        if len(raw_data) < 13: # 12 bytes nonce + at least 1 byte ciphertext
+        if len(raw_data) < 13:  # 12 bytes nonce + at least 1 byte ciphertext
             raise ValueError("Corrupted vault file")
 
         nonce = raw_data[:12]
@@ -119,12 +117,9 @@ class VaultManager:
             if w["address"] == address:
                 return address
 
-        self._unlocked_data["wallets"].append({
-            "address": address,
-            "asset": asset.upper(),
-            "index": index,
-            "path": path
-        })
+        self._unlocked_data["wallets"].append(
+            {"address": address, "asset": asset.upper(), "index": index, "path": path}
+        )
         self.save()
         return address
 
@@ -147,10 +142,7 @@ class VaultManager:
         if self._aesgcm is None:
             raise RuntimeError("Vault is locked")
 
-        return [
-            {"address": w["address"], "asset": w["asset"]}
-            for w in self._unlocked_data["wallets"]
-        ]
+        return [{"address": w["address"], "asset": w["asset"]} for w in self._unlocked_data["wallets"]]
 
     def get_address_for_asset(self, asset: str) -> Optional[str]:
         """Get the first address for a given asset."""

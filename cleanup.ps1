@@ -56,6 +56,9 @@ switch ($choice.ToLower()) {
         # Remove temporary artifacts
         Write-Host "Removing temporary artifacts..." -ForegroundColor Cyan
         Remove-Item -Path "*.mbox", ".llm_cache.json", ".processed_hashes.json", ".sync_state.json", "tasks_db.json" -ErrorAction SilentlyContinue
+        if (Test-Path ".coverage") { Remove-Item ".coverage" -Force }
+        if (Test-Path ".pytest_cache") { Remove-Item -Recurse ".pytest_cache" -Force }
+        if (Test-Path "htmlcov") { Remove-Item -Recurse "htmlcov" -Force }
         Remove-Item -Path "output" -Recurse -Force -ErrorAction SilentlyContinue
         Write-Host "✅ Temporary artifacts removed" -ForegroundColor Green
 

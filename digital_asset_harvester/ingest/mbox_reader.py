@@ -1,10 +1,11 @@
-import mailbox
 import logging
+import mailbox
 from typing import Any, Dict, Generator
 
 from .email_parser import message_to_dict
 
 logger = logging.getLogger(__name__)
+
 
 class MboxDataExtractor:
     """Extracts data from an mbox file."""
