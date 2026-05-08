@@ -18,6 +18,7 @@ from .independent_reserve import IndependentReserveExtractor
 from .kraken import KrakenExtractor
 from .newton import NewtonExtractor
 from .swyftx import SwyftxExtractor
+from digital_asset_harvester.parsers.registry import parser_registry
 
 
 class ExtractorRegistry:
@@ -42,6 +43,12 @@ class ExtractorRegistry:
 
     def extract(self, subject: str, sender: str, body: str) -> Optional[List[Dict[str, Any]]]:
         """Attempt to extract data using registered specialized extractors."""
+        # Try new template-based parser registry first
+        results = parser_registry.extract(subject, sender, body)
+        if results:
+            return results
+
+        # Fallback to legacy extractors
         for extractor in self.extractors:
             if extractor.can_handle(subject, sender, body):
                 try:
