@@ -14,6 +14,17 @@ The Digital Asset Purchase Harvester is a Python tool designed to extract crypto
 - **LLM Integration**: Ollama (local), OpenAI, Anthropic (cloud)
 - **Dependency Management**: pip, venv
 
+## Intelligent Project Manager (IPM) Integration
+
+This repository is managed by the **Intelligent Project Manager (IPM)**. Jules (you) acts as the primary agent for executing project tasks, maintaining standards, and updating the project backlog.
+
+### Jules' Responsibilities:
+- **Monitor the Backlog**: Regularly check `BACKLOG.md` for prioritized tasks and project milestones.
+- **Enforce Standards**: Strictly adhere to the guidelines defined in `STANDARDS.md` for all code changes.
+- **Execute Tasks**: Implement features, fix bugs, and improve the project as directed by the IPM or project needs.
+- **Maintain Documentation**: Keep `CHANGELOG.md`, `README.md`, and other documentation updated as the project evolves.
+- **Automated Verification**: Run all relevant tests and pre-commit checks before submitting any work.
+
 ## Development Setup
 
 To set up the development environment, follow these steps:

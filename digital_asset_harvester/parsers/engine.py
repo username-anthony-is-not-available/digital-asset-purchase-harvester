@@ -109,7 +109,10 @@ class TemplateEngine:
         final_results = []
 
         # Extract common fields if missing
-        txn_id = self._find_in_text(r"(?:Transaction ID|Reference|Order\s*#|ID|Reference Number|Order Reference):\s*([A-Z0-9#\-]+)", body)
+        # Improved regex to handle both "Order #123" (no colon) and "Transaction ID: 123"
+        txn_id = self._find_in_text(r"(?:Transaction ID|Reference|ID|Reference Number|Order Reference):\s*([A-Z0-9#\-]+)", body)
+        if not txn_id:
+            txn_id = self._find_in_text(r"Order\s*#\s*([A-Z0-9#\-]+)", body)
 
         for data in results:
             # 1. Clean numeric values
