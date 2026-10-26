@@ -146,3 +146,11 @@ pre-commit run --all-files
 ```
 
 This will automatically fix some issues and report others that need manual attention. Make sure all checks pass before creating a pull request.
+
+## GitHub Actions billing (owner policy, 2026-10-25)
+
+GitHub Actions is DISABLED on this repository. The owner does not pay for GitHub Actions.
+- Do NOT re-enable Actions in repository settings.
+- Do NOT add `.github/workflows` files or trigger workflow runs.
+- Do NOT request CI runs as part of any task.
+- Verify work locally instead; CI status is not a signal for this repo.
