@@ -64,3 +64,44 @@ def test_search_emails_multipart(mock_get_credentials, mock_gmail_service):
 
     assert len(emails) == 1
     assert emails[0]["subject"] == "Multipart Email"
+
+
+@patch("digital_asset_harvester.ingest.gmail_client.get_gmail_credentials")
+def test_search_emails_raw(mock_get_credentials, mock_gmail_service):
+    """Tests that search_emails returns raw bytes when raw=True."""
+    mock_get_credentials.return_value = MagicMock()
+
+    mock_gmail_service.users().messages().list.return_value.execute.return_value = {
+        "messages": [{"id": "1"}]
+    }
+    raw_b64 = "RnJvbTogdGVzdEBleGFtcGxlLmNvbQpTdWJqZWN0OiBSYXcgVGVzdAoKQm9keQ=="
+    mock_gmail_service.users().messages().get.return_value.execute.return_value = {
+        "raw": raw_b64
+    }
+
+    with patch("digital_asset_harvester.ingest.gmail_client.build") as mock_build:
+        mock_build.return_value = mock_gmail_service
+        client = GmailClient()
+        emails = list(client.search_emails("test query", raw=True))
+
+    assert len(emails) == 1
+    assert emails[0]["id"] == "1"
+    assert b"Subject: Raw Test" in emails[0]["raw"]
+
+
+@patch("digital_asset_harvester.ingest.gmail_client.get_gmail_credentials")
+def test_search_emails_http_error(mock_get_credentials, mock_gmail_service):
+    """Tests that search_emails handles HttpError gracefully."""
+    from googleapiclient.errors import HttpError
+    import httplib2
+
+    mock_get_credentials.return_value = MagicMock()
+    resp = httplib2.Response({"status": 500, "reason": "Internal Server Error"})
+    mock_gmail_service.users().messages().list.side_effect = HttpError(resp, b"Server Error")
+
+    with patch("digital_asset_harvester.ingest.gmail_client.build") as mock_build:
+        mock_build.return_value = mock_gmail_service
+        client = GmailClient()
+        emails = list(client.search_emails("test query"))
+
+    assert emails == []
