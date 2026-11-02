@@ -8,6 +8,8 @@ import random
 import time
 from typing import Optional
 
+import httpx
+
 try:
     from anthropic import Anthropic, AnthropicError
 
@@ -99,8 +101,8 @@ class AnthropicLLMClient(LLMProvider):
             except (json.JSONDecodeError, TypeError, AttributeError) as exc:
                 logger.warning("Could not parse LLM response on attempt %d: %s", attempt, exc)
                 last_error = LLMResponseFormatError(str(exc))
-            except AnthropicError as exc:
-                logger.warning("Anthropic API error on attempt %d: %s", attempt, exc)
+            except (ConnectionError, TimeoutError, httpx.RequestError, AnthropicError) as exc:
+                logger.warning("Anthropic API or network error on attempt %d: %s", attempt, exc)
                 last_error = LLMError(str(exc))
             except Exception as exc:  # pragma: no cover - defensive guard
                 logger.error("Unexpected LLM error on attempt %d: %s", attempt, exc)

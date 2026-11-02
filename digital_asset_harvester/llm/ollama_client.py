@@ -8,7 +8,8 @@ import random
 import time
 from typing import Any, Dict, Optional
 
-from ollama import Client
+import httpx
+from ollama import Client, RequestError, ResponseError
 
 from digital_asset_harvester.config import HarvesterSettings, get_settings
 
@@ -90,8 +91,16 @@ class OllamaLLMClient(LLMProvider):
             except (json.JSONDecodeError, TypeError, AttributeError) as exc:
                 logger.warning("Could not parse LLM response on attempt %d: %s", attempt, exc)
                 last_error = LLMResponseFormatError(str(exc))
-            except (ConnectionError, TimeoutError) as exc:
+            except (ConnectionError, TimeoutError, httpx.RequestError, RequestError) as exc:
                 logger.warning("LLM network error on attempt %d: %s", attempt, exc)
+                last_error = LLMError(str(exc))
+            except ResponseError as exc:
+                # If HTTP status code is client error 4xx (except 429), it is non-recoverable
+                status_code = getattr(exc, "status_code", None)
+                if status_code and 400 <= status_code < 500 and status_code != 429:
+                    logger.error("LLM non-recoverable response error on attempt %d: %s", attempt, exc)
+                    raise LLMError(str(exc)) from exc
+                logger.warning("LLM server response error on attempt %d: %s", attempt, exc)
                 last_error = LLMError(str(exc))
             except RuntimeError as exc:
                 logger.error("LLM runtime error on attempt %d: %s", attempt, exc)
