@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **CLI Interface Versioning**: Introduced `--version` / `-v` flag to the CLI interface and exposed `__version__` in the package for API stability and script backward compatibility.
 - **New Exchange Extractors**: Added specialized regex-based extractors for Bitstamp and Bitfinex to improve extraction speed and accuracy.
 - **Enhanced FX Rate Service**: Improved `FXRateService` with robust date parsing via `dateutil.parser` and a reliable retry mechanism for external API calls.
 - **Improved CRA PDF Export**: Enhanced the CRA report grouping logic to group summaries first by currency, then by vendor, including subtotals for clearer financial reporting.

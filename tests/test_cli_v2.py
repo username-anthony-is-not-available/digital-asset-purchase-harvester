@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import digital_asset_harvester
+from digital_asset_harvester import __version__
 from digital_asset_harvester.cli import build_parser, process_emails, run
 from digital_asset_harvester.config import HarvesterSettings
 from digital_asset_harvester.telemetry import StructuredLoggerFactory
@@ -20,7 +22,7 @@ def mock_common_cli_deps(mocker):
         imap_password=None,
         imap_client_id=None,
         imap_authority=None,
-        enable_imap=True  # Ensure parser has imap arguments for all tests
+        enable_imap=True,  # Ensure parser has imap arguments for all tests
     )
     m_get_settings.return_value = settings
     mocker.patch("os.path.exists", return_value=False)
@@ -47,6 +49,36 @@ def test_build_parser_no_progress():
     parser = build_parser(settings)
     args = parser.parse_args(["extract", "--mbox-file", "inbox.mbox", "--no-progress"])
     assert not args.progress
+
+
+def test_package_version_exposed():
+    assert hasattr(digital_asset_harvester, "__version__")
+    assert digital_asset_harvester.__version__ == "0.1.0"
+    assert __version__ == "0.1.0"
+
+
+def test_run_version_flag(capsys):
+    result = run(["--version"])
+    assert result == 0
+    captured = capsys.readouterr()
+    assert "0.1.0" in captured.out or "0.1.0" in captured.err
+
+
+def test_run_short_version_flag(capsys):
+    result = run(["-v"])
+    assert result == 0
+    captured = capsys.readouterr()
+    assert "0.1.0" in captured.out or "0.1.0" in captured.err
+
+
+def test_run_legacy_flags_without_subcommand(mocker):
+    m_mbox_extractor = mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
+    m_mbox_extractor.return_value.extract_emails.return_value = []
+
+    # Legacy usage where 'extract' is omitted
+    result = run(["--mbox-file", "test.mbox"])
+    assert result == 0
+    m_mbox_extractor.assert_called_once_with("test.mbox")
 
 
 def test_process_emails_collects_metrics(mocker):
@@ -102,7 +134,20 @@ def test_run_mbox_calls_dependencies(mocker):
 
 def test_run_imap_gmail_oauth2(mocker, mock_common_cli_deps):
     # GIVEN
-    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_imap=True, enable_blockchain_verification=False, vault_path=".vault.json", imap_server=None, imap_user=None, imap_password=None, imap_client_id=None, imap_authority=None, imap_auth_type="gmail_oauth2"))
+    mocker.patch(
+        "digital_asset_harvester.cli.get_settings",
+        return_value=HarvesterSettings(
+            enable_imap=True,
+            enable_blockchain_verification=False,
+            vault_path=".vault.json",
+            imap_server=None,
+            imap_user=None,
+            imap_password=None,
+            imap_client_id=None,
+            imap_authority=None,
+            imap_auth_type="gmail_oauth2",
+        ),
+    )
     m_imap_client = mocker.patch("digital_asset_harvester.cli.ImapClient")
     m_imap_client.return_value.__enter__.return_value.search_emails.return_value = []
 
@@ -127,7 +172,20 @@ def test_run_imap_gmail_oauth2(mocker, mock_common_cli_deps):
 
 def test_run_imap_outlook_oauth2(mocker, mock_common_cli_deps):
     # GIVEN
-    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_imap=True, enable_blockchain_verification=False, vault_path=".vault.json", imap_server=None, imap_user=None, imap_password=None, imap_client_id=None, imap_authority=None, imap_auth_type="outlook_oauth2"))
+    mocker.patch(
+        "digital_asset_harvester.cli.get_settings",
+        return_value=HarvesterSettings(
+            enable_imap=True,
+            enable_blockchain_verification=False,
+            vault_path=".vault.json",
+            imap_server=None,
+            imap_user=None,
+            imap_password=None,
+            imap_client_id=None,
+            imap_authority=None,
+            imap_auth_type="outlook_oauth2",
+        ),
+    )
     m_imap_client = mocker.patch("digital_asset_harvester.cli.ImapClient")
     m_imap_client.return_value.__enter__.return_value.search_emails.return_value = []
 
@@ -163,7 +221,12 @@ def test_run_imap_outlook_oauth2(mocker, mock_common_cli_deps):
 
 def test_run_gmail_calls_dependencies(mocker, mock_common_cli_deps):
     # GIVEN
-    settings = HarvesterSettings(gmail_query="from:coinbase OR from:binance", enable_blockchain_verification=False, vault_path=".vault.json", enable_imap=True)
+    settings = HarvesterSettings(
+        gmail_query="from:coinbase OR from:binance",
+        enable_blockchain_verification=False,
+        vault_path=".vault.json",
+        enable_imap=True,
+    )
     mocker.patch("digital_asset_harvester.cli.get_settings", return_value=settings)
     m_gmail_client = mocker.patch("digital_asset_harvester.cli.GmailClient")
     m_gmail_client.return_value.search_emails.return_value = []
@@ -174,14 +237,19 @@ def test_run_gmail_calls_dependencies(mocker, mock_common_cli_deps):
     # THEN
     assert result == 0
     m_gmail_client.assert_called_once()
-    m_gmail_client.return_value.search_emails.assert_called_once_with(
-        "test query", raw=settings.enable_multiprocessing
-    )
+    m_gmail_client.return_value.search_emails.assert_called_once_with("test query", raw=settings.enable_multiprocessing)
 
 
 def test_run_outlook_calls_dependencies(mocker, mock_common_cli_deps):
     # GIVEN
-    settings = HarvesterSettings(outlook_query="from:coinbase OR from:binance", enable_blockchain_verification=False, vault_path=".vault.json", outlook_client_id="id", outlook_authority="auth", enable_imap=True)
+    settings = HarvesterSettings(
+        outlook_query="from:coinbase OR from:binance",
+        enable_blockchain_verification=False,
+        vault_path=".vault.json",
+        outlook_client_id="id",
+        outlook_authority="auth",
+        enable_imap=True,
+    )
     mocker.patch("digital_asset_harvester.cli.get_settings", return_value=settings)
     m_outlook_client = mocker.patch("digital_asset_harvester.cli.OutlookClient")
     m_outlook_client.return_value.search_emails.return_value = []
@@ -211,7 +279,19 @@ def test_run_file_not_found(mocker, caplog):
 
 def test_run_imap_calls_dependencies(mocker, mock_common_cli_deps):
     # GIVEN
-    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_imap=True, enable_blockchain_verification=False, vault_path=".vault.json", imap_server=None, imap_user=None, imap_password=None, imap_client_id=None, imap_authority=None))
+    mocker.patch(
+        "digital_asset_harvester.cli.get_settings",
+        return_value=HarvesterSettings(
+            enable_imap=True,
+            enable_blockchain_verification=False,
+            vault_path=".vault.json",
+            imap_server=None,
+            imap_user=None,
+            imap_password=None,
+            imap_client_id=None,
+            imap_authority=None,
+        ),
+    )
     m_imap_client = mocker.patch("digital_asset_harvester.cli.ImapClient")
     m_imap_client.return_value.__enter__.return_value.search_emails.return_value = []
 
@@ -236,7 +316,15 @@ def test_run_imap_calls_dependencies(mocker, mock_common_cli_deps):
 
 def test_run_koinly_output_enabled(mocker, mock_common_cli_deps):
     # GIVEN
-    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_koinly_csv_export=True, enable_blockchain_verification=False, vault_path=".vault.json", enable_imap=True))
+    mocker.patch(
+        "digital_asset_harvester.cli.get_settings",
+        return_value=HarvesterSettings(
+            enable_koinly_csv_export=True,
+            enable_blockchain_verification=False,
+            vault_path=".vault.json",
+            enable_imap=True,
+        ),
+    )
     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
     m_write_koinly_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_koinly_csv")
     m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
@@ -251,7 +339,15 @@ def test_run_koinly_output_enabled(mocker, mock_common_cli_deps):
 
 def test_run_koinly_output_disabled(mocker, caplog, mock_common_cli_deps):
     # GIVEN
-    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_koinly_csv_export=False, enable_blockchain_verification=False, vault_path=".vault.json", enable_imap=True))
+    mocker.patch(
+        "digital_asset_harvester.cli.get_settings",
+        return_value=HarvesterSettings(
+            enable_koinly_csv_export=False,
+            enable_blockchain_verification=False,
+            vault_path=".vault.json",
+            enable_imap=True,
+        ),
+    )
     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
     m_write_koinly_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_koinly_csv")
     m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
@@ -282,7 +378,12 @@ def test_main(mocker):
 
 def test_run_ctc_output_enabled(mocker, mock_common_cli_deps):
     # GIVEN
-    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_ctc_csv_export=True, enable_blockchain_verification=False, vault_path=".vault.json", enable_imap=True))
+    mocker.patch(
+        "digital_asset_harvester.cli.get_settings",
+        return_value=HarvesterSettings(
+            enable_ctc_csv_export=True, enable_blockchain_verification=False, vault_path=".vault.json", enable_imap=True
+        ),
+    )
     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
     m_write_ctc_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_ctc_csv")
     m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
@@ -297,7 +398,12 @@ def test_run_ctc_output_enabled(mocker, mock_common_cli_deps):
 
 def test_run_cra_output_enabled(mocker, mock_common_cli_deps):
     # GIVEN
-    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_cra_csv_export=True, enable_blockchain_verification=False, vault_path=".vault.json", enable_imap=True))
+    mocker.patch(
+        "digital_asset_harvester.cli.get_settings",
+        return_value=HarvesterSettings(
+            enable_cra_csv_export=True, enable_blockchain_verification=False, vault_path=".vault.json", enable_imap=True
+        ),
+    )
     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
     m_write_cra_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_cra_csv")
     m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
@@ -312,7 +418,15 @@ def test_run_cra_output_enabled(mocker, mock_common_cli_deps):
 
 def test_run_cointracker_output_enabled(mocker, mock_common_cli_deps):
     # GIVEN
-    mocker.patch("digital_asset_harvester.cli.get_settings", return_value=HarvesterSettings(enable_cointracker_csv_export=True, enable_blockchain_verification=False, vault_path=".vault.json", enable_imap=True))
+    mocker.patch(
+        "digital_asset_harvester.cli.get_settings",
+        return_value=HarvesterSettings(
+            enable_cointracker_csv_export=True,
+            enable_blockchain_verification=False,
+            vault_path=".vault.json",
+            enable_imap=True,
+        ),
+    )
     mocker.patch("digital_asset_harvester.cli.MboxDataExtractor")
     m_write_cointracker_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_cointracker_csv")
     m_write_csv = mocker.patch("digital_asset_harvester.cli.write_purchase_data_to_csv")
