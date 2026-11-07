@@ -15,6 +15,7 @@ from digital_asset_harvester import (
     EmlDataExtractor,
     HarvesterSettings,
     MboxDataExtractor,
+    __version__,
     get_llm_client,
     get_settings,
     log_event,
@@ -41,6 +42,13 @@ KOINLY_AVAILABLE = True
 def build_parser(settings: HarvesterSettings) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Process emails to extract cryptocurrency purchase information.",
+    )
+    parser.add_argument(
+        "--version",
+        "-v",
+        action="version",
+        version=f"%(prog)s {__version__}",
+        help="Show program's version number and exit",
     )
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
@@ -703,8 +711,11 @@ def run(argv: Optional[list[str]] = None) -> int:
         return 0
 
     # 2. Top-level help/version -> pass through
-    if args_to_parse[0] in ["-h", "--help", "--version"]:
-        args = parser.parse_args(args_to_parse)
+    if args_to_parse[0] in ["-h", "--help", "--version", "-v"]:
+        try:
+            parser.parse_args(args_to_parse)
+        except SystemExit as exc:
+            return exc.code if isinstance(exc.code, int) else 0
         return 0
 
     # 3. Known command -> pass through

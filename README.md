@@ -438,6 +438,9 @@ This will test various email scenarios including:
 ## Example Usage
 
 ```sh
+# Check version
+digital-asset-harvester --version
+
 # Basic usage
 digital-asset-harvester --mbox-file example.mbox --output output/purchase_data.csv
 

@@ -1,5 +1,7 @@
 """Digital Asset Purchase Harvester package."""
 
+__version__ = "0.1.0"
+
 from .config import HarvesterSettings, get_settings, get_settings_with_overrides, reload_settings
 from .ingest.eml_reader import EmlDataExtractor
 from .ingest.mbox_data_extractor import MboxDataExtractor
@@ -29,4 +31,5 @@ __all__ = [
     "write_purchase_data_to_csv",
     "ValidationIssue",
     "MetricsTracker",
+    "__version__",
 ]
