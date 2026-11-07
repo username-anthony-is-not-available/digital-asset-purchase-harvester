@@ -22,23 +22,29 @@ OUTLOOK_SCOPES = ["https://outlook.office.com/IMAP.AccessAsUser.All"]
 GRAPH_SCOPES = ["https://graph.microsoft.com/Mail.Read"]
 
 
-def get_gmail_credentials() -> Credentials:
-    """
-    Authenticates with the Gmail API using OAuth 2.0.
+def get_gmail_credentials(
+    token_file: str = "gmail_token.json",
+    credentials_file: str = "credentials.json",
+) -> Credentials:
+    """Authenticate with the Gmail API using OAuth 2.0.
+
+    :param token_file: Path to stored OAuth token JSON file.
+    :param credentials_file: Path to OAuth client secrets JSON file.
+    :return: Google OAuth Credentials instance.
     """
     if not OAUTH_DEPENDENCIES_AVAILABLE:
         raise ImportError("Gmail dependencies (google-auth, google-auth-oauthlib) are not installed.")
 
     creds = None
-    if os.path.exists("gmail_token.json"):
-        creds = Credentials.from_authorized_user_file("gmail_token.json", GMAIL_SCOPES)
+    if os.path.exists(token_file):
+        creds = Credentials.from_authorized_user_file(token_file, GMAIL_SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", GMAIL_SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(credentials_file, GMAIL_SCOPES)
             creds = flow.run_local_server(port=0)
-        with open("gmail_token.json", "w") as token:
+        with open(token_file, "w") as token:
             token.write(creds.to_json())
     return creds
 
